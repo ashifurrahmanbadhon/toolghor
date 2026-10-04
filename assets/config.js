@@ -26,6 +26,13 @@ var SITE_CONFIG = {
     url: 'https://www.facebook.com/ashifurrahmanbadhon'
   },
 
+  // লিঙ্কডইন
+  linkedin: {
+    name: 'LinkedIn',
+    nameBn: 'লিঙ্কডইন',
+    url: 'https://www.linkedin.com/in/ashifurrahmanbadhon'
+  },
+
   // হোয়াটসঅ্যাপ — নম্বর পেজে দেখানো হয় না; বোতামে চাপলে সরাসরি চ্যাট খোলে।
   // দেশ কোডসহ নম্বর, শুধু সংখ্যা।
   whatsapp: {

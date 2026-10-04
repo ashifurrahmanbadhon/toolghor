@@ -1113,9 +1113,34 @@
       UI.el('span', { class: 'about-contact-arrow', 'aria-hidden': 'true' }, '↗')
     );
 
+    // LinkedIn direct button
+    var linkedinUrl = (window.SITE_CONFIG && window.SITE_CONFIG.linkedin && window.SITE_CONFIG.linkedin.url)
+      ? window.SITE_CONFIG.linkedin.url
+      : 'https://www.linkedin.com/in/ashifurrahmanbadhon';
+
+    var linkedinLink = UI.el('a', {
+      href: linkedinUrl,
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      class: 'about-contact-btn about-btn-linkedin',
+      title: tr('লিঙ্কডইন প্রোফাইল দেখুন', 'Visit LinkedIn Profile')
+    },
+      UI.el('span', {
+        class: 'about-contact-ic',
+        'aria-hidden': 'true',
+        html: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9h2.79v8.37H6.46v-8.37M7.86 6.81a1.63 1.63 0 1 0 0 3.26 1.63 1.63 0 0 0 0-3.26z"/></svg>'
+      }),
+      UI.el('span', { class: 'about-contact-text' },
+        UI.el('span', { class: 'about-contact-tag' }, tr('লিঙ্কডইন', 'LinkedIn')),
+        UI.el('span', { class: 'about-contact-val' }, tr('লিঙ্কডইন প্রোফাইল দেখুন', 'Visit LinkedIn Profile'))
+      ),
+      UI.el('span', { class: 'about-contact-arrow', 'aria-hidden': 'true' }, '↗')
+    );
+
     var contactsWrap = UI.el('div', { class: 'about-contacts-wrap' },
       emailLink,
-      fbLink
+      fbLink,
+      linkedinLink
     );
 
     var creatorCard = UI.el('div', { class: 'about-creator-card' },

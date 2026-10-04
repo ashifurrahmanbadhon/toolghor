@@ -2308,6 +2308,11 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
   background: color-mix(in srgb, #1877f2 8%, var(--paper));
   color: #1877f2;
 }
+.about-btn-linkedin:hover {
+  border-color: #0a66c2;
+  background: color-mix(in srgb, #0a66c2 8%, var(--paper));
+  color: #0a66c2;
+}
 .about-contact-ic {
   display: flex;
   align-items: center;
@@ -2324,6 +2329,9 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
 }
 .about-btn-fb .about-contact-ic {
   color: #1877f2;
+}
+.about-btn-linkedin .about-contact-ic {
+  color: #0a66c2;
 }
 .about-contact-text {
   flex: 1;
