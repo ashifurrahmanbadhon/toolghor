@@ -14,6 +14,8 @@ var SITE_CONFIG = {
   // লোগো ফাইল: পুরো লোগো (হোমপেজে) ও শুধু আইকন (ওপরের বারে)। বদলাতে assets ফোল্ডারের ফাইল বদলান।
   logo: 'assets/logo.png',
   logoDark: 'assets/logo-dark.png',
+  logoWebp: 'assets/logo.webp',
+  logoDarkWebp: 'assets/logo-dark.webp',
   logoIcon: 'assets/logo-icon.png',
 
   // ওয়েবসাইটের ঠিকানা (সাইটম্যাপ ও SEO-র জন্য), যেমন https://yourdomain.com

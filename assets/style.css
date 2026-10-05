@@ -162,6 +162,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
   scroll-margin-top: 18px;
   transition: all .2s ease;
 }
+.cat.collapsed {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 85px;
+}
 .cat-head {
   display: flex;
   align-items: center;
