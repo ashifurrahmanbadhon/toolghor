@@ -215,6 +215,9 @@
         var isOn = cat === activeCatId;
         c.classList.toggle('on', isOn);
         c.setAttribute('aria-selected', isOn ? 'true' : 'false');
+        if (isOn && window.innerWidth <= 768) {
+          try { c.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } catch (err) {}
+        }
       });
     }
 
@@ -248,7 +251,9 @@
       updateActiveChip(catKey);
 
       if (shouldScroll) {
-        var y = targetSec.getBoundingClientRect().top + window.pageYOffset - 85;
+        var headerEl = document.querySelector('.top');
+        var offset = (headerEl ? headerEl.offsetHeight : 65) + 10;
+        var y = targetSec.getBoundingClientRect().top + window.pageYOffset - offset;
         window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
       }
     }
@@ -327,7 +332,9 @@
             expandAll();
             var bar = document.getElementById('allExpandBar');
             if (bar) {
-              var y = bar.getBoundingClientRect().top + window.pageYOffset - 85;
+              var headerEl = document.querySelector('.top');
+              var offset = (headerEl ? headerEl.offsetHeight : 65) + 10;
+              var y = bar.getBoundingClientRect().top + window.pageYOffset - offset;
               window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
             }
           }
