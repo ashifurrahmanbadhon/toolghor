@@ -8,9 +8,15 @@
 <meta name="theme-color" content="#0e7a5a">
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="dns-prefetch" href="https://fonts.googleapis.com">
+<link rel="dns-prefetch" href="https://fonts.gstatic.com">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@500;700;800&family=Hind+Siliguri:wght@400;500;600&display=swap">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@500;700;800&family=Hind+Siliguri:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@500;700;800&family=Hind+Siliguri:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@500;700;800&family=Hind+Siliguri:wght@400;500;600&display=swap"></noscript>
+<link rel="preload" href="assets/style.css" as="style">
 <link rel="stylesheet" href="assets/style.css">
 <style>
 .not-found-box {
@@ -47,8 +53,10 @@
 <header class="top"><div class="wrap top-in">
 <a class="brand" href="index.html" aria-label="ToolGhor">
   <picture>
+    <source type="image/webp" data-cfg="logoDarkWebp" srcset="assets/logo-dark.webp" media="(prefers-color-scheme: dark)">
     <source data-cfg="logoDark" srcset="assets/logo-dark.png" media="(prefers-color-scheme: dark)">
-    <img class="brand-logo" data-cfg="logo" src="assets/logo.png" alt="ToolGhor" height="54">
+    <source type="image/webp" data-cfg="logoWebp" srcset="assets/logo.webp">
+    <img class="brand-logo" data-cfg="logo" src="assets/logo.png" alt="ToolGhor" width="221" height="54" fetchpriority="high" decoding="async">
   </picture>
 </a>
 <div class="top-actions">

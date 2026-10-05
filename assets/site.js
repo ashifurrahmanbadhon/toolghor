@@ -24,6 +24,8 @@
     document.querySelectorAll('[data-cfg="fbname"]').forEach(function (e) { e.textContent = CFG.facebook.name; });
     document.querySelectorAll('img[data-cfg="logo"]').forEach(function (e) { e.src = ROOT + CFG.logo; e.alt = CFG.name + tr(' লোগো', ' logo'); });
     document.querySelectorAll('source[data-cfg="logoDark"]').forEach(function (e) { e.srcset = ROOT + (CFG.logoDark || CFG.logo); });
+    document.querySelectorAll('source[data-cfg="logoDarkWebp"]').forEach(function (e) { e.srcset = ROOT + (CFG.logoDarkWebp || (CFG.logoDark || CFG.logo).replace(/\.png$/i, '.webp')); });
+    document.querySelectorAll('source[data-cfg="logoWebp"]').forEach(function (e) { e.srcset = ROOT + (CFG.logoWebp || CFG.logo.replace(/\.png$/i, '.webp')); });
     document.querySelectorAll('img[data-cfg="logoIcon"]').forEach(function (e) { e.src = ROOT + CFG.logoIcon; });
     document.querySelectorAll('a[data-cfg="fb"]').forEach(function (e) { e.href = CFG.facebook.url; });
     var num = String(CFG.whatsapp.number || '').replace(/\D/g, '');
@@ -140,7 +142,12 @@
       active = (i + items.length) % items.length;
       items.forEach(function (a, k) { a.classList.toggle('on', k === active); });
     }
-    input.addEventListener('input', render);
+    var renderRaf = null;
+    function scheduleRender() {
+      if (renderRaf) cancelAnimationFrame(renderRaf);
+      renderRaf = requestAnimationFrame(render);
+    }
+    input.addEventListener('input', scheduleRender);
     input.addEventListener('focus', function () { if (input.value.trim()) render(); });
     input.addEventListener('keydown', function (e) {
       if (e.key === 'ArrowDown') { e.preventDefault(); setActive(active + 1); }
@@ -423,6 +430,44 @@
     catch (e) { console.error(e); root.appendChild(UI.notice('err', tr('একটি সমস্যা হয়েছে: ', 'Something went wrong: ') + UI.err(e))); }
   }
 
-  function init() { applyConfig(); bindLang(); bindSearch(); bindCategoryAccordion(); mountTool(); }
+  /* ---------- দ্রুত নেভিগেশন ও লিংক প্রিফেচ ---------- */
+  function bindHoverPrefetch() {
+    var prefetched = {};
+    function prefetch(url) {
+      if (!url || prefetched[url]) return;
+      prefetched[url] = true;
+      var l = document.createElement('link');
+      l.rel = 'prefetch';
+      l.href = url;
+      document.head.appendChild(l);
+    }
+    document.addEventListener('mouseover', function (e) {
+      var a = e.target && e.target.closest && e.target.closest('a[href]');
+      if (!a) return;
+      var href = a.getAttribute('href');
+      if (href && !href.startsWith('#') && !href.startsWith('http') && !href.startsWith('mailto:') && !href.startsWith('javascript:')) {
+        prefetch(a.href);
+      }
+    }, { passive: true });
+    document.addEventListener('touchstart', function (e) {
+      var a = e.target && e.target.closest && e.target.closest('a[href]');
+      if (!a) return;
+      var href = a.getAttribute('href');
+      if (href && !href.startsWith('#') && !href.startsWith('http')) {
+        prefetch(a.href);
+      }
+    }, { passive: true });
+  }
+
+  /* ---------- Service Worker রেজিষ্ট্রেশন ---------- */
+  function registerServiceWorker() {
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register(ROOT + 'sw.js').catch(function () {});
+      });
+    }
+  }
+
+  function init() { applyConfig(); bindLang(); bindSearch(); bindCategoryAccordion(); bindHoverPrefetch(); registerServiceWorker(); mountTool(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
