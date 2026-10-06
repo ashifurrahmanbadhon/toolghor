@@ -6,3 +6,8 @@
   from = "/api/convert-pdf-to-docx"
   to = "/.netlify/functions/convert-pdf-to-docx"
   status = 200
+
+[[redirects]]
+  from = "/api/yt-download"
+  to = "/.netlify/functions/yt-download"
+  status = 200

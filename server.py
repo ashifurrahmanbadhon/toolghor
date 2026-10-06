@@ -66,7 +66,61 @@ class ToolGhorRequestHandler(SimpleHTTPRequestHandler):
             self.wfile.write(body)
             return
 
+        if self.path.startswith("/api/yt-download"):
+            self.handle_yt_download()
+            return
+
         super().do_GET()
+
+    def handle_yt_download(self):
+        from urllib.parse import urlparse, parse_qs, quote
+        import time
+        query = parse_qs(urlparse(self.path).query)
+        raw_url = query.get("url", [""])[0].strip()
+        fmt = query.get("format", ["720"])[0].strip().lower()
+        if not raw_url:
+            self.send_json_error(HTTPStatus.BAD_REQUEST, "URL parameter is required.")
+            return
+
+        try:
+            init_url = f"https://loader.to/ajax/download.php?button=1&start=1&end=1&format={fmt}&url={quote(raw_url)}"
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+            }
+            res = requests.get(init_url, headers=headers, timeout=10)
+            if res.status_code != 200:
+                self.send_json_error(HTTPStatus.INTERNAL_SERVER_ERROR, "Upstream server returned error.")
+                return
+            rj = res.json()
+            if not rj.get("success"):
+                self.send_json_error(HTTPStatus.BAD_REQUEST, rj.get("text") or "Failed to start download stream.")
+                return
+            dl_url = rj.get("download_url") or rj.get("url")
+            prog_url = rj.get("progress_url")
+            title = rj.get("title") or "YouTube_Download"
+
+            if not dl_url and prog_url:
+                for _ in range(15):
+                    time.sleep(1.5)
+                    pr = requests.get(prog_url, headers=headers, timeout=10)
+                    if pr.status_code == 200:
+                        pj = pr.json()
+                        if pj.get("download_url"):
+                            dl_url = pj.get("download_url")
+                            break
+
+            if not dl_url:
+                self.send_json_error(HTTPStatus.GATEWAY_TIMEOUT, "Download resolution timed out.")
+                return
+
+            body = json.dumps({"success": True, "download_url": dl_url, "title": title, "format": fmt}).encode("utf-8")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except Exception as e:
+            self.send_json_error(HTTPStatus.INTERNAL_SERVER_ERROR, "Unable to resolve YouTube download stream.")
 
     def do_POST(self):
         if self.path == "/api/convert-pdf-to-docx" or self.path.startswith("/api/convert-pdf-to-docx?"):
