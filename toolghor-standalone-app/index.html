@@ -11798,9 +11798,12 @@ var qrcode = function() {
       });
 
       var actionWrap = UI.el('div', { class: 'yt-action-wrap' });
+      var statusTarget = UI.el('div', { class: 'yt-action-status' });
       var mainBtn = UI.btn(tr('🎬 MP4 ভিডিও ডাউনলোড শুরু করুন', '🎬 Download MP4 Video'), function () {
-        triggerDownload('video', data, selVideoQuality);
+        triggerDownload('video', data, selVideoQuality, mainBtn, statusTarget);
       }, { cls: 'btn-pri yt-main-dl-btn' });
+      actionWrap.appendChild(mainBtn);
+      actionWrap.appendChild(statusTarget);
 
       var altNote = UI.el('div', { class: 'yt-server-note' },
         UI.el('p', { class: 'yt-note-text' }, tr('💡 কোনো কারণে নেটওয়ার্কে একটি সার্ভার ব্লক থাকলে বা ধীরগতির হলে নিচের যেকোনো সার্ভার ব্যবহার করুন:', '💡 If one server is blocked or slow on your network, use any alternative server below:')),
@@ -11819,7 +11822,6 @@ var qrcode = function() {
 
       sec.appendChild(head);
       sec.appendChild(qGrid);
-      actionWrap.appendChild(mainBtn);
       sec.appendChild(actionWrap);
       sec.appendChild(altNote);
       target.appendChild(sec);
@@ -11858,9 +11860,12 @@ var qrcode = function() {
       });
 
       var actionWrap = UI.el('div', { class: 'yt-action-wrap' });
+      var statusTarget = UI.el('div', { class: 'yt-action-status' });
       var mainBtn = UI.btn(tr('🎵 MP3 অডিও ডাউনলোড শুরু করুন', '🎵 Download MP3 Audio'), function () {
-        triggerDownload('audio', data, selAudioQuality);
+        triggerDownload('audio', data, selAudioQuality, mainBtn, statusTarget);
       }, { cls: 'btn-pri yt-main-dl-btn' });
+      actionWrap.appendChild(mainBtn);
+      actionWrap.appendChild(statusTarget);
 
       var altNote = UI.el('div', { class: 'yt-server-note' },
         UI.el('p', { class: 'yt-note-text' }, tr('💡 অডিও ডাউনলোডের বিকল্প গেটওয়ে:', '💡 Alternative Audio Download Gateways:')),
@@ -11892,7 +11897,6 @@ var qrcode = function() {
 
       sec.appendChild(head);
       sec.appendChild(qGrid);
-      actionWrap.appendChild(mainBtn);
       sec.appendChild(actionWrap);
       sec.appendChild(altNote);
       sec.appendChild(companionBanner);
@@ -11937,12 +11941,71 @@ var qrcode = function() {
       target.appendChild(sec);
     }
 
-    function triggerDownload(mode, data, quality) {
-      UI.toast(tr('ডাউনলোড শুরু করার জন্য প্রস্তুত করা হচ্ছে…', 'Preparing download…'));
+    async function triggerDownload(mode, data, quality, btn, statusTarget) {
+      var origContent = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ ' + tr('ফাইল প্রস্তুত হচ্ছে…', 'Preparing file…');
+      }
+
+      if (statusTarget) {
+        UI.clear(statusTarget);
+        statusTarget.appendChild(UI.notice('info', tr('⚡ সরাসরি মিডিয়া স্ট্রিম প্রস্তুত হচ্ছে (২-৫ সেকেন্ড লাগতে পারে)… প্রস্তুত হওয়া মাত্রই ফাইলটি স্বয়ংক্রিয়ভাবে ডাউনলোড শুরু হবে!', '⚡ Resolving direct media stream (takes 2-5 sec)… The file will download automatically once ready!')));
+      }
+
+      var fmt = '720';
       if (mode === 'audio') {
-        openResolver('cobalt-audio', data.url);
+        fmt = (quality === 'm4a') ? 'm4a' : 'mp3';
       } else {
-        openResolver('cobalt', data.url);
+        fmt = quality || '720';
+      }
+
+      try {
+        var endpoint = '/api/yt-download?url=' + encodeURIComponent(data.url) + '&format=' + encodeURIComponent(fmt);
+        var res = await fetch(endpoint);
+        if (!res.ok) {
+          throw new Error('Server returned HTTP ' + res.status);
+        }
+        var json = await res.json();
+        if (!json.success || !json.download_url) {
+          throw new Error((json && json.error) || 'Could not retrieve direct download link');
+        }
+
+        var dlUrl = json.download_url;
+
+        // Auto-download file directly
+        var dlAnchor = document.createElement('a');
+        dlAnchor.href = dlUrl;
+        dlAnchor.setAttribute('download', '');
+        dlAnchor.setAttribute('rel', 'noopener noreferrer');
+        document.body.appendChild(dlAnchor);
+        dlAnchor.click();
+        setTimeout(function () { dlAnchor.remove(); }, 1500);
+
+        if (statusTarget) {
+          UI.clear(statusTarget);
+          var successWrap = UI.el('div', { class: 'stack yt-success-box', style: 'margin-top:10px;' });
+          successWrap.appendChild(UI.notice('ok', tr('✓ আপনার ফাইলটির ডাউনলোড স্বয়ংক্রিয়ভাবে শুরু হয়েছে! ব্রাউজারের ডাউনলোড হিস্ট্রি চেক করুন।', '✓ Your file download has started automatically! Please check your browser downloads.')));
+          var manualDl = UI.btn('📥 ' + tr('অটো ডাউনলোড না হলে সরাসরি এখানে চাপুন', 'Click here if download did not start'), function () {
+            window.location.href = dlUrl;
+          }, { cls: 'btn-pri sm' });
+          successWrap.appendChild(manualDl);
+          statusTarget.appendChild(successWrap);
+        }
+
+        UI.toast(tr('✓ ফাইল ডাউনলোড শুরু হয়েছে!', '✓ Download started!'));
+      } catch (err) {
+        console.warn('[Direct auto-download error]:', err);
+        if (statusTarget) {
+          UI.clear(statusTarget);
+          statusTarget.appendChild(UI.notice('warn', tr('সরাসরি স্ট্রিম পেতে কিছুটা দেরি হচ্ছে। বিকল্প সার্ভার দিয়ে অবিলম্বে ডাউনলোড করতে পারেন:', 'Direct stream taking longer. You can use alternative servers below:')));
+        }
+        openResolver(mode === 'audio' ? 'cobalt-audio' : 'cobalt', data.url);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origContent;
+        }
       }
     }
 
