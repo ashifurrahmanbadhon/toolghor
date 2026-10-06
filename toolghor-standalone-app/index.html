@@ -3421,9 +3421,8 @@ var SITE_CONFIG = {
     // OpenAI API Key (https://platform.openai.com/api-keys)
     openaiKey: '',
     // iLovePDF API Public Key (iloveapi.com / https://developer.ilovepdf.com - মাসে ২৫০টি ফ্রি রিকোয়েস্ট)
-    ilovepdfPublicKey: 'project_public_d3a21718d02285b2005ba3571e3946f6_rw99Gce4ea394dce81730b8c0bbc1a8f9b23a',
-    // ConvertAPI Secret Key (convertapi.com — ডেডিকেটেড PDF to Word DOCX ক্লাউড ইঞ্জিন)
-    convertApiKey: ''
+    ilovepdfPublicKey: 'project_public_d3a21718d02285b2005ba3571e3946f6_rw99Gce4ea394dce81730b8c0bbc1a8f9b23a'
+    // ConvertAPI Token is securely managed in server-side environment variables (.env -> CONVERTAPI_TOKEN)
   }
 };
 if (typeof window !== 'undefined') window.SITE_CONFIG = SITE_CONFIG;
@@ -7371,48 +7370,50 @@ var qrcode = function() {
     return k || '';
   }
 
-  /* ---------------- ConvertAPI Dedicated PDF->Word Connector ---------------- */
-  function getConvertApiKey() {
-    var k = '';
-    if (typeof SITE_CONFIG !== 'undefined' && SITE_CONFIG.apis && SITE_CONFIG.apis.convertApiKey) {
-      k = SITE_CONFIG.apis.convertApiKey.trim();
-    }
-    if (!k && typeof window !== 'undefined' && window.SITE_CONFIG && window.SITE_CONFIG.apis && window.SITE_CONFIG.apis.convertApiKey) {
-      k = window.SITE_CONFIG.apis.convertApiKey.trim();
-    }
-    return k || '';
-  }
-
-  async function callConvertApiPdfToWord(file, extraParams, onProgress) {
-    var sec = getConvertApiKey();
-    if (!sec) throw new Error('ConvertAPI key not found');
+  /* ---------------- Secure Backend ConvertAPI PDF->DOCX Connector ---------------- */
+  async function callBackendConvertPdfToDocx(file, extraParams, onProgress) {
     if (!onProgress) onProgress = function () {};
-    onProgress(15, tr('ক্লাউড সার্ভারে ফাইল আপলোড হচ্ছে…', 'Uploading to cloud server…'));
+    onProgress(15, tr('সুরক্ষিত সার্ভারে ফাইল আপলোড হচ্ছে…', 'Uploading file to secure server…'));
     await UI.yield();
 
     var fd = new FormData();
-    fd.append('File', file);
-    fd.append('StoreFile', 'true');
+    fd.append('file', file);
     if (extraParams && extraParams.ranges) {
-      fd.append('PageRange', extraParams.ranges);
+      fd.append('page_range', extraParams.ranges);
+    }
+    if (extraParams && extraParams.mode) {
+      fd.append('mode', extraParams.mode);
     }
 
-    var res = await fetch('https://v2.convertapi.com/convert/pdf/to/docx?Secret=' + encodeURIComponent(sec), {
-      method: 'POST',
-      body: fd
-    });
-    if (!res.ok) {
-      var errData = await res.json().catch(function () { return {}; });
-      throw new Error((errData && errData.Message) || (res.status + ' ' + res.statusText));
-    }
-    var json = await res.json();
-    var fileUrl = json.Files && json.Files[0] && json.Files[0].Url;
-    if (!fileUrl) throw new Error('No converted file returned by cloud engine');
-
-    onProgress(85, tr('ওয়ার্ড ফাইল ডাউনলোড হচ্ছে…', 'Downloading Word document…'));
+    onProgress(45, tr('ConvertAPI ইঞ্জিন দ্বারা নিখুঁত লেআউটে রূপান্তর হচ্ছে…', 'Converting with ConvertAPI layout preservation engine…'));
     await UI.yield();
-    var dl = await fetch(fileUrl);
-    return await dl.blob();
+
+    var res;
+    try {
+      res = await fetch('/api/convert-pdf-to-docx', {
+        method: 'POST',
+        body: fd
+      });
+    } catch (netErr) {
+      throw new Error(tr(
+        'সার্ভার সংযোগ পাওয়া যায়নি।',
+        'Backend server not reachable.'
+      ));
+    }
+
+    if (!res.ok) {
+      var errJson = await res.json().catch(function () { return {}; });
+      var errMsg = (errJson && errJson.error) || tr(
+        'এই মুহূর্তে আপনার পিডিএফটি রূপান্তর করা সম্ভব হয়নি। অনুগ্রহ করে অন্য একটি পিডিএফ দিয়ে চেষ্টা করুন।',
+        'Your PDF could not be converted at the moment. Please try again with another PDF.'
+      );
+      throw new Error(errMsg);
+    }
+
+    onProgress(90, tr('ওয়ার্ড ডকুমেন্ট প্রস্তুত হচ্ছে…', 'Preparing Word document…'));
+    await UI.yield();
+
+    return await res.blob();
   }
 
   async function callILovePdf(toolName, files, extraParams, onProgress) {
@@ -8113,7 +8114,42 @@ var qrcode = function() {
     };
   }
 
-    T['pdf-to-doc'] = function (root) {
+  async function createDocxFromEditedText(text, fontName) {
+    var fn = fontName || 'Calibri';
+    var zip = new JSZip();
+    await zip.loadAsync(BASE_DOCX_TEMPLATE_B64, { base64: true });
+    var lines = (text || '').split(/\r?\n/);
+    var bodyXml = '';
+    lines.forEach(function (l) {
+      var trm = l.trim();
+      if (!trm) {
+        bodyXml += '<w:p><w:pPr><w:spacing w:after="120"/></w:pPr></w:p>';
+        return;
+      }
+      var isH1 = /^#\s+/.test(trm) || /^[A-Z\s]{4,}:?$/.test(trm);
+      var isH2 = /^##\s+/.test(trm);
+      var cleanText = trm.replace(/^#{1,3}\s+/, '');
+      var pPr = '<w:pPr>';
+      if (isH1) pPr += '<w:pStyle w:val="Heading1"/><w:spacing w:before="240" w:after="120"/>';
+      else if (isH2) pPr += '<w:pStyle w:val="Heading2"/><w:spacing w:before="180" w:after="100"/>';
+      else pPr += '<w:spacing w:after="140"/>';
+      pPr += '</w:pPr>';
+      var rPr = '<w:rPr><w:rFonts w:ascii="' + fn + '" w:hAnsi="' + fn + '" w:cs="' + fn + '"/>';
+      if (isH1) rPr += '<w:b/><w:sz w:val="32"/><w:szCs w:val="32"/>';
+      else if (isH2) rPr += '<w:b/><w:sz w:val="26"/><w:szCs w:val="26"/>';
+      else rPr += '<w:sz w:val="22"/><w:szCs w:val="22"/>';
+      rPr += '</w:rPr>';
+      bodyXml += '<w:p>' + pPr + '<w:r>' + rPr + '<w:t xml:space="preserve">' + sanitizeXml(cleanText) + '</w:t></w:r></w:p>';
+    });
+    bodyXml += '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr>';
+    var docFile = zip.file('word/document.xml');
+    var origXml = docFile ? await docFile.async('string') : '';
+    var newXml = origXml.replace(/<w:body>[\s\S]*?<\/w:body>/, '<w:body>' + bodyXml + '</w:body>');
+    zip.file('word/document.xml', newXml);
+    return await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  }
+
+  T['pdf-to-doc'] = function (root) {
     var file = null, pdfInfo = null, out = UI.el('div'), cardBox = UI.el('div', { class: 'stack' });
 
     var mode = 'text';
@@ -8221,30 +8257,36 @@ var qrcode = function() {
         var docxBlob = null;
         var stats = null;
         var base = UI.baseName(file.name);
-        var outName = 'ToolGhor(' + base + ').docx';
+        var outName = base + '.docx';
 
-        // Check dedicated PDF to Word API key (ConvertAPI)
-        var convKey = getConvertApiKey();
-        if (convKey) {
-          var extraParams = {};
-          if (rangeIn.value && rangeIn.value.trim()) {
-            extraParams.ranges = rangeIn.value.trim();
-          }
-
-          try {
-            docxBlob = await callConvertApiPdfToWord(file, extraParams, function (pct, txt) {
-              prog.set(pct, txt);
-            });
-            stats = {
-              pageCount: pdfInfo ? pdfInfo.numPages : 1,
-              size: docxBlob.size
-            };
-          } catch (cloudErr) {
-            console.warn('Dedicated cloud API conversion error, falling back to local engine:', cloudErr);
-          }
+        // 1. Try secure backend ConvertAPI PDF -> DOCX conversion
+        var extraParams = {};
+        if (rangeIn.value && rangeIn.value.trim()) {
+          extraParams.ranges = rangeIn.value.trim();
+        }
+        if (mode) {
+          extraParams.mode = mode;
         }
 
-        // Seamless local engine fallback if no API key or API call failed
+        try {
+          docxBlob = await callBackendConvertPdfToDocx(file, extraParams, function (pct, txt) {
+            prog.set(pct, txt);
+          });
+          stats = {
+            pageCount: pdfInfo ? pdfInfo.numPages : 1,
+            size: docxBlob.size,
+            isConvertApi: true
+          };
+        } catch (apiErr) {
+          var errMsg = (apiErr && apiErr.message) || '';
+          // Specific validation errors (size limit or corrupted PDF) are shown directly
+          if (errMsg.includes('50MB') || errMsg.includes('corrupted') || errMsg.includes('valid PDF') || errMsg.includes('সীমাবদ্ধতা')) {
+            throw apiErr;
+          }
+          console.warn('[ConvertAPI backend unavailable, falling back to local layout engine]:', errMsg);
+        }
+
+        // 2. High-compatibility local engine fallback if backend is offline
         if (!docxBlob) {
           var res = await createDocxFromPdf(file, {
             mode: mode,
@@ -8261,7 +8303,8 @@ var qrcode = function() {
             size: res.blob.size,
             words: res.words,
             text: res.text,
-            scannedDetected: res.scannedDetected
+            scannedDetected: res.scannedDetected,
+            isConvertApi: false
           };
         }
 
@@ -8270,8 +8313,11 @@ var qrcode = function() {
 
         var resultWrap = UI.el('div', { class: 'stack pdf-result-wrap' });
 
-        var noticeMsg = tr('✓ আপনার পিডিএফ ফাইলটি ওয়ার্ড (DOCX) ফরম্যাটে সফলভাবে রূপান্তর করা হয়েছে!',
-          '✓ Your PDF has been successfully converted to editable Word (DOCX) format!');
+        var noticeMsg = stats.isConvertApi
+          ? tr('✓ আপনার পিডিএফ ফাইলটি ConvertAPI উচ্চমানের লেআউট ইঞ্জিন দ্বারা সফলভাবে Word (.docx) ফরম্যাটে রূপান্তর করা হয়েছে!',
+               '✓ Your PDF has been successfully converted to Word (.docx) with original layout preservation!')
+          : tr('✓ আপনার পিডিএফ ফাইলটি ওয়ার্ড (DOCX) ফরম্যাটে সফলভাবে রূপান্তর করা হয়েছে!',
+               '✓ Your PDF has been successfully converted to editable Word (DOCX) format!');
         resultWrap.appendChild(UI.notice('ok', noticeMsg));
 
         if (stats.scannedDetected && mode === 'text') {
@@ -8298,24 +8344,96 @@ var qrcode = function() {
           );
         }
 
+        // Extract text if not already present (e.g. when ConvertAPI converted the document)
+        if (!stats.text && file) {
+          try {
+            var pdfObj = await openPdfJs(file);
+            var parts = [];
+            for (var pi = 1; pi <= Math.min(pdfObj.numPages, 10); pi++) {
+              var p = await pdfObj.getPage(pi);
+              var tc = await p.getTextContent();
+              var pt = (tc.items || []).map(function (it) { return it.str; }).join(' ');
+              if (pt.trim()) parts.push(pt.trim());
+            }
+            if (parts.length) {
+              stats.text = parts.join('\n\n');
+            }
+          } catch (e) {}
+        }
+
         var statRow = UI.el('div', { class: 'pdf-stats-row' }, statItems);
         resultWrap.appendChild(statRow);
 
+        // AI Edit & Modify Drawer
+        var aiEditBox = UI.el('div', { class: 'stack pdf-ai-edit-box', style: 'display:none; margin-top:14px; padding:16px; border:1px solid var(--line); border-radius:12px; background:var(--card-bg, #fafafa);' });
+        var aiTextArea = UI.el('textarea', { class: 'input', rows: 8, style: 'width:100%; font-family:inherit; font-size:14px; box-sizing:border-box;' });
+        aiTextArea.value = stats.text || '';
+        var aiPromptInput = UI.el('input', { type: 'text', placeholder: tr('যেমন: ভুল বানান ঠিক করো, প্রফেশনাল করো বা অমুক শব্দ পরিবর্তন করো…', 'e.g. Fix spelling, rephrase professionally, or replace terms…') });
+
+        var aiRunBtn = UI.btn(tr('✨ এআই প্রয়োগ করুন', '✨ Apply AI'), async function () {
+          var userPrompt = aiPromptInput.value.trim() || 'Improve readability, correct any grammar or spelling, and format with clear paragraph and heading structure while preserving all factual content.';
+          var currentContent = aiTextArea.value.trim();
+          if (!currentContent) return;
+          aiRunBtn.disabled = true;
+          try {
+            var fullPrompt = 'Document Content:\n' + currentContent + '\n\nTask: ' + userPrompt + '\n\nOutput ONLY the revised document text preserving headings (with # or ##) and paragraphs. Do not add conversational text.';
+            var resText = await UI.aiCompletion(fullPrompt);
+            if (resText && resText.trim()) {
+              aiTextArea.value = resText.trim();
+            }
+          } catch (aiErr) {
+            alert(UI.err(aiErr));
+          }
+          aiRunBtn.disabled = false;
+        }, { cls: 'sm' });
+
+        var aiExportBtn = UI.btn(tr('📥 সম্পাদিত DOCX ডাউনলোড করুন', '📥 Download Edited DOCX'), async function () {
+          aiExportBtn.disabled = true;
+          try {
+            var editedDocx = await createDocxFromEditedText(aiTextArea.value, fontSel.value);
+            UI.download(editedDocx, 'Edited_' + outName);
+          } catch (exErr) {
+            alert(UI.err(exErr));
+          }
+          aiExportBtn.disabled = false;
+        }, { icon: 'download', cls: 'sm btn-main-download' });
+
+        aiEditBox.appendChild(UI.el('div', { style: 'font-weight:700; margin-bottom:6px;' }, tr('🤖 এআই টেক্সট এডিটর ও মডিফায়ার (AI Text Editor)', '🤖 AI Text Editor & Modifier')));
+        aiEditBox.appendChild(aiTextArea);
+        aiEditBox.appendChild(UI.el('div', { class: 'row', style: 'margin-top:8px;' }, aiPromptInput, aiRunBtn));
+        aiEditBox.appendChild(UI.el('div', { class: 'row', style: 'margin-top:8px;' }, aiExportBtn));
+
         var dlRow = UI.el('div', { class: 'row pdf-action-row' },
-          UI.btn(tr('Word (.docx) ডাউনলোড করুন', 'Download Word (.docx)'), function () {
+          UI.btn(tr('DOCX ডাউনলোড করুন (Download DOCX)', 'Download DOCX'), function () {
             UI.download(docxBlob, outName);
           }, { icon: 'download', cls: 'btn-main-download' }),
           (stats.text) ? UI.btn(tr('টেক্সট কপি করুন', 'Copy Extracted Text'), function () {
             UI.copy(stats.text);
-          }, { icon: 'copy', cls: 'ghost' }) : null
+          }, { icon: 'copy', cls: 'ghost' }) : null,
+          (stats.text) ? UI.btn(tr('🤖 এআই দিয়ে এডিট', '🤖 AI Edit'), function () {
+            aiEditBox.style.display = aiEditBox.style.display === 'none' ? 'block' : 'none';
+          }, { icon: 'edit', cls: 'ghost' }) : null
         );
         resultWrap.appendChild(dlRow);
+        resultWrap.appendChild(aiEditBox);
 
         UI.clear(out);
         out.appendChild(resultWrap);
       } catch (err) {
         UI.clear(out);
-        out.appendChild(UI.notice('err', tr('রূপান্তরে সমস্যা হয়েছে: ', 'Conversion failed: ') + UI.err(err)));
+        var friendlyErr = tr(
+          'এই মুহূর্তে আপনার পিডিএফটি রূপান্তর করা সম্ভব হয়নি। অনুগ্রহ করে অন্য একটি পিডিএফ দিয়ে চেষ্টা করুন।',
+          'Your PDF could not be converted at the moment. Please try again with another PDF.'
+        );
+        if (err && err.message && (
+          err.message.includes('50MB') ||
+          err.message.includes('corrupted') ||
+          err.message.includes('valid PDF') ||
+          err.message.includes('সীমাবদ্ধতা')
+        )) {
+          friendlyErr = err.message;
+        }
+        out.appendChild(UI.notice('err', friendlyErr));
       }
       convertBtn.disabled = false;
     }
