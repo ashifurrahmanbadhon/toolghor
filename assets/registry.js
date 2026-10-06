@@ -1,11 +1,11 @@
 /* ক্যাটাগরি ও টুলের তালিকা। নতুন টুল যোগ করতে এখানে একটি এন্ট্রি দিন। */
 var REGISTRY = {
   categories: [
-    { id: 'documents', bn: 'ডকুমেন্ট টুলস', en: 'Document Tools', icon: 'file-text', symbol: '📄', color: 'doc', desc: 'পিডিএফ জোড়া, ভাগ, ছোট করা ও ছবিতে রূপান্তর' },
+    { id: 'documents', bn: 'ডকুমেন্ট টুলস', en: 'Document Tools', icon: 'file-text', symbol: '📄', color: 'doc', desc: 'পিডিএফ জোড়া, ভাগ, ছোট করা, ছবিতে ও ওয়ার্ডে (DOCX) রূপান্তর' },
     { id: 'images', bn: 'ইমেজ টুলস', en: 'Image Tools', icon: 'image', symbol: '🖼️', color: 'img', desc: 'ছবি ছোট, বড়, কাটা, জোড়া ও ফরম্যাট বদল' },
     { id: 'calculators', bn: 'ক্যালকুলেটর', en: 'Calculators', icon: 'scale', symbol: '🧮', color: 'calc', desc: 'কারেন্সি, বিএমআই, ইউনিট, শতকরা, বয়স ও টাইম জোন' },
     { id: 'qr', bn: 'কিউআর কোড টুলস', en: 'QR Code Tools', icon: 'qr-code', symbol: '🏁', color: 'qr', desc: 'কিউআর কোড বানান ও পড়ুন' },
-    { id: 'media', bn: 'ভিডিও ও অডিও টুলস', en: 'Video & Audio Tools', icon: 'video', symbol: '🎬', color: 'media', desc: 'ভিডিও থেকে অডিও এবং রিলস/শর্টসের জন্য ভিডিও ক্রপ' },
+    { id: 'media', bn: 'ভিডিও ও অডিও টুলস', en: 'Video & Audio Tools', icon: 'video', symbol: '🎬', color: 'media', desc: 'ইউটিউব ভিডিও ও অডিও ডাউনলোড, অডিও আলাদা করা ও ভিডিও ক্রপ' },
     { id: 'resume', bn: 'রেজিউমে বিল্ডার', en: 'Resume Builder', icon: 'briefcase', symbol: '💼', color: 'resume', desc: 'চাকরির আবেদনের জন্য সিভি বানান' }
   ],
   tools: [
@@ -36,6 +36,20 @@ var REGISTRY = {
       keywords: 'pdf to image pdf to png pdf to jpg pdf theke chobi ছবি পিডিএফ থেকে ইমেজ পিডিএফ জেপিজি',
       intro: 'পিডিএফের পৃষ্ঠাগুলোকে PNG বা JPG ছবিতে রূপান্তর করুন।',
       steps: ['পিডিএফ ফাইল বেছে নিন।', 'ছবির ফরম্যাট ও মান বেছে নিন।', '"ছবি বানান" চাপুন, তারপর একটি একটি করে বা ZIP আকারে ডাউনলোড করুন।']
+    },
+    {
+      slug: 'pdf-to-doc', bn: 'পিডিএফ টু ওয়ার্ড (DOCX)', en: 'PDF to Word (DOCX)', icon: 'file-text', cats: ['documents'], group: 'pdf', needs: ['pdfjs', 'jszip'],
+      desc: 'পিডিএফ ফাইল সহজে সম্পাদনাযোগ্য Word (DOCX) ফাইলে রূপান্তর করুন',
+      keywords: 'pdf to doc pdf to docx pdf to word convert pdf to word docx file word banano pdf theke word word to pdf পিডিএফ টু ওয়ার্ড ডক ডকএক্স ওয়ার্ড রূপান্তর',
+      intro: 'পিডিএফ ফাইলকে সহজে মাইক্রোসফট ওয়ার্ড (.docx) ফাইলে রূপান্তর করুন। লেখা, প্যারাগ্রাফ ও লেআউট অক্ষুণ্ণ রেখে ব্রাউজারেই সরাসরি প্রসেস হয়।',
+      steps: ['"পিডিএফ ফাইল বেছে নিন" চাপুন বা ফাইল টেনে এনে ছাড়ুন।', 'প্রয়োজনে কনভার্সন মোড ও ফন্ট নির্বাচন করুন।', '"ওয়ার্ডে রূপান্তর করুন" চাপুন এবং DOCX ফাইল ডাউনলোড করুন।']
+    },
+    {
+      slug: 'word-to-pdf', bn: 'ওয়ার্ড টু পিডিএফ', en: 'Word to PDF', icon: 'file-text', cats: ['documents'], group: 'pdf', needs: [],
+      desc: 'Word (DOCX, DOC) ফাইলকে সহজে উচ্চমানের পিডিএফে রূপান্তর করুন',
+      keywords: 'word to pdf doc to pdf docx to pdf word theke pdf ওয়ার্ড থেকে পিডিএফ ডক টু পিডিএফ',
+      intro: 'ওয়ার্ড ফাইল (.docx, .doc) আপলোড করে নিমিষেই নিখুঁত লেআউটসহ স্ট্যান্ডার্ড পিডিএফ ফাইল ডাউনলোড করুন।',
+      steps: ['"ওয়ার্ড ফাইল বেছে নিন" চাপুন বা ফাইল টেনে এনে ড্রপ করুন।', '"পিডিএফে রূপান্তর করুন" চাপুন।', 'তৈরি হওয়া পিডিএফ ফাইলটি ডাউনলোড করুন।']
     },
     {
       slug: 'jpg-to-pdf', bn: 'ছবি থেকে পিডিএফ', en: 'JPG to PDF', icon: 'file-stack', cats: ['images'], group: 'pdf', needs: ['pdf-lib'],
@@ -150,6 +164,13 @@ var REGISTRY = {
       steps: ['কিউআর কোডের ছবি বেছে নিন (বা ছবি পেস্ট করুন), অথবা ক্যামেরা চালু করুন।', 'কোডের ভেতরের লেখা নিচে দেখা যাবে।', 'কপি করুন বা লিংক খুলুন।']
     },
     {
+      slug: 'youtube-downloader', bn: 'ইউটিউব ডাউনলোডার', en: 'YouTube Downloader', icon: 'youtube', cats: ['media'], group: 'media', needs: [],
+      desc: 'ইউটিউব ভিডিও (MP4) বা অডিও (MP3) উচ্চমানে ডাউনলোড করুন',
+      keywords: 'youtube download youtube video download youtube mp3 audio download youtube to mp3 yt video downloader shorts download ইউটিউব ভিডিও অডিও গান ডাউনলোড এমপিথ্রি এমপিফোর',
+      intro: 'যেকোনো ইউটিউব ভিডিও বা শর্টসের লিংক দিয়ে সরাসরি HD ভিডিও (MP4) অথবা স্পষ্ট অডিও (MP3/M4A) ডাউনলোড করুন।',
+      steps: ['ইউটিউব ভিডিও বা শর্টসের লিংক কপি করে পেস্ট করুন।', 'ভিডিও (১০৮০p, ৭২০p) নাকি অডিও (MP৩, M৪A) নামাবেন তা বেছে নিন।', '"ডাউনলোড করুন" চাপুন এবং ফাইল সেভ করুন।']
+    },
+    {
       slug: 'audio-extractor', bn: 'ভিডিও থেকে অডিও', en: 'Audio Extractor', icon: 'audio-lines', cats: ['media'], group: 'media', needs: [],
       desc: 'ভিডিও থেকে MP3, M4A বা WAV অডিও আলাদা করুন',
       keywords: 'extract audio from video mp3 video to mp3 audio nibo ভিডিও থেকে গান অডিও এমপিথ্রি',
@@ -181,11 +202,11 @@ var REGISTRY = {
 };
 /* ---------- English text ---------- */
 var CAT_EN = {
-  documents: 'Merge, split, compress PDFs and convert them to images',
+  documents: 'Merge, split, compress PDFs, convert to images and Word (DOCX)',
   images: 'Compress, resize, crop, merge and convert images',
   calculators: 'BMI, units, percentage, age and time zones',
   qr: 'Create and read QR codes',
-  media: 'Extract audio from video and crop video for Reels/Shorts',
+  media: 'Download YouTube video & audio, extract audio from video, and crop video for Reels/Shorts',
   resume: 'Build a CV for job applications'
 };
 REGISTRY.categories.forEach(function (c) { c.descEn = CAT_EN[c.id]; });
@@ -195,6 +216,8 @@ var TOOL_EN = {
   'compress-pdf': { desc: 'Make a PDF file smaller', intro: 'Reduce a PDF so it is easier to email or upload to online forms. Works best on scanned or image-heavy PDFs.', steps: ['Choose a PDF file.', 'Pick how much to shrink it.', 'Press "Compress", compare the before and after size, then download.'] },
   'pdf-to-image': { desc: 'Turn every PDF page into an image (PNG/JPG)', intro: 'Convert the pages of a PDF into PNG or JPG images.', steps: ['Choose a PDF file.', 'Pick the image format and quality.', 'Press "Create images", then download them one by one or as a ZIP.'] },
   'pdf-to-jpg': { desc: 'Turn every PDF page into a JPG image', intro: 'Convert the pages of a PDF into JPG images.', steps: ['Choose a PDF file.', 'Pick the image quality.', 'Press "Create JPG" and download.'] },
+  'pdf-to-doc': { desc: 'Convert PDF files into editable Word (DOCX) documents', intro: 'Convert PDF files to editable Microsoft Word (.docx) documents with ease. Keep text, paragraphs and formatting processed 100% locally in your browser.', steps: ['Press "Choose PDF files", or drag and drop your file.', 'Select conversion mode and font settings if desired.', 'Press "Convert to Word" and download your DOCX document.'] },
+  'word-to-pdf': { desc: 'Convert Word (DOCX, DOC) files into high quality PDF documents', intro: 'Convert Word documents (.docx, .doc) to standard PDF files with perfect styling and layout.', steps: ['Press "Choose Word file", or drag and drop your file.', 'Press "Convert to PDF".', 'Download your converted PDF document.'] },
   'jpg-to-pdf': { desc: 'Combine JPG or PNG images into a PDF', intro: 'Make a PDF from one or more images. Handy when you photograph documents and need to submit them.', steps: ['Choose your images (several are fine).', 'Set the order, page size and margin.', 'Press "Create PDF" and download.'] },
   'compress-image': { desc: 'Reduce image size (KB/MB), or hit an exact KB target', intro: 'Make an image smaller while keeping it looking good. If a form asks for a photo under 100 KB, enter the target size.', steps: ['Choose one or more images.', 'Pick the quality, or type a target size in KB.', 'Press "Compress" and download.'] },
   'resize-image': { desc: 'Change image width and height (pixels)', intro: 'Change an image size in pixels or percent. Ready-made sizes for passport photos and signatures are included.', steps: ['Choose an image.', 'Type the new size or pick a ready-made one.', 'Press "Resize" and download.'] },
@@ -203,6 +226,7 @@ var TOOL_EN = {
   'convert-image': { desc: 'Convert between JPG, PNG and WebP', intro: 'Convert images to JPG, PNG or WebP format.', steps: ['Choose one or more images.', 'Pick the format you want.', 'Press "Convert" and download.'] },
   'passport-photo': { desc: 'Create standard passport size photo with fixed dimensions', intro: 'Create an official standard passport size photo with strictly fixed dimensions (35×45 mm / 413×531 px). Adjust and center your face in the passport frame with white or blue background options.', steps: ['Choose a photo.', 'Position and center your face in the passport frame.', 'Select background color (white, blue, or original).', 'Press "Create Passport Photo" and download.'] },
   'remove-background': { desc: 'Remove image background and make it transparent or colored', intro: 'Erase image background with one click and get a clean transparent PNG or replace it with a solid color. Processed 100% locally in your browser.', steps: ['Choose an image.', 'Select transparent or a background color.', 'Fine-tune sensitivity or touch up with the eraser brush.', 'Download your cutout image.'] },
+  'currency-converter': { desc: 'Daily live exchange rates for USD, SAR, AED, EUR, GBP to BDT', intro: 'Convert currencies to BDT and between world currencies based on daily live exchange rates.', steps: ['Enter the amount.', 'Select the from and to currencies.', 'See live exchange rates and calculation instantly.'] },
   'bmi-calculator': { desc: 'Find your body mass index from weight and height', intro: 'Enter your weight and height to see your BMI and the healthy weight range for your height.', steps: ['Enter your weight (kg or pounds).', 'Enter your height (cm or feet-inches).', 'See the result right away below.'] },
   'unit-converter': { desc: 'Length, weight, land (katha, bigha, decimal), bhori, maund and more', intro: 'Convert Bangladeshi units such as katha, bigha, decimal, bhori, maund and seer, along with international units.', steps: ['Pick a type of unit (for example land or weight).', 'Enter a number and choose the units to convert from and to.', 'See the result and the full list of units below.'] },
   'percentage-calculator': { desc: 'Percentages, discounts, increase and decrease', intro: 'Work out percentages, the price after a discount, and the rate of increase or decrease, all in one place.', steps: ['Type numbers into the box for the calculation you need.', 'The result appears instantly.'] },
@@ -210,12 +234,13 @@ var TOOL_EN = {
   'time-zone-converter': { desc: 'Dhaka time to Saudi, Dubai, Malaysia, London, New York', intro: 'Compare times across countries to find a good time to talk with family and friends abroad.', steps: ['Pick the city you are starting from and enter a date and time.', 'Add the cities whose time you want to see.', 'See each city\'s time and date below.'] },
   'qr-generator': { desc: 'QR codes for links, Wi-Fi and WhatsApp', intro: 'Create a QR code for a link, text, Wi-Fi, WhatsApp number or email.', steps: ['Choose the type of QR code.', 'Enter the details and the code appears instantly.', 'Download it as PNG or SVG.'] },
   'qr-decoder': { desc: 'Read a QR code from an image or the camera', intro: 'Upload a picture of a QR code or scan it with your camera to see the text or link inside.', steps: ['Choose a QR image (or paste one), or turn on the camera.', 'The text inside the code appears below.', 'Copy it or open the link.'] },
+  'youtube-downloader': { desc: 'Download YouTube video (MP4) or audio (MP3) in high quality', intro: 'Paste any YouTube video or Shorts link to download HD video (MP4) or high-quality audio (MP3/M4A) directly.', steps: ['Paste your YouTube video or Shorts link.', 'Choose whether to download video (1080p, 720p) or audio (MP3, M4A).', 'Click "Download" to save your file.'] },
   'audio-extractor': { desc: 'Pull MP3, M4A or WAV audio out of a video', intro: 'Take just the sound from any video file and save it as MP3, M4A or WAV.', steps: ['Choose a video file.', 'Pick the audio format and quality.', 'Press "Extract audio" and download.'] },
   'social-video-cropper': { desc: 'Crop video to Reels, Shorts and Instagram sizes', intro: 'Crop a video to 9:16 (Reels/Shorts), 1:1, 4:5 or 16:9.', steps: ['Choose a video.', 'Pick the platform size and set the crop position.', 'Press "Create video" and download.'] },
   'resume-builder': { desc: 'Fill a form, get a clean resume and save it as PDF', intro: 'Enter your details, watch the resume preview next to the form, then save it as a PDF.', steps: ['Fill in your details in the form.', 'Pick a template and colour.', 'Press "Download PDF" and choose "Save as PDF" in the print window.'] },
   'cv-templates': { desc: 'Choose from 4 templates, including a Bangladeshi-style CV', intro: 'Look through templates, including a Bangladeshi-style CV with photo, a sidebar layout and a minimal one, and pick your favourite.', steps: ['Pick a template.', 'Enter your details.', 'Press "Download PDF".'] }
 };
-REGISTRY.tools.forEach(function (t) { var e = TOOL_EN[t.slug]; t.descEn = e.desc; t.introEn = e.intro; t.stepsEn = e.steps; });
+REGISTRY.tools.forEach(function (t) { var e = TOOL_EN[t.slug]; if (e) { t.descEn = e.desc; t.introEn = e.intro; t.stepsEn = e.steps; } });
 REGISTRY.bySlug = {};
 REGISTRY.tools.forEach(function (t) { REGISTRY.bySlug[t.slug] = t; });
 if (typeof window !== 'undefined') window.REGISTRY = REGISTRY;

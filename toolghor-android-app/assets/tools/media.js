@@ -184,4 +184,479 @@
     root.appendChild(UI.el('div', { class: 'stack' }, drop, info, stage, controls, out,
       UI.el('small', { class: 'lbl' }, tr('বড় ভিডিওতে সময় লাগে। ১–২ মিনিটের ভিডিওর জন্য সবচেয়ে ভালো। প্রসেস চলার সময় ট্যাব বন্ধ করবেন না।', "Large videos take time. Works best for videos of 1–2 minutes. Do not close this tab while processing."))));
   };
+
+  /* ================= ইউটিউব ভিডিও ও অডিও ডাউনলোডার ================= */
+  T['youtube-downloader'] = function (root) {
+    var curData = null;
+    var curMode = 'video'; // 'video' | 'audio' | 'thumb'
+    var selVideoQuality = '720';
+    var selAudioQuality = '320';
+
+    var container = UI.el('div', { class: 'stack yt-box' });
+    var inputWrap = UI.el('div', { class: 'yt-input-row' });
+    var urlInput = UI.el('input', {
+      type: 'url',
+      class: 'yt-url-input',
+      placeholder: tr('ইউটিউব ভিডিও বা শর্টসের লিংক পেস্ট করুন (যেমন: https://www.youtube.com/watch?v=...)', 'Paste YouTube video or Shorts link (e.g. https://www.youtube.com/watch?v=...)'),
+      autocomplete: 'off',
+      autocorrect: 'off',
+      autocapitalize: 'off',
+      spellcheck: 'false'
+    });
+
+    var pasteBtn = UI.btn(tr('পেস্ট', 'Paste'), doPaste, { icon: 'copy', cls: 'btn-sub' });
+    var fetchBtn = UI.btn(tr('তথ্য খুঁজুন', 'Fetch Info'), function () { doFetch(urlInput.value); }, { icon: 'search', cls: 'btn-pri' });
+    var clearBtn = UI.el('button', {
+      type: 'button',
+      class: 'yt-clear-btn',
+      title: tr('মুছে ফেলুন', 'Clear'),
+      onclick: function () {
+        urlInput.value = '';
+        clearBtn.hidden = true;
+        renderState(null);
+        urlInput.focus();
+      }
+    }, '✕');
+    clearBtn.hidden = true;
+
+    inputWrap.appendChild(UI.icon('youtube', 22));
+    inputWrap.appendChild(urlInput);
+    inputWrap.appendChild(clearBtn);
+    inputWrap.appendChild(pasteBtn);
+    inputWrap.appendChild(fetchBtn);
+
+    // Quick samples
+    var samplesWrap = UI.el('div', { class: 'yt-samples-row' },
+      UI.el('span', { class: 'yt-samples-lbl' }, tr('টেস্ট করতে স্যাম্পল লিংক:', 'Test with sample:')),
+      UI.el('button', {
+        type: 'button',
+        class: 'yt-sample-chip',
+        onclick: function () {
+          urlInput.value = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+          clearBtn.hidden = false;
+          doFetch(urlInput.value);
+        }
+      }, '🎵 Rick Astley - Never Gonna Give You Up'),
+      UI.el('button', {
+        type: 'button',
+        class: 'yt-sample-chip',
+        onclick: function () {
+          urlInput.value = 'https://www.youtube.com/shorts/J46a_iGf3Yg';
+          clearBtn.hidden = false;
+          doFetch(urlInput.value);
+        }
+      }, tr('⚡ ইউটিউব শর্টস', '⚡ YouTube Shorts'))
+    );
+
+    var statusBox = UI.el('div', { class: 'yt-status-box' });
+    var resultCard = UI.el('div', { class: 'yt-result-card' });
+    resultCard.hidden = true;
+
+    urlInput.addEventListener('input', function () {
+      clearBtn.hidden = !urlInput.value.trim();
+      var id = parseYtId(urlInput.value);
+      if (id && (!curData || curData.id !== id)) {
+        doFetch(urlInput.value);
+      }
+    });
+
+    urlInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        doFetch(urlInput.value);
+      }
+    });
+
+    async function doPaste() {
+      try {
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          var clip = await navigator.clipboard.readText();
+          if (clip) {
+            urlInput.value = clip.trim();
+            clearBtn.hidden = false;
+            doFetch(urlInput.value);
+            return;
+          }
+        }
+      } catch (err) {}
+      urlInput.focus();
+      UI.toast(tr('লিংকটি বক্সে পেস্ট (Ctrl+V) করুন', 'Please paste (Ctrl+V) the link into the box'));
+    }
+
+    function parseYtId(url) {
+      if (!url) return null;
+      var str = url.trim();
+      if (/^[a-zA-Z0-9_-]{11}$/.test(str)) return str;
+      var m = str.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|watch\?v=|watch\?.+&v=))([\w-]{11})/i);
+      return m ? m[1] : null;
+    }
+
+    async function doFetch(rawUrl) {
+      var id = parseYtId(rawUrl);
+      if (!id) {
+        UI.clear(statusBox);
+        if (rawUrl.trim()) {
+          statusBox.appendChild(UI.notice('err', tr('দয়া করে একটি সঠিক ইউটিউব ভিডিও বা শর্টসের লিংক দিন।', 'Please provide a valid YouTube video or Shorts link.')));
+        }
+        renderState(null);
+        return;
+      }
+
+      UI.clear(statusBox);
+      statusBox.appendChild(UI.notice('info', tr('ভিডিওর তথ্য আনা হচ্ছে…', 'Fetching video details…')));
+      fetchBtn.disabled = true;
+
+      var isShorts = /shorts/i.test(rawUrl);
+      var canonical = 'https://www.youtube.com/watch?v=' + id;
+      var thumbMax = 'https://i.ytimg.com/vi/' + id + '/maxresdefault.jpg';
+      var thumbHq = 'https://i.ytimg.com/vi/' + id + '/hqdefault.jpg';
+
+      try {
+        var oembedUrl = 'https://www.youtube.com/oembed?url=' + encodeURIComponent(canonical) + '&format=json';
+        var res = await fetch(oembedUrl);
+        var meta = null;
+        if (res.ok) {
+          meta = await res.json();
+        }
+
+        curData = {
+          id: id,
+          url: canonical,
+          title: (meta && meta.title) || tr('ইউটিউব ভিডিও (' + id + ')', 'YouTube Video (' + id + ')'),
+          author: (meta && meta.author_name) || tr('ইউটিউব ক্রিয়েটর', 'YouTube Creator'),
+          isShorts: isShorts,
+          thumbMax: thumbMax,
+          thumbHq: thumbHq,
+          thumb: thumbMax
+        };
+
+        UI.clear(statusBox);
+        renderState(curData);
+      } catch (e) {
+        // Fallback even if oembed is unreachable
+        curData = {
+          id: id,
+          url: canonical,
+          title: tr('ইউটিউব ভিডিও (' + id + ')', 'YouTube Video (' + id + ')'),
+          author: tr('ইউটিউব', 'YouTube'),
+          isShorts: isShorts,
+          thumbMax: thumbMax,
+          thumbHq: thumbHq,
+          thumb: thumbHq
+        };
+        UI.clear(statusBox);
+        renderState(curData);
+      } finally {
+        fetchBtn.disabled = false;
+      }
+    }
+
+    function renderState(data) {
+      if (!data) {
+        resultCard.hidden = true;
+        UI.clear(resultCard);
+        return;
+      }
+
+      resultCard.hidden = false;
+      UI.clear(resultCard);
+
+      // Top info section: Thumbnail + Details
+      var previewRow = UI.el('div', { class: 'yt-preview-row' });
+      
+      var thumbBox = UI.el('div', { class: 'yt-thumb-box' });
+      var img = UI.el('img', {
+        class: 'yt-thumb-img',
+        src: data.thumbMax,
+        alt: data.title,
+        loading: 'lazy',
+        onerror: function () {
+          if (this.src !== data.thumbHq) this.src = data.thumbHq;
+        }
+      });
+      var badge = UI.el('span', { class: 'yt-thumb-badge' }, data.isShorts ? tr('⚡ শর্টস', '⚡ Shorts') : tr('🎬 ইউটিউব HD', '🎬 YouTube HD'));
+      thumbBox.appendChild(img);
+      thumbBox.appendChild(badge);
+
+      var detailsBox = UI.el('div', { class: 'yt-details-box' });
+      var titleEl = UI.el('h3', { class: 'yt-title' }, data.title);
+      var authorEl = UI.el('div', { class: 'yt-author-row' },
+        UI.icon('youtube', 18),
+        UI.el('span', { class: 'yt-author-name' }, data.author)
+      );
+      var watchLink = UI.el('a', {
+        class: 'yt-watch-link',
+        href: data.url,
+        target: '_blank',
+        rel: 'noopener noreferrer'
+      }, UI.icon('external-link', 14), tr('ইউটিউবে সরাসরি দেখুন', 'Watch on YouTube'));
+
+      detailsBox.appendChild(titleEl);
+      detailsBox.appendChild(authorEl);
+      detailsBox.appendChild(watchLink);
+
+      previewRow.appendChild(thumbBox);
+      previewRow.appendChild(detailsBox);
+      resultCard.appendChild(previewRow);
+
+      // Format tabs: Video | Audio | Thumbnail
+      var tabsRow = UI.el('div', { class: 'yt-tabs-nav', role: 'tablist' });
+      var tabVideo = UI.el('button', {
+        type: 'button',
+        class: 'yt-tab-btn' + (curMode === 'video' ? ' active' : ''),
+        onclick: function () { curMode = 'video'; updateTabs(); }
+      }, '🎬 ' + tr('ভিডিও (MP4)', 'Video (MP4)'));
+
+      var tabAudio = UI.el('button', {
+        type: 'button',
+        class: 'yt-tab-btn' + (curMode === 'audio' ? ' active' : ''),
+        onclick: function () { curMode = 'audio'; updateTabs(); }
+      }, '🎵 ' + tr('অডিও (MP3/M4A)', 'Audio (MP3/M4A)'));
+
+      var tabThumb = UI.el('button', {
+        type: 'button',
+        class: 'yt-tab-btn' + (curMode === 'thumb' ? ' active' : ''),
+        onclick: function () { curMode = 'thumb'; updateTabs(); }
+      }, '🖼️ ' + tr('HD থাম্বনেইল', 'HD Thumbnail'));
+
+      tabsRow.appendChild(tabVideo);
+      tabsRow.appendChild(tabAudio);
+      tabsRow.appendChild(tabThumb);
+      resultCard.appendChild(tabsRow);
+
+      var tabContent = UI.el('div', { class: 'yt-tab-content' });
+      resultCard.appendChild(tabContent);
+
+      function updateTabs() {
+        tabVideo.className = 'yt-tab-btn' + (curMode === 'video' ? ' active' : '');
+        tabAudio.className = 'yt-tab-btn' + (curMode === 'audio' ? ' active' : '');
+        tabThumb.className = 'yt-tab-btn' + (curMode === 'thumb' ? ' active' : '');
+        UI.clear(tabContent);
+
+        if (curMode === 'video') {
+          renderVideoOptions(tabContent, data);
+        } else if (curMode === 'audio') {
+          renderAudioOptions(tabContent, data);
+        } else {
+          renderThumbOptions(tabContent, data);
+        }
+      }
+
+      updateTabs();
+    }
+
+    function renderVideoOptions(target, data) {
+      var sec = UI.el('div', { class: 'yt-opt-panel' });
+      var head = UI.el('div', { class: 'yt-opt-head' },
+        UI.el('h4', {}, tr('ভিডিও রেজোলিউশন ও কোয়ালিটি নির্বাচন করুন:', 'Select Video Resolution & Quality:'))
+      );
+
+      var qGrid = UI.el('div', { class: 'yt-q-grid' });
+      var qualities = [
+        { id: '1080', label: '1080p (Full HD)', sub: tr('সেরা মান • বড় সাইজ', 'Best Quality • Crisp Details') },
+        { id: '720', label: '720p (HD)', sub: tr('প্রস্তাবিত • দ্রুত ডাউনলোড', 'Recommended • Fast Download'), rec: true },
+        { id: '480', label: '480p (SD)', sub: tr('মাঝারি কোয়ালিটি', 'Standard Definition • Light') },
+        { id: '360', label: '360p (Mobile)', sub: tr('কম ডাটা খরচ • ছোট সাইজ', 'Mobile Friendly • Low Data') }
+      ];
+
+      qualities.forEach(function (q) {
+        var card = UI.el('button', {
+          type: 'button',
+          class: 'yt-q-card' + (selVideoQuality === q.id ? ' sel' : '') + (q.rec ? ' rec' : ''),
+          onclick: function () {
+            selVideoQuality = q.id;
+            qGrid.querySelectorAll('.yt-q-card').forEach(function (c) { c.classList.remove('sel'); });
+            card.classList.add('sel');
+          }
+        });
+        if (q.rec) {
+          card.appendChild(UI.el('span', { class: 'yt-q-rec-badge' }, tr('সেরা পছন্দ', 'Popular')));
+        }
+        card.appendChild(UI.el('b', { class: 'yt-q-title' }, q.label));
+        card.appendChild(UI.el('small', { class: 'yt-q-sub' }, q.sub));
+        qGrid.appendChild(card);
+      });
+
+      var actionWrap = UI.el('div', { class: 'yt-action-wrap' });
+      var mainBtn = UI.btn(tr('🎬 MP4 ভিডিও ডাউনলোড শুরু করুন', '🎬 Download MP4 Video'), function () {
+        triggerDownload('video', data, selVideoQuality);
+      }, { cls: 'btn-pri yt-main-dl-btn' });
+
+      var altNote = UI.el('div', { class: 'yt-server-note' },
+        UI.el('p', { class: 'yt-note-text' }, tr('💡 কোনো কারণে নেটওয়ার্কে একটি সার্ভার ব্লক থাকলে বা ধীরগতির হলে নিচের যেকোনো সার্ভার ব্যবহার করুন:', '💡 If one server is blocked or slow on your network, use any alternative server below:')),
+        UI.el('div', { class: 'yt-server-buttons' },
+          UI.btn('⚡ ' + tr('সার্ভার ১ (Cobalt - বিজ্ঞাপনমুক্ত)', 'Server 1 (Cobalt - Ad-Free)'), function () {
+            openResolver('cobalt', data.url);
+          }, { cls: 'btn-sub' }),
+          UI.btn('🚀 ' + tr('সার্ভার ২ (SaveFrom ডিরেক্ট)', 'Server 2 (SaveFrom Direct)'), function () {
+            openResolver('savefrom', data.url);
+          }, { cls: 'btn-sub' }),
+          UI.btn('🔥 ' + tr('সার্ভার ৩ (Y2Mate ফাস্ট গেটওয়ে)', 'Server 3 (Y2Mate Fast Gateway)'), function () {
+            openResolver('y2mate', data.url);
+          }, { cls: 'btn-sub' })
+        )
+      );
+
+      sec.appendChild(head);
+      sec.appendChild(qGrid);
+      actionWrap.appendChild(mainBtn);
+      sec.appendChild(actionWrap);
+      sec.appendChild(altNote);
+      target.appendChild(sec);
+    }
+
+    function renderAudioOptions(target, data) {
+      var sec = UI.el('div', { class: 'yt-opt-panel' });
+      var head = UI.el('div', { class: 'yt-opt-head' },
+        UI.el('h4', {}, tr('অডিও ফরম্যাট ও সাউন্ড কোয়ালিটি নির্বাচন করুন:', 'Select Audio Format & Sound Quality:'))
+      );
+
+      var qGrid = UI.el('div', { class: 'yt-q-grid' });
+      var audios = [
+        { id: '320', label: tr('MP3 (৩২০ kbps)', 'MP3 (320 kbps)'), sub: tr('স্টুডিও সাউন্ড • সর্বোচ্চ মান', 'Studio Sound • Ultra Quality'), rec: true },
+        { id: '256', label: tr('MP3 (২৫৬ kbps)', 'MP3 (256 kbps)'), sub: tr('উচ্চমানের অডিও • ক্লিয়ার বেস', 'High Quality • Clear Sound') },
+        { id: '128', label: tr('MP3 (১২৮ kbps)', 'MP3 (128 kbps)'), sub: tr('স্ট্যান্ডার্ড সাইজ • দ্রুত ডাউনলোড', 'Standard Size • Fast Download') },
+        { id: 'm4a', label: tr('M4A (AAC অরিজিনাল)', 'M4A (Original AAC)'), sub: tr('ইউটিউবের মূল অডিও ট্র্যাক', 'Original YouTube Audio Track') }
+      ];
+
+      audios.forEach(function (q) {
+        var card = UI.el('button', {
+          type: 'button',
+          class: 'yt-q-card' + (selAudioQuality === q.id ? ' sel' : '') + (q.rec ? ' rec' : ''),
+          onclick: function () {
+            selAudioQuality = q.id;
+            qGrid.querySelectorAll('.yt-q-card').forEach(function (c) { c.classList.remove('sel'); });
+            card.classList.add('sel');
+          }
+        });
+        if (q.rec) {
+          card.appendChild(UI.el('span', { class: 'yt-q-rec-badge' }, tr('সেরা সাউন্ড', 'Best Audio')));
+        }
+        card.appendChild(UI.el('b', { class: 'yt-q-title' }, q.label));
+        card.appendChild(UI.el('small', { class: 'yt-q-sub' }, q.sub));
+        qGrid.appendChild(card);
+      });
+
+      var actionWrap = UI.el('div', { class: 'yt-action-wrap' });
+      var mainBtn = UI.btn(tr('🎵 MP3 অডিও ডাউনলোড শুরু করুন', '🎵 Download MP3 Audio'), function () {
+        triggerDownload('audio', data, selAudioQuality);
+      }, { cls: 'btn-pri yt-main-dl-btn' });
+
+      var altNote = UI.el('div', { class: 'yt-server-note' },
+        UI.el('p', { class: 'yt-note-text' }, tr('💡 অডিও ডাউনলোডের বিকল্প গেটওয়ে:', '💡 Alternative Audio Download Gateways:')),
+        UI.el('div', { class: 'yt-server-buttons' },
+          UI.btn('⚡ ' + tr('অডিও সার্ভার ১ (Cobalt অডিও)', 'Audio Server 1 (Cobalt Audio)'), function () {
+            openResolver('cobalt-audio', data.url);
+          }, { cls: 'btn-sub' }),
+          UI.btn('🚀 ' + tr('অডিও সার্ভার ২ (Y2Mate MP3)', 'Audio Server 2 (Y2Mate MP3)'), function () {
+            openResolver('y2mate-audio', data.url);
+          }, { cls: 'btn-sub' }),
+          UI.btn('🔥 ' + tr('অডিও সার্ভার ৩ (YT1s MP3)', 'Audio Server 3 (YT1s MP3)'), function () {
+            openResolver('yt1s-audio', data.url);
+          }, { cls: 'btn-sub' })
+        )
+      );
+
+      // Local companion tool banner
+      var rootUrl = UI.getRoot ? UI.getRoot() : '';
+      var companionBanner = UI.el('div', { class: 'yt-companion-box' },
+        UI.icon('audio-lines', 24),
+        UI.el('div', { class: 'yt-companion-text' },
+          UI.el('b', {}, tr('আপনার কাছে কি আগেই কোনো ভিডিও ফাইল ডাউনলোড করা আছে?', 'Already have a video file saved on your device?')),
+          UI.el('p', {}, tr('সেটির অডিও আলাদা করতে আমাদের সম্পূর্ণ অফলাইন ও ব্রাউজার-ভিত্তিক ', 'To extract its audio 100% locally in your browser, try our '),
+            UI.el('a', { href: rootUrl + (UI.lang === 'bn' ? 'bn/' : '') + 'tools/audio-extractor/index.html' }, tr('ভিডিও থেকে অডিও (Audio Extractor)', 'Audio Extractor')),
+            tr(' টুলটি ব্যবহার করতে পারেন। কোনো ইন্টারনেট ডাটা খরচ হবে না।', ' tool. No extra internet data is used.')
+          )
+        )
+      );
+
+      sec.appendChild(head);
+      sec.appendChild(qGrid);
+      actionWrap.appendChild(mainBtn);
+      sec.appendChild(actionWrap);
+      sec.appendChild(altNote);
+      sec.appendChild(companionBanner);
+      target.appendChild(sec);
+    }
+
+    function renderThumbOptions(target, data) {
+      var sec = UI.el('div', { class: 'yt-opt-panel' });
+      var head = UI.el('div', { class: 'yt-opt-head' },
+        UI.el('h4', {}, tr('হাই-রেজুলেশন থাম্বনেইল (HD Thumbnail):', 'High-Resolution Thumbnail (HD):'))
+      );
+
+      var preview = UI.el('div', { class: 'yt-thumb-full-wrap' },
+        UI.el('img', {
+          class: 'yt-thumb-full-img',
+          src: data.thumbMax,
+          alt: data.title,
+          onerror: function () { if (this.src !== data.thumbHq) this.src = data.thumbHq; }
+        })
+      );
+
+      var dlThumbBtn = UI.btn(tr('🖼️ HD থাম্বনেইল সরাসরি ডাউনলোড করুন (JPG)', '🖼️ Download HD Thumbnail (JPG)'), async function () {
+        dlThumbBtn.disabled = true;
+        try {
+          UI.toast(tr('থাম্বনেইল ডাউনলোড হচ্ছে…', 'Downloading thumbnail…'));
+          var r = await fetch(data.thumbMax);
+          if (!r.ok) r = await fetch(data.thumbHq);
+          var blob = await r.blob();
+          var safeName = (data.title || 'thumbnail').replace(/[^\w\s\u0980-\u09FF-]/g, '').trim().slice(0, 40) || 'youtube-thumbnail';
+          UI.download(blob, safeName + '-thumbnail.jpg');
+          UI.toast(tr('✓ থাম্বনেইল ডাউনলোড সম্পন্ন হয়েছে', '✓ Thumbnail downloaded successfully'));
+        } catch (e) {
+          window.open(data.thumbMax, '_blank');
+        } finally {
+          dlThumbBtn.disabled = false;
+        }
+      }, { cls: 'btn-pri yt-main-dl-btn' });
+
+      sec.appendChild(head);
+      sec.appendChild(preview);
+      sec.appendChild(UI.el('div', { class: 'yt-action-wrap' }, dlThumbBtn));
+      target.appendChild(sec);
+    }
+
+    function triggerDownload(mode, data, quality) {
+      UI.toast(tr('ডাউনলোড শুরু করার জন্য প্রস্তুত করা হচ্ছে…', 'Preparing download…'));
+      if (mode === 'audio') {
+        openResolver('cobalt-audio', data.url);
+      } else {
+        openResolver('cobalt', data.url);
+      }
+    }
+
+    function openResolver(service, url) {
+      var id = parseYtId(url);
+      var targetUrl = '';
+      if (service === 'cobalt') {
+        targetUrl = 'https://cobalt.tools/#url=' + encodeURIComponent(url);
+      } else if (service === 'cobalt-audio') {
+        targetUrl = 'https://cobalt.tools/#url=' + encodeURIComponent(url);
+      } else if (service === 'savefrom') {
+        targetUrl = 'https://ssyoutube.com/watch?v=' + id;
+      } else if (service === 'y2mate') {
+        targetUrl = 'https://www.y2mate.com/youtube/' + id;
+      } else if (service === 'y2mate-audio') {
+        targetUrl = 'https://www.y2mate.com/youtube-mp3/' + id;
+      } else if (service === 'yt1s-audio') {
+        targetUrl = 'https://yt1s.com/en/youtube-to-mp3?q=' + encodeURIComponent(url);
+      } else {
+        targetUrl = 'https://cobalt.tools/#url=' + encodeURIComponent(url);
+      }
+
+      var win = window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      if (!win) {
+        location.href = targetUrl;
+      }
+    }
+
+    container.appendChild(inputWrap);
+    container.appendChild(samplesWrap);
+    container.appendChild(statusBox);
+    container.appendChild(resultCard);
+
+    root.appendChild(container);
+  };
 })();
+

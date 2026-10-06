@@ -90,6 +90,7 @@
           sec.hidden = !visTools;
           if (visTools) {
             any = true;
+            sec.classList.add('in-view');
             if (window._toolghorExpandCategory) window._toolghorExpandCategory(sec);
           }
         } else {
@@ -142,7 +143,12 @@
       active = (i + items.length) % items.length;
       items.forEach(function (a, k) { a.classList.toggle('on', k === active); });
     }
-    input.addEventListener('input', render);
+    var renderRaf = null;
+    function scheduleRender() {
+      if (renderRaf) cancelAnimationFrame(renderRaf);
+      renderRaf = requestAnimationFrame(render);
+    }
+    input.addEventListener('input', scheduleRender);
     input.addEventListener('focus', function () { if (input.value.trim()) render(); });
     input.addEventListener('keydown', function (e) {
       if (e.key === 'ArrowDown') { e.preventDefault(); setActive(active + 1); }
@@ -185,7 +191,7 @@
         btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         var textEl = btn.querySelector('.btn-toggle-text');
         var arrowEl = btn.querySelector('.btn-toggle-arrow');
-        if (textEl) textEl.textContent = expanded ? 'Collapse' : 'Expand';
+        if (textEl) textEl.textContent = expanded ? tr('বন্ধ করুন', 'Collapse') : tr('খুলুন', 'Expand');
         if (arrowEl) arrowEl.textContent = expanded ? '▲' : '▼';
       }
     }
@@ -201,7 +207,7 @@
       var isAllExpanded = expandedCount === total && total > 0;
       var textEl = btnAllToggle.querySelector('.all-toggle-text');
       if (textEl) {
-        textEl.textContent = isAllExpanded ? 'Collapse All' : 'Expand All';
+        textEl.textContent = isAllExpanded ? tr('সব বন্ধ করুন', 'Collapse All') : tr('সব খুলুন', 'Expand All');
       }
       btnAllToggle.setAttribute('aria-expanded', isAllExpanded ? 'true' : 'false');
 
@@ -425,6 +431,90 @@
     catch (e) { console.error(e); root.appendChild(UI.notice('err', tr('একটি সমস্যা হয়েছে: ', 'Something went wrong: ') + UI.err(e))); }
   }
 
-  function init() { applyConfig(); bindLang(); bindSearch(); bindCategoryAccordion(); mountTool(); }
+  /* ---------- দ্রুত নেভিগেশন ও লিংক প্রিফেচ ---------- */
+  function bindHoverPrefetch() {
+    var prefetched = {};
+    function prefetch(url) {
+      if (!url || prefetched[url]) return;
+      prefetched[url] = true;
+      var l = document.createElement('link');
+      l.rel = 'prefetch';
+      l.href = url;
+      document.head.appendChild(l);
+    }
+    document.addEventListener('mouseover', function (e) {
+      var a = e.target && e.target.closest && e.target.closest('a[href]');
+      if (!a) return;
+      var href = a.getAttribute('href');
+      if (href && !href.startsWith('#') && !href.startsWith('http') && !href.startsWith('mailto:') && !href.startsWith('javascript:')) {
+        prefetch(a.href);
+      }
+    }, { passive: true });
+    document.addEventListener('touchstart', function (e) {
+      var a = e.target && e.target.closest && e.target.closest('a[href]');
+      if (!a) return;
+      var href = a.getAttribute('href');
+      if (href && !href.startsWith('#') && !href.startsWith('http')) {
+        prefetch(a.href);
+      }
+    }, { passive: true });
+  }
+
+  /* ---------- Service Worker রেজিষ্ট্রেশন ---------- */
+  function registerServiceWorker() {
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register(ROOT + 'sw.js').catch(function () {});
+      });
+    }
+  }
+
+  /* ---------- মাইক্রো-ইন্টারঅ্যাকশন ও স্ক্রোল অ্যানিমেশন ---------- */
+  function bindMotion() {
+    var top = document.querySelector('.top');
+    if (top) {
+      var scrolled = false;
+      var onScroll = function () {
+        var isScrolled = window.scrollY > 15;
+        if (isScrolled !== scrolled) {
+          scrolled = isScrolled;
+          top.classList.toggle('scrolled', scrolled);
+        }
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+    }
+
+    var isReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!isReducedMotion && 'IntersectionObserver' in window) {
+      var cats = document.querySelectorAll('.cat');
+      if (cats.length) {
+        document.body.classList.add('has-motion');
+        var obs = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in-view');
+              obs.unobserve(entry.target);
+            }
+          });
+        }, {
+          rootMargin: '0px 0px -40px 0px',
+          threshold: 0.05
+        });
+
+        cats.forEach(function (cat) {
+          var rect = cat.getBoundingClientRect();
+          if (rect.top < window.innerHeight + 40) {
+            cat.classList.add('in-view');
+          } else {
+            cat.classList.add('reveal-ready');
+            obs.observe(cat);
+          }
+        });
+      }
+    }
+  }
+
+  function init() { applyConfig(); bindLang(); bindSearch(); bindCategoryAccordion(); bindHoverPrefetch(); registerServiceWorker(); bindMotion(); mountTool(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

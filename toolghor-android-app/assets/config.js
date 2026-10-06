@@ -14,6 +14,8 @@ var SITE_CONFIG = {
   // লোগো ফাইল: পুরো লোগো (হোমপেজে) ও শুধু আইকন (ওপরের বারে)। বদলাতে assets ফোল্ডারের ফাইল বদলান।
   logo: 'assets/logo.png',
   logoDark: 'assets/logo-dark.png',
+  logoWebp: 'assets/logo.webp',
+  logoDarkWebp: 'assets/logo-dark.webp',
   logoIcon: 'assets/logo-icon.png',
 
   // ওয়েবসাইটের ঠিকানা (সাইটম্যাপ ও SEO-র জন্য), যেমন https://yourdomain.com
@@ -48,7 +50,11 @@ var SITE_CONFIG = {
     // Google Gemini API Key (বিশাল ফ্রি কোটা: https://aistudio.google.com/app/apikey)
     geminiKey: '',
     // OpenAI API Key (https://platform.openai.com/api-keys)
-    openaiKey: ''
+    openaiKey: '',
+    // iLovePDF API Public Key (iloveapi.com / https://developer.ilovepdf.com - মাসে ২৫০টি ফ্রি রিকোয়েস্ট)
+    ilovepdfPublicKey: 'project_public_d3a21718d02285b2005ba3571e3946f6_rw99Gce4ea394dce81730b8c0bbc1a8f9b23a',
+    // ConvertAPI Secret Key (convertapi.com — ডেডিকেটেড PDF to Word DOCX ক্লাউড ইঞ্জিন)
+    convertApiKey: ''
   }
 };
 if (typeof window !== 'undefined') window.SITE_CONFIG = SITE_CONFIG;
