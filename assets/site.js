@@ -90,6 +90,7 @@
           sec.hidden = !visTools;
           if (visTools) {
             any = true;
+            sec.classList.add('in-view');
             if (window._toolghorExpandCategory) window._toolghorExpandCategory(sec);
           }
         } else {
@@ -190,7 +191,7 @@
         btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         var textEl = btn.querySelector('.btn-toggle-text');
         var arrowEl = btn.querySelector('.btn-toggle-arrow');
-        if (textEl) textEl.textContent = expanded ? 'Collapse' : 'Expand';
+        if (textEl) textEl.textContent = expanded ? tr('বন্ধ করুন', 'Collapse') : tr('খুলুন', 'Expand');
         if (arrowEl) arrowEl.textContent = expanded ? '▲' : '▼';
       }
     }
@@ -206,7 +207,7 @@
       var isAllExpanded = expandedCount === total && total > 0;
       var textEl = btnAllToggle.querySelector('.all-toggle-text');
       if (textEl) {
-        textEl.textContent = isAllExpanded ? 'Collapse All' : 'Expand All';
+        textEl.textContent = isAllExpanded ? tr('সব বন্ধ করুন', 'Collapse All') : tr('সব খুলুন', 'Expand All');
       }
       btnAllToggle.setAttribute('aria-expanded', isAllExpanded ? 'true' : 'false');
 
@@ -468,6 +469,52 @@
     }
   }
 
-  function init() { applyConfig(); bindLang(); bindSearch(); bindCategoryAccordion(); bindHoverPrefetch(); registerServiceWorker(); mountTool(); }
+  /* ---------- মাইক্রো-ইন্টারঅ্যাকশন ও স্ক্রোল অ্যানিমেশন ---------- */
+  function bindMotion() {
+    var top = document.querySelector('.top');
+    if (top) {
+      var scrolled = false;
+      var onScroll = function () {
+        var isScrolled = window.scrollY > 15;
+        if (isScrolled !== scrolled) {
+          scrolled = isScrolled;
+          top.classList.toggle('scrolled', scrolled);
+        }
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+    }
+
+    var isReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!isReducedMotion && 'IntersectionObserver' in window) {
+      var cats = document.querySelectorAll('.cat');
+      if (cats.length) {
+        document.body.classList.add('has-motion');
+        var obs = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in-view');
+              obs.unobserve(entry.target);
+            }
+          });
+        }, {
+          rootMargin: '0px 0px -40px 0px',
+          threshold: 0.05
+        });
+
+        cats.forEach(function (cat) {
+          var rect = cat.getBoundingClientRect();
+          if (rect.top < window.innerHeight + 40) {
+            cat.classList.add('in-view');
+          } else {
+            cat.classList.add('reveal-ready');
+            obs.observe(cat);
+          }
+        });
+      }
+    }
+  }
+
+  function init() { applyConfig(); bindLang(); bindSearch(); bindCategoryAccordion(); bindHoverPrefetch(); registerServiceWorker(); bindMotion(); mountTool(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

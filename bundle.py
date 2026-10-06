@@ -61,7 +61,7 @@ html_content = f"""<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ToolGhor – দৈনন্দিন কাজের সব টুল, এখন এক প্ল্যাটফর্মে</title>
-<meta name="description" content="দৈনন্দিন কাজের সব টুল, এখন এক প্ল্যাটফর্মে। ২৪টি ফ্রি অনলাইন ও অফলাইন টুল।">
+<meta name="description" content="দৈনন্দিন কাজের সব টুল, এখন এক প্ল্যাটফর্মে। ২৫টি ফ্রি অনলাইন ও অফলাইন টুল।">
 <meta name="theme-color" content="#0e7a5a">
 <link rel="icon" type="image/png" href="{favicon_b64}">
 <link rel="apple-touch-icon" href="{apple_icon_b64}">
@@ -188,7 +188,7 @@ html_content = f"""<!doctype html>
     <div class="all-expand-bar" id="allExpandBar">
       <div class="all-expand-info">
         <span class="all-expand-sym" aria-hidden="true">📂</span>
-        <span class="all-expand-text" id="all-expand-count">ক্যাটাগরি (৬টি ক্যাটাগরি, ২৪টি টুল)</span>
+        <span class="all-expand-text" id="all-expand-count">ক্যাটাগরি (৬টি ক্যাটাগরি, ২৫টি টুল)</span>
       </div>
       <button type="button" class="btn-all-toggle" id="btnAllToggle" aria-expanded="false">
         <span class="all-toggle-ic" aria-hidden="true">↕️</span>

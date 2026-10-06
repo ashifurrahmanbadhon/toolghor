@@ -50,7 +50,11 @@ var SITE_CONFIG = {
     // Google Gemini API Key (বিশাল ফ্রি কোটা: https://aistudio.google.com/app/apikey)
     geminiKey: '',
     // OpenAI API Key (https://platform.openai.com/api-keys)
-    openaiKey: ''
+    openaiKey: '',
+    // iLovePDF API Public Key (iloveapi.com / https://developer.ilovepdf.com - মাসে ২৫০টি ফ্রি রিকোয়েস্ট)
+    ilovepdfPublicKey: 'project_public_d3a21718d02285b2005ba3571e3946f6_rw99Gce4ea394dce81730b8c0bbc1a8f9b23a',
+    // ConvertAPI Secret Key (convertapi.com — ডেডিকেটেড PDF to Word DOCX ক্লাউড ইঞ্জিন)
+    convertApiKey: ''
   }
 };
 if (typeof window !== 'undefined') window.SITE_CONFIG = SITE_CONFIG;
