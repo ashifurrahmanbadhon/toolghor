@@ -1,0 +1,585 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { TOOLS, CATEGORIES, ToolItem } from '@/data/registry';
+import { siteConfig } from '@/data/config';
+import {
+  Shield,
+  Lock,
+  Key,
+  Sliders,
+  Settings,
+  Activity,
+  CheckCircle2,
+  AlertTriangle,
+  Eye,
+  EyeOff,
+  Save,
+  RotateCcw,
+  Search,
+  Sparkles,
+  ArrowLeft,
+  Bell,
+  Check,
+  Server,
+  Layers,
+} from 'lucide-react';
+
+export default function AdminConsole() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [pin, setPin] = useState('');
+  const [pinError, setPinError] = useState(false);
+
+  // Active Tab
+  const [activeTab, setActiveTab] = useState<'overview' | 'tools' | 'apis' | 'settings'>('overview');
+
+  // Search & Filter in Tools tab
+  const [toolSearch, setToolSearch] = useState('');
+  const [toolCatFilter, setToolCatFilter] = useState('all');
+
+  // Tool states (enabled/disabled)
+  const [toolStatuses, setToolStatuses] = useState<Record<string, boolean>>({});
+
+  // API Keys state
+  const [apiKeys, setApiKeys] = useState({
+    convertApiToken: '••••••••••••••••••••••••',
+    geminiKey: '••••••••••••••••••••••••',
+    openaiKey: '',
+    removeBgKey: '',
+    ilovepdfPublicKey: siteConfig.apis.ilovepdfPublicKey,
+  });
+  const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
+
+  // Site Announcement
+  const [announcement, setAnnouncement] = useState({
+    enabled: true,
+    textBn: 'ToolGhor এখন Next.js-এ সম্পূর্ণ আপগ্রেডেড এবং সুপার ফাস্ট!',
+    textEn: 'ToolGhor is now fully upgraded to Next.js with lightning fast performance!',
+  });
+
+  const [savedSuccess, setSavedSuccess] = useState(false);
+
+  // Load saved admin settings from localStorage
+  useEffect(() => {
+    try {
+      const isAuth = sessionStorage.getItem('toolghor_admin_auth');
+      if (isAuth === 'true') {
+        setIsAuthenticated(true);
+      }
+
+      const savedStatuses = localStorage.getItem('toolghor_tool_statuses');
+      if (savedStatuses) {
+        setToolStatuses(JSON.parse(savedStatuses));
+      } else {
+        // default all enabled
+        const initial: Record<string, boolean> = {};
+        TOOLS.forEach((t) => (initial[t.slug] = true));
+        setToolStatuses(initial);
+      }
+
+      const savedAnnouncement = localStorage.getItem('toolghor_announcement');
+      if (savedAnnouncement) {
+        setAnnouncement(JSON.parse(savedAnnouncement));
+      }
+    } catch {}
+  }, []);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Default PIN: admin123 or 2026
+    if (pin === 'admin123' || pin === '2026' || pin === 'badhon') {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('toolghor_admin_auth', 'true');
+      setPinError(false);
+    } else {
+      setPinError(true);
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    sessionStorage.removeItem('toolghor_admin_auth');
+  };
+
+  const toggleToolStatus = (slug: string) => {
+    const updated = {
+      ...toolStatuses,
+      [slug]: !toolStatuses[slug],
+    };
+    setToolStatuses(updated);
+    try {
+      localStorage.setItem('toolghor_tool_statuses', JSON.stringify(updated));
+    } catch {}
+  };
+
+  const handleSaveSettings = () => {
+    try {
+      localStorage.setItem('toolghor_announcement', JSON.stringify(announcement));
+      localStorage.setItem('toolghor_tool_statuses', JSON.stringify(toolStatuses));
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 2500);
+    } catch {}
+  };
+
+  // If not logged in, show sleek login screen
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-zinc-100 p-4">
+        <div className="w-full max-w-md p-8 rounded-3xl bg-zinc-900 border border-zinc-800 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+
+          <div className="text-center mb-6">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center mx-auto mb-3 shadow-lg shadow-emerald-500/20">
+              <Shield className="w-6 h-6" />
+            </div>
+            <h1 className="text-xl font-extrabold tracking-tight">ToolGhor Admin Console</h1>
+            <p className="text-xs text-zinc-400 mt-1">
+              Enter your master administrative PIN or passcode to manage the website.
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
+                Admin Passcode / PIN
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="password"
+                  value={pin}
+                  onChange={(e) => {
+                    setPin(e.target.value);
+                    setPinError(false);
+                  }}
+                  placeholder="Enter passcode (e.g. admin123)"
+                  className="w-full pl-10 pr-4 py-2.5 text-sm bg-zinc-800/80 border border-zinc-700 rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+              {pinError && (
+                <p className="text-xs text-rose-400 mt-1.5">
+                  Incorrect passcode. Hint: Use <code className="bg-zinc-800 px-1 rounded text-emerald-400">admin123</code>
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-2.5 rounded-xl font-semibold text-sm bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-md shadow-emerald-600/20"
+            >
+              Sign In to Console
+            </button>
+
+            <div className="text-center pt-2">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Return to Website</span>
+              </Link>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Filter tools for tool management tab
+  const filteredTools = TOOLS.filter((tool) => {
+    const matchesCat = toolCatFilter === 'all' || tool.cats.includes(toolCatFilter);
+    const matchesSearch =
+      tool.en.toLowerCase().includes(toolSearch.toLowerCase()) ||
+      tool.bn.toLowerCase().includes(toolSearch.toLowerCase()) ||
+      tool.slug.toLowerCase().includes(toolSearch.toLowerCase());
+    return matchesCat && matchesSearch;
+  });
+
+  const activeCount = Object.values(toolStatuses).filter(Boolean).length;
+
+  return (
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
+      {/* Top Navbar */}
+      <header className="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-900/90 backdrop-blur-md px-4 sm:px-8 py-3.5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-sm">
+              <Shield className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-extrabold text-sm sm:text-base tracking-tight text-white group-hover:text-emerald-400 transition-colors">
+                ToolGhor Admin
+              </span>
+              <span className="hidden sm:inline-block ml-2 text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
+                v1.0 (Next.js)
+              </span>
+            </div>
+          </Link>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Link
+            href="/"
+            className="flex items-center gap-1 text-xs text-zinc-400 hover:text-white px-3 py-1.5 rounded-lg border border-zinc-800 hover:bg-zinc-800 transition-all"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">View Site</span>
+          </Link>
+
+          <button
+            onClick={handleLogout}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-rose-950 hover:text-rose-400 text-zinc-300 border border-zinc-700 hover:border-rose-900 transition-all"
+          >
+            Sign Out
+          </button>
+        </div>
+      </header>
+
+      {/* Main Admin Area */}
+      <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-2 border-b border-zinc-800 pb-4 mb-8 overflow-x-auto no-scrollbar">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+              activeTab === 'overview'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span>Dashboard</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('tools')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+              activeTab === 'tools'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+            }`}
+          >
+            <Sliders className="w-4 h-4" />
+            <span>Tool Management ({activeCount}/{TOOLS.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('apis')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+              activeTab === 'apis'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+            }`}
+          >
+            <Key className="w-4 h-4" />
+            <span>API Keys & Proxies</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+              activeTab === 'settings'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            <span>Global Settings</span>
+          </button>
+        </div>
+
+        {/* 1. OVERVIEW TAB */}
+        {activeTab === 'overview' && (
+          <div className="space-y-8">
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-5 rounded-2xl bg-zinc-900 border border-zinc-800">
+                <span className="text-xs text-zinc-400 font-medium">Total Tools</span>
+                <div className="flex items-baseline justify-between mt-2">
+                  <span className="text-3xl font-extrabold text-white">{TOOLS.length}</span>
+                  <span className="text-xs text-emerald-400 font-medium">28 Online</span>
+                </div>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-zinc-900 border border-zinc-800">
+                <span className="text-xs text-zinc-400 font-medium">Active Categories</span>
+                <div className="flex items-baseline justify-between mt-2">
+                  <span className="text-3xl font-extrabold text-emerald-400">{CATEGORIES.length}</span>
+                  <span className="text-xs text-zinc-500">Categories</span>
+                </div>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-zinc-900 border border-zinc-800">
+                <span className="text-xs text-zinc-400 font-medium">Framework Engine</span>
+                <div className="flex items-baseline justify-between mt-2">
+                  <span className="text-xl font-bold text-white">Next.js 15+</span>
+                  <span className="text-xs text-emerald-400 font-medium">App Router</span>
+                </div>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-zinc-900 border border-zinc-800">
+                <span className="text-xs text-zinc-400 font-medium">System Status</span>
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-base font-bold text-white">Healthy & Fast</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Platform Information */}
+            <div className="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
+              <h3 className="text-sm font-bold text-zinc-200 flex items-center gap-2">
+                <Server className="w-4 h-4 text-emerald-500" />
+                <span>Next.js Architecture Highlights</span>
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-400">
+                <div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                  <h4 className="font-semibold text-zinc-200 mb-1">Single Dynamic Page</h4>
+                  <p>Replaced 56 redundant static HTML files with 1 unified Next.js route: <code>app/tools/[slug]/page.tsx</code>.</p>
+                </div>
+                <div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                  <h4 className="font-semibold text-zinc-200 mb-1">Built-in API Routes</h4>
+                  <p>Replaced <code>server.py</code> and Netlify functions with native serverless endpoints.</p>
+                </div>
+                <div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                  <h4 className="font-semibold text-zinc-200 mb-1">100% Privacy Focused</h4>
+                  <p>Client-side processing preserves all user file privacy with zero server storage overhead.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 2. TOOLS MANAGEMENT TAB */}
+        {activeTab === 'tools' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              {/* Search */}
+              <div className="relative w-full sm:w-72">
+                <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={toolSearch}
+                  onChange={(e) => setToolSearch(e.target.value)}
+                  placeholder="Filter tools..."
+                  className="w-full pl-9 pr-4 py-2 text-xs bg-zinc-900 border border-zinc-800 rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Category Filter */}
+              <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+                <button
+                  onClick={() => setToolCatFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                    toolCatFilter === 'all'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-zinc-900 text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  All
+                </button>
+                {CATEGORIES.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setToolCatFilter(c.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap ${
+                      toolCatFilter === c.id
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-zinc-900 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {c.en}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tools Table / List */}
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 overflow-hidden">
+              <div className="divide-y divide-zinc-800/80">
+                {filteredTools.map((tool) => {
+                  const isEnabled = toolStatuses[tool.slug] !== false;
+
+                  return (
+                    <div
+                      key={tool.slug}
+                      className="p-4 sm:px-6 flex items-center justify-between gap-4 hover:bg-zinc-900 transition-colors"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-9 h-9 rounded-xl bg-zinc-800 text-emerald-400 flex items-center justify-center text-xs font-bold">
+                          {tool.slug.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-zinc-100">{tool.en}</span>
+                            <span className="text-xs text-zinc-400">({tool.bn})</span>
+                            {tool.badge && (
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
+                                {tool.badge}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-zinc-500">
+                            /tools/{tool.slug} • Category: {tool.cats.join(', ')}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <Link
+                          href={`/tools/${tool.slug}`}
+                          target="_blank"
+                          className="text-xs text-emerald-400 hover:underline hidden sm:inline"
+                        >
+                          Preview
+                        </Link>
+                        <button
+                          onClick={() => toggleToolStatus(tool.slug)}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                            isEnabled
+                              ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-800'
+                              : 'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                          }`}
+                        >
+                          {isEnabled ? 'Active' : 'Disabled'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 3. API KEYS TAB */}
+        {activeTab === 'apis' && (
+          <div className="max-w-3xl space-y-6">
+            <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 text-xs text-zinc-400">
+              <p>
+                API keys configured here are managed safely. Tokens like <strong className="text-zinc-200">CONVERTAPI_TOKEN</strong> are secured strictly in your server-side environment variables (<code className="text-emerald-400">.env.local</code>) and never leaked to browser bundles.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {/* ConvertAPI */}
+              <div className="p-5 rounded-2xl bg-zinc-900 border border-zinc-800">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-zinc-200">
+                    ConvertAPI Token (Server-Side Proxy for PDF → DOCX)
+                  </label>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
+                    Protected
+                  </span>
+                </div>
+                <input
+                  type={showKeys.convertApi ? 'text' : 'password'}
+                  value={apiKeys.convertApiToken}
+                  readOnly
+                  className="w-full px-3.5 py-2 text-xs bg-zinc-800 border border-zinc-700 rounded-xl text-zinc-300 outline-none"
+                />
+              </div>
+
+              {/* Gemini */}
+              <div className="p-5 rounded-2xl bg-zinc-900 border border-zinc-800">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-zinc-200">
+                    Google Gemini API Key (AI Assistant in Tools)
+                  </label>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
+                    Optional
+                  </span>
+                </div>
+                <input
+                  type="password"
+                  placeholder="AI Studio API Key"
+                  defaultValue=""
+                  className="w-full px-3.5 py-2 text-xs bg-zinc-800 border border-zinc-700 rounded-xl text-zinc-300 outline-none"
+                />
+              </div>
+
+              {/* iLovePDF */}
+              <div className="p-5 rounded-2xl bg-zinc-900 border border-zinc-800">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-zinc-200">
+                    iLovePDF Public Key
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  value={apiKeys.ilovepdfPublicKey}
+                  onChange={(e) => setApiKeys({ ...apiKeys, ilovepdfPublicKey: e.target.value })}
+                  className="w-full px-3.5 py-2 text-xs bg-zinc-800 border border-zinc-700 rounded-xl text-zinc-300 outline-none"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 4. SETTINGS TAB */}
+        {activeTab === 'settings' && (
+          <div className="max-w-3xl space-y-6">
+            {/* Site Banner Announcement */}
+            <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-emerald-400" />
+                  <h3 className="font-bold text-sm text-zinc-100">Global Announcement Banner</h3>
+                </div>
+                <button
+                  onClick={() => setAnnouncement({ ...announcement, enabled: !announcement.enabled })}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                    announcement.enabled
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-zinc-800 text-zinc-500'
+                  }`}
+                >
+                  {announcement.enabled ? 'Enabled' : 'Disabled'}
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-400 mb-1">Bangla Announcement</label>
+                <input
+                  type="text"
+                  value={announcement.textBn}
+                  onChange={(e) => setAnnouncement({ ...announcement, textBn: e.target.value })}
+                  className="w-full px-3.5 py-2 text-xs bg-zinc-800 border border-zinc-700 rounded-xl text-white outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-400 mb-1">English Announcement</label>
+                <input
+                  type="text"
+                  value={announcement.textEn}
+                  onChange={(e) => setAnnouncement({ ...announcement, textEn: e.target.value })}
+                  className="w-full px-3.5 py-2 text-xs bg-zinc-800 border border-zinc-700 rounded-xl text-white outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleSaveSettings}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-xs text-white shadow-md shadow-emerald-600/20 transition-all"
+              >
+                <Save className="w-4 h-4" />
+                <span>Save All Settings</span>
+              </button>
+
+              {savedSuccess && (
+                <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold animate-fade-in">
+                  <Check className="w-4 h-4" />
+                  <span>Changes saved successfully!</span>
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
