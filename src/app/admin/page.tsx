@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { TOOLS, CATEGORIES, ToolItem } from '@/data/registry';
+import { TOOLS, CATEGORIES } from '@/data/registry';
 import { siteConfig } from '@/data/config';
 import {
   Shield,
@@ -13,17 +13,15 @@ import {
   Activity,
   CheckCircle2,
   AlertTriangle,
-  Eye,
-  EyeOff,
   Save,
-  RotateCcw,
   Search,
-  Sparkles,
   ArrowLeft,
   Bell,
   Check,
   Server,
-  Layers,
+  Database,
+  BarChart3,
+  Loader2,
 } from 'lucide-react';
 
 export default function AdminConsole() {
@@ -32,14 +30,19 @@ export default function AdminConsole() {
   const [pinError, setPinError] = useState(false);
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'tools' | 'apis' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'tools' | 'analytics' | 'apis' | 'settings'>('overview');
 
   // Search & Filter in Tools tab
   const [toolSearch, setToolSearch] = useState('');
   const [toolCatFilter, setToolCatFilter] = useState('all');
 
-  // Tool states (enabled/disabled)
+  // Database Connection State
+  const [dbConnected, setDbConnected] = useState<boolean | null>(null);
+  const [loadingData, setLoadingData] = useState(false);
+
+  // Tool states (enabled/disabled) & analytics
   const [toolStatuses, setToolStatuses] = useState<Record<string, boolean>>({});
+  const [analyticsData, setAnalyticsData] = useState<Record<string, number>>({});
 
   // API Keys state
   const [apiKeys, setApiKeys] = useState({
@@ -49,49 +52,60 @@ export default function AdminConsole() {
     removeBgKey: '',
     ilovepdfPublicKey: siteConfig.apis.ilovepdfPublicKey,
   });
-  const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
 
   // Site Announcement
   const [announcement, setAnnouncement] = useState({
     enabled: true,
-    textBn: 'ToolGhor এখন Next.js-এ সম্পূর্ণ আপগ্রেডেড এবং সুপার ফাস্ট!',
-    textEn: 'ToolGhor is now fully upgraded to Next.js with lightning fast performance!',
+    textBn: 'ToolGhor এখন Next.js এবং Neon PostgreSQL ক্লাউড ডাটাবেস দ্বারা পরিচালিত!',
+    textEn: 'ToolGhor is now fully powered by Next.js and Neon PostgreSQL cloud database!',
   });
 
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  // Load saved admin settings from localStorage
+  // Fetch live data from Database via API
+  const fetchAdminData = async () => {
+    try {
+      setLoadingData(true);
+      const res = await fetch('/api/admin/data');
+      if (res.ok) {
+        const data = await res.json();
+        setDbConnected(data.dbConnected);
+        if (data.toolStatuses) {
+          setToolStatuses(data.toolStatuses);
+        }
+        if (data.analytics) {
+          setAnalyticsData(data.analytics);
+        }
+        if (data.settings?.announcement) {
+          setAnnouncement(data.settings.announcement);
+        }
+      } else {
+        setDbConnected(false);
+      }
+    } catch {
+      setDbConnected(false);
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
   useEffect(() => {
     try {
       const isAuth = sessionStorage.getItem('toolghor_admin_auth');
       if (isAuth === 'true') {
         setIsAuthenticated(true);
-      }
-
-      const savedStatuses = localStorage.getItem('toolghor_tool_statuses');
-      if (savedStatuses) {
-        setToolStatuses(JSON.parse(savedStatuses));
-      } else {
-        // default all enabled
-        const initial: Record<string, boolean> = {};
-        TOOLS.forEach((t) => (initial[t.slug] = true));
-        setToolStatuses(initial);
-      }
-
-      const savedAnnouncement = localStorage.getItem('toolghor_announcement');
-      if (savedAnnouncement) {
-        setAnnouncement(JSON.parse(savedAnnouncement));
+        fetchAdminData();
       }
     } catch {}
   }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Default PIN: admin123 or 2026
     if (pin === 'admin123' || pin === '2026' || pin === 'badhon') {
       setIsAuthenticated(true);
       sessionStorage.setItem('toolghor_admin_auth', 'true');
       setPinError(false);
+      fetchAdminData();
     } else {
       setPinError(true);
     }
@@ -102,27 +116,47 @@ export default function AdminConsole() {
     sessionStorage.removeItem('toolghor_admin_auth');
   };
 
-  const toggleToolStatus = (slug: string) => {
+  const toggleToolStatus = async (slug: string) => {
+    const newStatus = !toolStatuses[slug];
     const updated = {
       ...toolStatuses,
-      [slug]: !toolStatuses[slug],
+      [slug]: newStatus,
     };
     setToolStatuses(updated);
+
     try {
-      localStorage.setItem('toolghor_tool_statuses', JSON.stringify(updated));
-    } catch {}
+      await fetch('/api/admin/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_tool',
+          payload: { slug, is_active: newStatus },
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to sync tool status with DB:', err);
+    }
   };
 
-  const handleSaveSettings = () => {
+  const handleSaveSettings = async () => {
     try {
-      localStorage.setItem('toolghor_announcement', JSON.stringify(announcement));
-      localStorage.setItem('toolghor_tool_statuses', JSON.stringify(toolStatuses));
+      await fetch('/api/admin/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_setting',
+          payload: { key: 'announcement', value: announcement },
+        }),
+      });
+
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 2500);
-    } catch {}
+    } catch (err) {
+      console.error('Failed to save settings to DB:', err);
+    }
   };
 
-  // If not logged in, show sleek login screen
+  // If not logged in, show login screen
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-zinc-100 p-4">
@@ -197,6 +231,7 @@ export default function AdminConsole() {
   });
 
   const activeCount = Object.values(toolStatuses).filter(Boolean).length;
+  const totalToolVisits = Object.values(analyticsData).reduce((a, b) => a + b, 0);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
@@ -219,6 +254,22 @@ export default function AdminConsole() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Database Live Badge */}
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 text-xs">
+            <Database className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Neon DB:</span>
+            {dbConnected === null ? (
+              <span className="text-zinc-400">Connecting...</span>
+            ) : dbConnected ? (
+              <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                Live
+              </span>
+            ) : (
+              <span className="text-rose-400 font-semibold">Offline</span>
+            )}
+          </div>
+
           <Link
             href="/"
             className="flex items-center gap-1 text-xs text-zinc-400 hover:text-white px-3 py-1.5 rounded-lg border border-zinc-800 hover:bg-zinc-800 transition-all"
@@ -265,6 +316,18 @@ export default function AdminConsole() {
           </button>
 
           <button
+            onClick={() => setActiveTab('analytics')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+              activeTab === 'analytics'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Live Analytics</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('apis')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'apis'
@@ -298,12 +361,12 @@ export default function AdminConsole() {
                 <span className="text-xs text-zinc-400 font-medium">Total Tools</span>
                 <div className="flex items-baseline justify-between mt-2">
                   <span className="text-3xl font-extrabold text-white">{TOOLS.length}</span>
-                  <span className="text-xs text-emerald-400 font-medium">28 Online</span>
+                  <span className="text-xs text-emerald-400 font-medium">{activeCount} Online</span>
                 </div>
               </div>
 
               <div className="p-5 rounded-2xl bg-zinc-900 border border-zinc-800">
-                <span className="text-xs text-zinc-400 font-medium">Active Categories</span>
+                <span className="text-xs text-zinc-400 font-medium">Categories</span>
                 <div className="flex items-baseline justify-between mt-2">
                   <span className="text-3xl font-extrabold text-emerald-400">{CATEGORIES.length}</span>
                   <span className="text-xs text-zinc-500">Categories</span>
@@ -311,40 +374,52 @@ export default function AdminConsole() {
               </div>
 
               <div className="p-5 rounded-2xl bg-zinc-900 border border-zinc-800">
-                <span className="text-xs text-zinc-400 font-medium">Framework Engine</span>
+                <span className="text-xs text-zinc-400 font-medium">Neon Postgres Status</span>
                 <div className="flex items-baseline justify-between mt-2">
-                  <span className="text-xl font-bold text-white">Next.js 15+</span>
-                  <span className="text-xs text-emerald-400 font-medium">App Router</span>
+                  <span className="text-xl font-bold text-white flex items-center gap-1.5">
+                    <Database className="w-4 h-4 text-emerald-400" />
+                    {dbConnected ? 'Connected' : 'Checking'}
+                  </span>
+                  <span className="text-xs text-emerald-400 font-medium">Serverless</span>
                 </div>
               </div>
 
               <div className="p-5 rounded-2xl bg-zinc-900 border border-zinc-800">
-                <span className="text-xs text-zinc-400 font-medium">System Status</span>
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-base font-bold text-white">Healthy & Fast</span>
+                <span className="text-xs text-zinc-400 font-medium">Tool Launches Tracked</span>
+                <div className="flex items-baseline justify-between mt-2">
+                  <span className="text-3xl font-extrabold text-teal-400">{totalToolVisits}</span>
+                  <span className="text-xs text-zinc-500">Total Visits</span>
                 </div>
               </div>
             </div>
 
-            {/* Platform Information */}
+            {/* Platform & DB Highlights */}
             <div className="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
               <h3 className="text-sm font-bold text-zinc-200 flex items-center gap-2">
                 <Server className="w-4 h-4 text-emerald-500" />
-                <span>Next.js Architecture Highlights</span>
+                <span>Neon PostgreSQL + Vercel Integration Active</span>
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-400">
                 <div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
-                  <h4 className="font-semibold text-zinc-200 mb-1">Single Dynamic Page</h4>
-                  <p>Replaced 56 redundant static HTML files with 1 unified Next.js route: <code>app/tools/[slug]/page.tsx</code>.</p>
+                  <h4 className="font-semibold text-zinc-200 mb-1 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Real-time Sync</span>
+                  </h4>
+                  <p>Tool statuses and settings save instantly to your Neon PostgreSQL cloud database.</p>
                 </div>
                 <div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
-                  <h4 className="font-semibold text-zinc-200 mb-1">Built-in API Routes</h4>
-                  <p>Replaced <code>server.py</code> and Netlify functions with native serverless endpoints.</p>
+                  <h4 className="font-semibold text-zinc-200 mb-1 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Serverless Connection Pooling</span>
+                  </h4>
+                  <p>Configured with Neon Connection Pooler for zero cold starts and unlimited scale on Vercel.</p>
                 </div>
                 <div className="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
-                  <h4 className="font-semibold text-zinc-200 mb-1">100% Privacy Focused</h4>
-                  <p>Client-side processing preserves all user file privacy with zero server storage overhead.</p>
+                  <h4 className="font-semibold text-zinc-200 mb-1 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Automated Migrations</span>
+                  </h4>
+                  <p>Database tables and initial settings are created automatically upon first run.</p>
                 </div>
               </div>
             </div>
@@ -400,6 +475,7 @@ export default function AdminConsole() {
               <div className="divide-y divide-zinc-800/80">
                 {filteredTools.map((tool) => {
                   const isEnabled = toolStatuses[tool.slug] !== false;
+                  const usageCount = analyticsData[tool.slug] || 0;
 
                   return (
                     <div
@@ -421,7 +497,7 @@ export default function AdminConsole() {
                             )}
                           </div>
                           <span className="text-xs text-zinc-500">
-                            /tools/{tool.slug} • Category: {tool.cats.join(', ')}
+                            /tools/{tool.slug} • Launches: <strong className="text-zinc-300">{usageCount}</strong>
                           </span>
                         </div>
                       </div>
@@ -438,11 +514,11 @@ export default function AdminConsole() {
                           onClick={() => toggleToolStatus(tool.slug)}
                           className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
                             isEnabled
-                              ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-800'
-                              : 'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                              ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-800 hover:bg-emerald-600/30'
+                              : 'bg-zinc-800 text-zinc-500 border border-zinc-700 hover:bg-zinc-700'
                           }`}
                         >
-                          {isEnabled ? 'Active' : 'Disabled'}
+                          {isEnabled ? 'Active (Live)' : 'Disabled'}
                         </button>
                       </div>
                     </div>
@@ -453,16 +529,68 @@ export default function AdminConsole() {
           </div>
         )}
 
-        {/* 3. API KEYS TAB */}
+        {/* 3. ANALYTICS TAB */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-6">
+            <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 text-xs text-zinc-400 flex items-center justify-between">
+              <span>Live tool launch statistics tracked automatically in Neon Postgres.</span>
+              <button
+                onClick={fetchAdminData}
+                className="text-xs text-emerald-400 hover:underline flex items-center gap-1"
+              >
+                Refresh Data
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {TOOLS.map((t) => {
+                const count = analyticsData[t.slug] || 0;
+                return (
+                  <div key={t.slug} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold text-zinc-100">{t.en}</h4>
+                      <span className="text-xs text-zinc-500">{t.bn}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xl font-extrabold text-emerald-400">{count}</span>
+                      <span className="block text-[10px] text-zinc-500">opens</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 4. API KEYS TAB */}
         {activeTab === 'apis' && (
           <div className="max-w-3xl space-y-6">
             <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 text-xs text-zinc-400">
               <p>
-                API keys configured here are managed safely. Tokens like <strong className="text-zinc-200">CONVERTAPI_TOKEN</strong> are secured strictly in your server-side environment variables (<code className="text-emerald-400">.env.local</code>) and never leaked to browser bundles.
+                API keys configured here are managed safely. Tokens like <strong className="text-zinc-200">CONVERTAPI_TOKEN</strong> and <strong className="text-zinc-200">DATABASE_URL</strong> are secured strictly in your server-side environment variables and never exposed to the client.
               </p>
             </div>
 
             <div className="space-y-4">
+              {/* Database URL */}
+              <div className="p-5 rounded-2xl bg-zinc-900 border border-zinc-800">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-zinc-200 flex items-center gap-2">
+                    <Database className="w-4 h-4 text-emerald-400" />
+                    <span>Neon PostgreSQL Connection String</span>
+                  </label>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
+                    Encrypted
+                  </span>
+                </div>
+                <input
+                  type="password"
+                  value="postgresql://neondb_owner:••••••••••••@ep-divine-resonance-azoqq5o4-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb"
+                  readOnly
+                  className="w-full px-3.5 py-2 text-xs bg-zinc-800 border border-zinc-700 rounded-xl text-zinc-400 outline-none"
+                />
+              </div>
+
               {/* ConvertAPI */}
               <div className="p-5 rounded-2xl bg-zinc-900 border border-zinc-800">
                 <div className="flex items-center justify-between mb-2">
@@ -474,27 +602,9 @@ export default function AdminConsole() {
                   </span>
                 </div>
                 <input
-                  type={showKeys.convertApi ? 'text' : 'password'}
+                  type="password"
                   value={apiKeys.convertApiToken}
                   readOnly
-                  className="w-full px-3.5 py-2 text-xs bg-zinc-800 border border-zinc-700 rounded-xl text-zinc-300 outline-none"
-                />
-              </div>
-
-              {/* Gemini */}
-              <div className="p-5 rounded-2xl bg-zinc-900 border border-zinc-800">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-zinc-200">
-                    Google Gemini API Key (AI Assistant in Tools)
-                  </label>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
-                    Optional
-                  </span>
-                </div>
-                <input
-                  type="password"
-                  placeholder="AI Studio API Key"
-                  defaultValue=""
                   className="w-full px-3.5 py-2 text-xs bg-zinc-800 border border-zinc-700 rounded-xl text-zinc-300 outline-none"
                 />
               </div>
@@ -517,7 +627,7 @@ export default function AdminConsole() {
           </div>
         )}
 
-        {/* 4. SETTINGS TAB */}
+        {/* 5. SETTINGS TAB */}
         {activeTab === 'settings' && (
           <div className="max-w-3xl space-y-6">
             {/* Site Banner Announcement */}
@@ -525,7 +635,7 @@ export default function AdminConsole() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Bell className="w-4 h-4 text-emerald-400" />
-                  <h3 className="font-bold text-sm text-zinc-100">Global Announcement Banner</h3>
+                  <h3 className="font-bold text-sm text-zinc-100">Global Announcement Banner (Stored in Neon DB)</h3>
                 </div>
                 <button
                   onClick={() => setAnnouncement({ ...announcement, enabled: !announcement.enabled })}
@@ -567,13 +677,13 @@ export default function AdminConsole() {
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-xs text-white shadow-md shadow-emerald-600/20 transition-all"
               >
                 <Save className="w-4 h-4" />
-                <span>Save All Settings</span>
+                <span>Save to Neon Database</span>
               </button>
 
               {savedSuccess && (
                 <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold animate-fade-in">
                   <Check className="w-4 h-4" />
-                  <span>Changes saved successfully!</span>
+                  <span>Saved directly to Neon PostgreSQL!</span>
                 </span>
               )}
             </div>
