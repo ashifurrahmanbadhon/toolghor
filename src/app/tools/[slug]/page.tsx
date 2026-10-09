@@ -63,101 +63,82 @@ export default async function ToolPage({ params }: Props) {
   ).slice(0, 4);
 
   return (
-    <div className="min-h-screen flex flex-col bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
+    <>
       <Header />
 
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-        {/* Breadcrumb & Navigation */}
-        <div className="flex items-center gap-2 text-xs text-zinc-500 mb-6">
-          <Link
-            href="/"
-            className="flex items-center gap-1 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Home</span>
-          </Link>
-          <span>/</span>
-          <span className="capitalize">{tool.cats[0]}</span>
-          <span>/</span>
-          <span className="text-zinc-800 dark:text-zinc-200 font-medium">{tool.en}</span>
+      <main className={`wrap tool-page cat-${tool.cats[0]}`}>
+        {/* Breadcrumb */}
+        <div className="crumb">
+          <Link href="/">Home</Link> /{' '}
+          <Link href={`/#cat-${tool.cats[0]}`} className="capitalize">
+            {tool.cats[0]}
+          </Link>{' '}
+          / {tool.en}
         </div>
 
-        {/* Tool Header */}
-        <div className="mb-8">
-          <div className="flex flex-wrap items-center gap-3 mb-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              {tool.en} <span className="text-emerald-600 dark:text-emerald-400">({tool.bn})</span>
-            </h1>
-            {tool.badge && (
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                {tool.badge}
-              </span>
-            )}
-          </div>
-          <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 max-w-3xl leading-relaxed">
-            {tool.introEn} <span className="block mt-1 text-zinc-500">{tool.intro}</span>
-          </p>
+        {/* Heading */}
+        <h1>
+          {tool.en} <small>{tool.bn}</small>
+        </h1>
 
-          {/* Privacy badge */}
-          <div className="inline-flex items-center gap-2 mt-4 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/60 text-xs text-emerald-800 dark:text-emerald-300">
-            <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>
-              The files and details you enter are processed directly in your browser. No files are uploaded to our servers.
-            </span>
-          </div>
+        <p className="lead">
+          {tool.introEn} <span style={{ display: 'block', marginTop: '4px', opacity: 0.85 }}>{tool.intro}</span>
+        </p>
+
+        {/* Privacy Note */}
+        <div className="trust">
+          <span className="ic" aria-hidden="true">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+              <path d="m9 12 2 2 4-4" />
+            </svg>
+          </span>
+          <span>
+            আপনার ফাইল বা তথ্যগুলো সম্পূর্ণ আপনার ব্রাউজারে সুরক্ষিতভাবে প্রসেস হয়। কোনো ফাইলই সার্ভারে আপলোড হয় না।
+          </span>
         </div>
 
-        {/* Interactive Tool Runner Card */}
-        <section className="mb-12 rounded-3xl bg-white dark:bg-zinc-900/90 border border-zinc-200/80 dark:border-zinc-800/80 p-6 sm:p-8 shadow-sm">
+        {/* Main Tool Runner Panel */}
+        <div className="panel">
           <ToolRunner tool={tool} />
-        </section>
+        </div>
 
         {/* How to use */}
-        <section className="mb-12 p-6 sm:p-8 rounded-2xl bg-zinc-100/60 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-zinc-800/60">
-          <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-            <span>কীভাবে ব্যবহার করবেন (How to use)</span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">বাংলা নির্দেশিকা</h4>
-              <ol className="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 list-decimal list-inside">
-                {tool.steps.map((st, i) => (
-                  <li key={i} className="leading-relaxed">
-                    {st}
-                  </li>
-                ))}
-              </ol>
-            </div>
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">English Guide</h4>
-              <ol className="space-y-2 text-sm text-zinc-700 dark:text-zinc-300 list-decimal list-inside">
-                {tool.stepsEn.map((st, i) => (
-                  <li key={i} className="leading-relaxed">
-                    {st}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </div>
-        </section>
+        <div className="how">
+          <h2>কীভাবে ব্যবহার করবেন (How to Use)</h2>
+          <ol>
+            {tool.steps.map((step, idx) => (
+              <li key={idx}>
+                {step} {tool.stepsEn[idx] && <span style={{ opacity: 0.75, fontSize: '0.9em' }}>— {tool.stepsEn[idx]}</span>}
+              </li>
+            ))}
+          </ol>
+        </div>
 
         {/* Related Tools */}
         {relatedTools.length > 0 && (
-          <section className="mb-12">
-            <h2 className="text-xl font-bold mb-6">
-              আরও দরকারি টুলস (More Useful Tools)
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="related">
+            <h2>আরও দরকারি টুলস (Related Tools)</h2>
+            <div className="grid">
               {relatedTools.map((relTool) => (
-                <ToolCard key={relTool.slug} tool={relTool} />
+                <ToolCard key={relTool.slug} tool={relTool} category={tool.cats[0]} />
               ))}
             </div>
-          </section>
+          </div>
         )}
       </main>
 
       <Footer />
-    </div>
+    </>
   );
 }

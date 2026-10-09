@@ -17,15 +17,16 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Language>('bn');
+  const [lang, setLangState] = useState<Language>('en');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
 
   useEffect(() => {
     try {
-      const savedLang = localStorage.getItem('toolghor_lang') as Language;
+      const savedLang = (localStorage.getItem('lang') || localStorage.getItem('toolghor_lang')) as Language;
       if (savedLang === 'bn' || savedLang === 'en') {
         setLangState(savedLang);
+        document.documentElement.lang = savedLang;
       }
     } catch {}
   }, []);
@@ -33,8 +34,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setLang = (newLang: Language) => {
     setLangState(newLang);
     try {
+      localStorage.setItem('lang', newLang);
       localStorage.setItem('toolghor_lang', newLang);
       document.documentElement.lang = newLang;
+      const w = window as any;
+      if (w.UI) {
+        w.UI.lang = newLang;
+        w.UI.digits = newLang === 'bn' ? 'bn' : 'en';
+      }
     } catch {}
   };
 

@@ -2,68 +2,162 @@
 
 import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useApp } from '@/context/AppContext';
-import { Search, Globe, Shield, Sparkles } from 'lucide-react';
 
 export default function Header() {
-  const { lang, toggleLang, searchQuery, setSearchQuery } = useApp();
+  const { lang, setLang } = useApp();
+
+  const handleOpenAbout = () => {
+    const w = window as any;
+    if (w.UI && typeof w.UI.openAboutModal === 'function') {
+      w.UI.openAboutModal();
+    }
+  };
+
+  const handleOpenAiKeys = () => {
+    const w = window as any;
+    if (w.UI && typeof w.UI.openAiKeysModal === 'function') {
+      w.UI.openAiKeysModal();
+    }
+  };
+
+  const handleOpenRequestTool = () => {
+    const w = window as any;
+    if (w.UI && typeof w.UI.openRequestToolModal === 'function') {
+      w.UI.openRequestToolModal();
+    }
+  };
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-md bg-white/80 dark:bg-zinc-950/80 border-b border-zinc-200/80 dark:border-zinc-800/80 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Brand / Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="relative w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 p-0.5 shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform flex items-center justify-center text-white">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 dark:from-emerald-400 dark:via-teal-300 dark:to-cyan-400 bg-clip-text text-transparent">
-              ToolGhor
-            </span>
-            <span className="text-[10px] -mt-1 font-medium text-zinc-500 dark:text-zinc-400">
-              {lang === 'bn' ? 'দৈনন্দিন কাজের টুল' : 'Everyday Utilities'}
-            </span>
-          </div>
+    <header className="top">
+      <div className="wrap top-in">
+        <Link href="/" className="brand" aria-label="ToolGhor">
+          <picture>
+            <source
+              type="image/webp"
+              data-cfg="logoDarkWebp"
+              srcSet="/assets/logo-dark.webp"
+              media="(prefers-color-scheme: dark)"
+            />
+            <source
+              data-cfg="logoDark"
+              srcSet="/assets/logo-dark.png"
+              media="(prefers-color-scheme: dark)"
+            />
+            <source type="image/webp" data-cfg="logoWebp" srcSet="/assets/logo.webp" />
+            <img
+              className="brand-logo"
+              data-cfg="logo"
+              src="/assets/logo.png"
+              alt="ToolGhor"
+              width={205}
+              height={50}
+              fetchPriority="high"
+              decoding="async"
+            />
+          </picture>
         </Link>
 
-        {/* Search Bar in Header */}
-        <div className="flex-1 max-w-md hidden md:block">
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={
-                lang === 'bn'
-                  ? 'টুলস খুঁজুন (যেমন: পিডিএফ মার্জ, ছবি ক্রপ, বিএমআই)...'
-                  : 'Search tools (e.g. merge pdf, crop image, bmi)...'
-              }
-              className="w-full pl-10 pr-4 py-2 text-sm bg-zinc-100/80 dark:bg-zinc-900/80 hover:bg-zinc-100 dark:hover:bg-zinc-900 focus:bg-white dark:focus:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-full outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400"
-            />
-          </div>
-        </div>
-
-        {/* Right Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Language Switcher */}
+        <div className="top-actions" style={{ marginInlineStart: 'auto' }}>
+          {/* About Button */}
           <button
-            onClick={toggleLang}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 dark:hover:border-emerald-500 bg-zinc-50 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 transition-all hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-            title={lang === 'bn' ? 'Switch to English' : 'বাংলায় দেখুন'}
+            type="button"
+            className="btn-top-about"
+            id="btn-top-about"
+            aria-label="About ToolGhor"
+            title="About ToolGhor"
+            onClick={handleOpenAbout}
           >
-            <Globe className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>{lang === 'bn' ? 'English' : 'বাংলা'}</span>
+            <span className="btn-about-ic" aria-hidden="true">
+              ℹ️
+            </span>
+            <span>{lang === 'bn' ? 'আমাদের সম্পর্কে' : 'About'}</span>
           </button>
 
-          {/* Admin Console Link */}
-          <Link
-            href="/admin"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 shadow-sm transition-all"
+          {/* Language Switcher */}
+          <div className="lang" role="group" aria-label="Language">
+            <span className="lang-ic" aria-hidden="true">
+              🌐
+            </span>
+            {lang === 'en' ? (
+              <span className="on" aria-current="true" lang="en">
+                EN
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setLang('en')}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 10px' }}
+                title="English"
+              >
+                EN
+              </button>
+            )}
+            {lang === 'bn' ? (
+              <span className="on" aria-current="true" lang="bn">
+                বাংলা
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setLang('bn')}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 10px' }}
+                title="বাংলা"
+              >
+                বাংলা
+              </button>
+            )}
+          </div>
+
+          {/* Connect API Keys */}
+          <button
+            type="button"
+            className="btn-api-connect"
+            id="btn-ai-keys"
+            aria-label="Connect API Keys"
+            title="Connect API Keys for enhanced results"
+            onClick={handleOpenAiKeys}
           >
-            <Shield className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
-            <span className="hidden sm:inline">Admin</span>
+            <span className="ic" aria-hidden="true">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" />
+                <path d="M20 2v4" />
+                <path d="M22 4h-4" />
+                <circle cx="4" cy="20" r="2" />
+              </svg>
+            </span>
+            <span>{lang === 'bn' ? 'এপিআই কি' : 'API Keys'}</span>
+            <span className="api-dot" hidden suppressHydrationWarning></span>
+          </button>
+
+          {/* Request a Tool */}
+          <button
+            type="button"
+            className="btn-request-tool"
+            id="btn-request-tool"
+            aria-label="Request a Tool"
+            title="Request a new tool or suggest ideas"
+            onClick={handleOpenRequestTool}
+          >
+            <span className="btn-req-icon" aria-hidden="true">
+              🛠️
+            </span>
+            <span>{lang === 'bn' ? 'টুলের অনুরোধ' : 'Request a Tool'}</span>
+          </button>
+
+          {/* Admin link */}
+          <Link href="/admin" className="pill" title="Admin Console">
+            <span>🛡️ {lang === 'bn' ? 'অ্যাডমিন' : 'Admin'}</span>
           </Link>
         </div>
       </div>

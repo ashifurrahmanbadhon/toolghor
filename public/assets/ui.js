@@ -15,7 +15,10 @@
   /* ভাষা: <html lang="bn|en"> থেকে আসে। বাংলা পেজে বাংলা, বাকিগুলোতে ইংরেজি। */
   var LANG = document.documentElement.getAttribute('lang') === 'bn' ? 'bn' : 'en';
   UI.lang = LANG;
-  UI.tr = function (bn, en) { return LANG === 'bn' ? bn : en; };
+  UI.tr = function (bn, en) {
+    var cur = (typeof window !== 'undefined' && window.UI && window.UI.lang) || (document.documentElement && document.documentElement.getAttribute('lang')) || LANG;
+    return cur === 'bn' ? bn : en;
+  };
   window.tr = UI.tr;
   UI.digits = LANG === 'bn' ? 'bn' : 'en';
   UI.locale = LANG === 'bn' ? 'bn-BD' : 'en-GB';
@@ -24,7 +27,8 @@
   /* সংখ্যাকে বাংলা/ইংরেজি অঙ্কে দেখানো */
   UI.n = function (v) {
     var s = String(v);
-    if (UI.digits !== 'bn') return s;
+    var curDigits = (typeof window !== 'undefined' && window.UI && window.UI.digits) || (UI.lang === 'bn' ? 'bn' : 'en');
+    if (curDigits !== 'bn') return s;
     return s.replace(/[0-9]/g, function (d) { return BN.charAt(+d); });
   };
   UI.num = function (v, max) {
@@ -684,7 +688,11 @@
       var dot = btn.querySelector('.api-dot');
       if (dot) {
         dot.hidden = count === 0;
-        dot.title = count > 0 ? (LANG === 'bn' ? (UI.n(count) + 'টি API কি সংযুক্ত') : (count + ' API Key' + (count > 1 ? 's' : '') + ' Connected')) : '';
+        if (count > 0) {
+          dot.setAttribute('title', (UI.lang === 'bn' ? (UI.n(count) + 'টি API কি সংযুক্ত') : (count + ' API Key' + (count > 1 ? 's' : '') + ' Connected')));
+        } else {
+          dot.removeAttribute('title');
+        }
       }
       var cnt = btn.querySelector('.api-count');
       if (cnt) {
@@ -1051,6 +1059,18 @@
       )
     );
 
+    var creatorCfg = (typeof window !== 'undefined' && window.CREATOR_CONFIG) || {};
+    var isCreatorActive = creatorCfg.is_active !== false;
+
+    var creatorName = creatorCfg.name || 'Ashifur Rahman';
+    var creatorRole = (isBn ? creatorCfg.role_bn : creatorCfg.role_en) || tr('প্রতিষ্ঠাতা ও নির্মাতা, ToolGhor', 'Founder & Creator, ToolGhor');
+    var creatorEmail = creatorCfg.email || 'ashifur.badhon@gmail.com';
+    var creatorFb = creatorCfg.facebook_url || 'https://www.facebook.com/ashifurrahmanbadhon';
+    var creatorGithub = creatorCfg.github_url || 'https://github.com/ashifurrahmanbadhon';
+
+    var isEmailActive = creatorCfg.email_active !== false;
+    var isSocialActive = creatorCfg.social_active !== false;
+
     var builtByLabel = UI.el('div', { class: 'about-section-label' },
       tr('তৈরি করেছেন', 'BUILT BY')
     );
@@ -1058,7 +1078,7 @@
     var root = UI.getRoot ? UI.getRoot() : (UI.ROOT || '');
     var creatorImg = UI.el('img', {
       src: root + 'assets/creator.jpg',
-      alt: 'Ashifur Rahman',
+      alt: creatorName,
       class: 'about-creator-photo',
       loading: 'eager',
       onerror: function () {
@@ -1070,14 +1090,14 @@
     var creatorProfile = UI.el('div', { class: 'about-creator-profile' },
       UI.el('div', { class: 'about-creator-avatar', 'aria-hidden': 'true' }, creatorImg),
       UI.el('div', { class: 'about-creator-info' },
-        UI.el('h3', { class: 'about-creator-name' }, 'Ashifur Rahman'),
-        UI.el('p', { class: 'about-creator-role' }, tr('প্রতিষ্ঠাতা ও নির্মাতা, ToolGhor', 'Founder & Creator, ToolGhor'))
+        UI.el('h3', { class: 'about-creator-name' }, creatorName),
+        UI.el('p', { class: 'about-creator-role' }, creatorRole)
       )
     );
 
     // Email direct button
-    var emailLink = UI.el('a', {
-      href: 'mailto:ashifur.badhon@gmail.com',
+    var emailLink = isEmailActive ? UI.el('a', {
+      href: 'mailto:' + creatorEmail,
       class: 'about-contact-btn about-btn-email',
       title: tr('ইমেইল পাঠান', 'Send Email')
     },
@@ -1088,14 +1108,14 @@
       }),
       UI.el('span', { class: 'about-contact-text' },
         UI.el('span', { class: 'about-contact-tag' }, tr('ইমেইল', 'Email')),
-        UI.el('span', { class: 'about-contact-val' }, tr('ইমেইল পাঠান', 'Send an Email'))
+        UI.el('span', { class: 'about-contact-val' }, creatorEmail)
       ),
       UI.el('span', { class: 'about-contact-arrow', 'aria-hidden': 'true' }, '↗')
-    );
+    ) : null;
 
     // Facebook direct button
-    var fbLink = UI.el('a', {
-      href: 'https://www.facebook.com/ashifurrahmanbadhon',
+    var fbLink = isSocialActive && creatorFb ? UI.el('a', {
+      href: creatorFb,
       target: '_blank',
       rel: 'noopener noreferrer',
       class: 'about-contact-btn about-btn-fb',
@@ -1111,50 +1131,51 @@
         UI.el('span', { class: 'about-contact-val' }, tr('ফেসবুক প্রোফাইল দেখুন', 'Visit Facebook Profile'))
       ),
       UI.el('span', { class: 'about-contact-arrow', 'aria-hidden': 'true' }, '↗')
-    );
+    ) : null;
 
-    // LinkedIn direct button
-    var linkedinUrl = (window.SITE_CONFIG && window.SITE_CONFIG.linkedin && window.SITE_CONFIG.linkedin.url)
-      ? window.SITE_CONFIG.linkedin.url
-      : 'https://www.linkedin.com/in/ashifurrahmanbadhon';
-
-    var linkedinLink = UI.el('a', {
-      href: linkedinUrl,
+    // GitHub direct button
+    var githubLink = isSocialActive && creatorGithub ? UI.el('a', {
+      href: creatorGithub,
       target: '_blank',
       rel: 'noopener noreferrer',
-      class: 'about-contact-btn about-btn-linkedin',
-      title: tr('লিঙ্কডইন প্রোফাইল দেখুন', 'Visit LinkedIn Profile')
+      class: 'about-contact-btn about-btn-github',
+      title: tr('গিটহাব প্রোফাইল দেখুন', 'Visit GitHub Profile')
     },
       UI.el('span', {
         class: 'about-contact-ic',
         'aria-hidden': 'true',
-        html: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9h2.79v8.37H6.46v-8.37M7.86 6.81a1.63 1.63 0 1 0 0 3.26 1.63 1.63 0 0 0 0-3.26z"/></svg>'
+        html: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>'
       }),
       UI.el('span', { class: 'about-contact-text' },
-        UI.el('span', { class: 'about-contact-tag' }, tr('লিঙ্কডইন', 'LinkedIn')),
-        UI.el('span', { class: 'about-contact-val' }, tr('লিঙ্কডইন প্রোফাইল দেখুন', 'Visit LinkedIn Profile'))
+        UI.el('span', { class: 'about-contact-tag' }, tr('গিটহাব', 'GitHub')),
+        UI.el('span', { class: 'about-contact-val' }, tr('গিটহাব প্রোফাইল দেখুন', 'Visit GitHub Profile'))
       ),
       UI.el('span', { class: 'about-contact-arrow', 'aria-hidden': 'true' }, '↗')
-    );
+    ) : null;
 
-    var contactsWrap = UI.el('div', { class: 'about-contacts-wrap' },
-      emailLink,
-      fbLink,
-      linkedinLink
-    );
+    var contactItems = [];
+    if (emailLink) contactItems.push(emailLink);
+    if (fbLink) contactItems.push(fbLink);
+    if (githubLink) contactItems.push(githubLink);
 
-    var creatorCard = UI.el('div', { class: 'about-creator-card' },
+    var contactsWrap = contactItems.length ? UI.el.apply(UI, ['div', { class: 'about-contacts-wrap' }].concat(contactItems)) : null;
+
+    var creatorCard = isCreatorActive ? UI.el('div', { class: 'about-creator-card' },
       creatorProfile,
-      contactsWrap
-    );
+      contactsWrap || UI.el('div')
+    ) : null;
 
-    var content = UI.el('div', { class: 'about-modal-content' },
+    var contentChildren = [
       title,
       desc,
-      highlightsGrid,
-      builtByLabel,
-      creatorCard
-    );
+      highlightsGrid
+    ];
+    if (isCreatorActive && creatorCard) {
+      contentChildren.push(builtByLabel);
+      contentChildren.push(creatorCard);
+    }
+
+    var content = UI.el.apply(UI, ['div', { class: 'about-modal-content' }].concat(contentChildren));
 
     box.appendChild(head);
     box.appendChild(content);

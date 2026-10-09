@@ -2595,6 +2595,11 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
   background: color-mix(in srgb, #0a66c2 8%, var(--paper));
   color: #0a66c2;
 }
+.about-btn-github:hover {
+  border-color: #6e7681;
+  background: color-mix(in srgb, #6e7681 12%, var(--paper));
+  color: var(--ink);
+}
 .about-contact-ic {
   display: flex;
   align-items: center;
@@ -2614,6 +2619,9 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
 }
 .about-btn-linkedin .about-contact-ic {
   color: #0a66c2;
+}
+.about-btn-github .about-contact-ic {
+  color: var(--ink);
 }
 .about-contact-text {
   flex: 1;
