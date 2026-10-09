@@ -9,15 +9,13 @@ import Footer from '@/components/Footer';
 import ToolRunner from '@/components/ToolRunner';
 import ToolCard from '@/components/ToolCard';
 import { ShieldCheck, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { getPublicSiteData } from '@/lib/siteData';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 interface Props {
   params: Promise<{ slug: string }>;
-}
-
-export async function generateStaticParams() {
-  return TOOLS.map((tool) => ({
-    slug: tool.slug,
-  }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -57,9 +55,35 @@ export default async function ToolPage({ params }: Props) {
     notFound();
   }
 
-  // Related tools from the same category
+  // Check database status: if deactivated by admin, tool must NOT be accessible
+  const siteData = await getPublicSiteData();
+  const dbTool = siteData?.tools?.find((t: any) => t.slug === slug);
+  if (dbTool && dbTool.is_active === false) {
+    notFound();
+  }
+
+  // Active categories map
+  const activeCatMap = new Set(
+    (siteData?.categories || [])
+      .filter((c: any) => c.is_active)
+      .map((c: any) => c.slug)
+  );
+
+  // If tool's categories are all deactivated by admin, tool is also deactivated
+  if (siteData?.categories && siteData.categories.length > 0) {
+    const hasActiveCategory = tool.cats.some((cat) => activeCatMap.has(cat));
+    if (!hasActiveCategory) {
+      notFound();
+    }
+  }
+
+  // Related tools from the same category that are strictly active in DB
+  const dbToolMap = new Map((siteData?.tools || []).map((t: any) => [t.slug, t.is_active]));
   const relatedTools = TOOLS.filter(
-    (t) => t.slug !== tool.slug && t.cats.some((cat) => tool.cats.includes(cat))
+    (t) =>
+      t.slug !== tool.slug &&
+      t.cats.some((cat) => tool.cats.includes(cat) && activeCatMap.has(cat)) &&
+      dbToolMap.get(t.slug) !== false
   ).slice(0, 4);
 
   return (
