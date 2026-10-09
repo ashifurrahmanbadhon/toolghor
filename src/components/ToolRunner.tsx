@@ -55,6 +55,15 @@ export default function ToolRunner({ tool }: ToolRunnerProps) {
         document.body.setAttribute('data-tool', tool.slug);
         document.documentElement.lang = lang;
 
+        // Track tool usage in analytics database
+        try {
+          fetch('/api/analytics/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: tool.slug }),
+          }).catch(() => {});
+        } catch {}
+
         // 1. Load config, registry, icons, UI core
         await loadScript('/assets/config.js');
         await loadScript('/assets/registry.js');

@@ -8,19 +8,111 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ================= ENERGETIC & FAST MICRO-ANIMATIONS ================= */
+
+/* 1. Tool Cards: Smooth 3D Elevation & Aura on Hover */
+.tool {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.22s ease !important;
+  will-change: transform, box-shadow;
+  position: relative;
+  overflow: hidden;
+}
+
+.tool:hover {
+  transform: translateY(-4px) translateZ(0) !important;
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.08), 0 0 0 1.5px rgba(16, 185, 129, 0.3) !important;
+}
+
+.tool:active {
+  transform: translateY(-1px) scale(0.99) !important;
+}
+
+.tool .ico {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  will-change: transform;
+}
+
+.tool:hover .ico {
+  transform: scale(1.1) rotate(3deg) !important;
+}
+
+/* 2. Shimmer Effect on Badges (e.g. AI Powered, Live Rates, Popular) */
+.badge, .tag, [data-badge] {
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes badgeShine {
+  0% { transform: translateX(-100%); }
+  50%, 100% { transform: translateX(200%); }
+}
+
+.badge::after, .tag::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: translateX(-100%);
+  animation: badgeShine 3.5s infinite ease-in-out;
+}
+
+/* 3. Floating WhatsApp Action Button: Gentle Attention Pulse */
+@keyframes waBreathing {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 8px 24px rgba(37, 211, 102, 0.35);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 12px 32px rgba(37, 211, 102, 0.55);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.fab {
+  animation: waBreathing 3s infinite ease-in-out !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease !important;
+  will-change: transform, box-shadow;
 }
+
+.fab:hover {
+  animation: none !important;
+  transform: scale(1.12) rotate(4deg) !important;
+  box-shadow: 0 16px 36px rgba(37, 211, 102, 0.6) !important;
+}
+
+/* 4. Energetic Focus Ring on Search Wrap */
+.search-wrap:focus-within {
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25), 0 10px 30px rgba(16, 185, 129, 0.12) !important;
+  border-color: #10b981 !important;
+}
+
+/* 5. Category Pills: Crisp Spring Hover */
+.pill, .btn-cat {
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.pill:hover, .btn-cat:hover {
+  transform: translateY(-2px) !important;
+}
+
+/* 6. Smooth Scrollbar for Clean UI */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
