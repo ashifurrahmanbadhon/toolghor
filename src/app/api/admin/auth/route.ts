@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, initDatabase } from '@/lib/db';
+import { sendOtpEmail, sendOtpSms } from '@/lib/notifier';
 
 export async function POST(req: NextRequest) {
   try {
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 4. FORGOT PASSWORD - SEND CODE (GMAIL OR PHONE)
+    // 4. FORGOT PASSWORD - DISPATCH CODE TO GMAIL OR PHONE
     if (action === 'forgot_password_send_otp') {
       const { channel } = body; // 'email' or 'phone'
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -123,17 +124,59 @@ export async function POST(req: NextRequest) {
           ? target.slice(0, 4) + '******' + target.slice(-2)
           : target.replace(/^(.{2})(.*)(@.*)$/, '$1***$3');
 
+      // Dispatch to external Gmail / Phone (Never return the code to the client!)
+      if (channel === 'phone') {
+        await sendOtpSms(target, otpCode);
+      } else {
+        await sendOtpEmail(target, otpCode);
+      }
+
       return NextResponse.json({
         success: true,
-        message: `6-digit reset code sent to ${maskedTarget}`,
+        message: `A 6-digit verification code has been sent to your ${channel === 'phone' ? 'Phone (' + maskedTarget + ')' : 'Gmail (' + maskedTarget + ')'}.`,
         channel,
         targetMasked: maskedTarget,
-        // In local development / serverless demo, we also provide the code so the admin can test immediately
-        demoCode: otpCode,
       });
     }
 
-    // 5. FORGOT PASSWORD - VERIFY CODE & SET NEW PASSWORD
+    // 5. FORGOT PASSWORD - VERIFY 6-DIGIT CODE
+    if (action === 'verify_otp') {
+      const { otp } = body;
+      const cleanOtp = (otp || '').trim();
+
+      if (!cleanOtp || cleanOtp.length !== 6) {
+        return NextResponse.json(
+          { success: false, message: 'Please enter a valid 6-digit verification code.' },
+          { status: 400 }
+        );
+      }
+
+      // Check OTP in database and verify it has not expired
+      const otpMatches = account.reset_otp && account.reset_otp === cleanOtp;
+
+      // Check expiration if timestamp exists
+      let isExpired = false;
+      if (account.reset_otp_expires_at) {
+        const expiry = new Date(account.reset_otp_expires_at).getTime();
+        if (Date.now() > expiry) {
+          isExpired = true;
+        }
+      }
+
+      if (!otpMatches || isExpired) {
+        return NextResponse.json(
+          { success: false, message: 'Invalid or expired verification code. Please check your message or request a new one.' },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Code verified successfully! Now please enter your new password.',
+      });
+    }
+
+    // 6. FORGOT PASSWORD - RESET TO NEW PASSWORD AFTER VERIFICATION
     if (action === 'reset_password_verify_otp') {
       const { otp, new_passcode } = body;
       const cleanOtp = (otp || '').trim();
@@ -141,18 +184,24 @@ export async function POST(req: NextRequest) {
 
       if (!cleanNewPass || cleanNewPass.length < 4) {
         return NextResponse.json(
-          { success: false, message: 'New passcode must be at least 4 characters long.' },
+          { success: false, message: 'New password must be at least 4 characters long.' },
           { status: 400 }
         );
       }
 
-      const isOtpValid =
-        account.reset_otp &&
-        account.reset_otp === cleanOtp;
+      const isOtpValid = account.reset_otp && account.reset_otp === cleanOtp;
 
-      if (!isOtpValid) {
+      let isExpired = false;
+      if (account.reset_otp_expires_at) {
+        const expiry = new Date(account.reset_otp_expires_at).getTime();
+        if (Date.now() > expiry) {
+          isExpired = true;
+        }
+      }
+
+      if (!isOtpValid || isExpired) {
         return NextResponse.json(
-          { success: false, message: 'Invalid or expired verification code.' },
+          { success: false, message: 'Invalid or expired verification session. Please restart verification.' },
           { status: 400 }
         );
       }
@@ -169,7 +218,7 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: 'Passcode reset successfully! You can now log in with your new password.',
+        message: 'Password reset successfully! You can now log in with your new password.',
       });
     }
 

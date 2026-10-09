@@ -146,16 +146,16 @@ export default function AdminConsole() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Forgot Password Modal State
+  // Forgot Password Modal State (3-Step Flow: Channel Selection -> Code Input -> Password Creation)
   const [showForgotModal, setShowForgotModal] = useState(false);
-  const [forgotStep, setForgotStep] = useState<'channel' | 'verify'>('channel');
+  const [forgotStep, setForgotStep] = useState<'channel' | 'enter_code' | 'set_password'>('channel');
   const [forgotChannel, setForgotChannel] = useState<'email' | 'phone'>('email');
+  const [forgotTargetMasked, setForgotTargetMasked] = useState<string>('');
   const [forgotOtp, setForgotOtp] = useState('');
   const [forgotNewPass, setForgotNewPass] = useState('');
   const [forgotConfirmPass, setForgotConfirmPass] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMsg, setForgotMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [demoOtpHint, setDemoOtpHint] = useState<string | null>(null);
 
   // Active Menu Tab (Sidebar Navigation)
   const [activeTab, setActiveTab] = useState<MenuTab>('overview');
@@ -407,7 +407,6 @@ export default function AdminConsole() {
   const handleSendForgotOtp = async () => {
     setForgotLoading(true);
     setForgotMsg(null);
-    setDemoOtpHint(null);
     try {
       const res = await fetch('/api/admin/auth', {
         method: 'POST',
@@ -419,12 +418,10 @@ export default function AdminConsole() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setForgotStep('verify');
+        setForgotTargetMasked(data.targetMasked || '');
+        setForgotOtp('');
+        setForgotStep('enter_code');
         setForgotMsg({ type: 'success', text: data.message });
-        if (data.demoCode) {
-          setDemoOtpHint(data.demoCode);
-          setForgotOtp(data.demoCode);
-        }
       } else {
         setForgotMsg({ type: 'error', text: data.message || 'Failed to send verification code.' });
       }
@@ -435,13 +432,41 @@ export default function AdminConsole() {
     }
   };
 
-  const handleVerifyForgotOtp = async (e: React.FormEvent) => {
+  const handleVerifyCodeOnly = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotMsg(null);
-    if (!forgotOtp || forgotOtp.trim().length !== 6) {
+    const cleanOtp = forgotOtp.trim();
+    if (!cleanOtp || cleanOtp.length !== 6) {
       setForgotMsg({ type: 'error', text: 'Please enter the 6-digit verification code.' });
       return;
     }
+    setForgotLoading(true);
+    try {
+      const res = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'verify_otp',
+          otp: cleanOtp,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setForgotMsg({ type: 'success', text: 'Code verified! Now set your new password.' });
+        setForgotStep('set_password');
+      } else {
+        setForgotMsg({ type: 'error', text: data.message || 'Invalid or expired verification code.' });
+      }
+    } catch {
+      setForgotMsg({ type: 'error', text: 'Network error verifying code.' });
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleSetNewPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotMsg(null);
     if (!forgotNewPass || forgotNewPass.length < 4) {
       setForgotMsg({ type: 'error', text: 'New password must be at least 4 characters.' });
       return;
@@ -472,10 +497,10 @@ export default function AdminConsole() {
         setForgotConfirmPass('');
         setForgotMsg(null);
       } else {
-        setForgotMsg({ type: 'error', text: data.message || 'Verification failed.' });
+        setForgotMsg({ type: 'error', text: data.message || 'Password update failed.' });
       }
     } catch {
-      setForgotMsg({ type: 'error', text: 'Network error verifying code.' });
+      setForgotMsg({ type: 'error', text: 'Network error setting new password.' });
     } finally {
       setForgotLoading(false);
     }
@@ -714,7 +739,10 @@ export default function AdminConsole() {
                 setShowForgotModal(true);
                 setForgotStep('channel');
                 setForgotMsg(null);
-                setDemoOtpHint(null);
+                setForgotOtp('');
+                setForgotTargetMasked('');
+                setForgotNewPass('');
+                setForgotConfirmPass('');
               }}
               style={{
                 background: 'none',
@@ -806,12 +834,14 @@ export default function AdminConsole() {
                   <KeyRound size={26} />
                 </div>
                 <h2 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc' }}>
-                  Reset Admin Password
+                  {forgotStep === 'channel' && 'Reset Admin Password'}
+                  {forgotStep === 'enter_code' && 'Enter Verification Code'}
+                  {forgotStep === 'set_password' && 'Create New Password'}
                 </h2>
                 <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
-                  {forgotStep === 'channel'
-                    ? 'Choose how you want to receive your 6-digit verification code.'
-                    : 'Enter the 6-digit verification code sent to your account and set a new password.'}
+                  {forgotStep === 'channel' && 'Choose whether to receive the 6-digit code via Gmail or Phone.'}
+                  {forgotStep === 'enter_code' && 'Enter the 6-digit verification code sent to your account.'}
+                  {forgotStep === 'set_password' && 'Enter and confirm your new password to complete the reset.'}
                 </p>
               </div>
 
@@ -832,7 +862,60 @@ export default function AdminConsole() {
                 </div>
               )}
 
-              {forgotStep === 'channel' ? (
+              {/* 3-Step Progress Indicators */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '20px' }}>
+                <div
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    background: forgotStep === 'channel' ? '#10b981' : 'rgba(16, 185, 129, 0.2)',
+                    color: forgotStep === 'channel' ? '#ffffff' : '#34d399',
+                  }}
+                >
+                  1. Method
+                </div>
+                <div style={{ width: '12px', height: '1px', background: '#334155' }} />
+                <div
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    background:
+                      forgotStep === 'enter_code'
+                        ? '#10b981'
+                        : forgotStep === 'set_password'
+                        ? 'rgba(16, 185, 129, 0.2)'
+                        : '#1e293b',
+                    color:
+                      forgotStep === 'enter_code'
+                        ? '#ffffff'
+                        : forgotStep === 'set_password'
+                        ? '#34d399'
+                        : '#94a3b8',
+                  }}
+                >
+                  2. Verify Code
+                </div>
+                <div style={{ width: '12px', height: '1px', background: '#334155' }} />
+                <div
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    background: forgotStep === 'set_password' ? '#10b981' : '#1e293b',
+                    color: forgotStep === 'set_password' ? '#ffffff' : '#94a3b8',
+                  }}
+                >
+                  3. New Password
+                </div>
+              </div>
+
+              {/* STEP 1: SELECT CHANNEL */}
+              {forgotStep === 'channel' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <label
                     style={{
@@ -901,7 +984,7 @@ export default function AdminConsole() {
                     style={{
                       marginTop: '8px',
                       width: '100%',
-                      padding: '12px',
+                      padding: '13px',
                       borderRadius: '12px',
                       background: '#10b981',
                       color: '#ffffff',
@@ -914,84 +997,67 @@ export default function AdminConsole() {
                     {forgotLoading ? 'Sending Verification Code...' : 'Send Verification Code'}
                   </button>
                 </div>
-              ) : (
-                <form onSubmit={handleVerifyForgotOtp} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              )}
+
+              {/* STEP 2: ENTER CODE ONLY (PASSWORD INPUTS ARE HIDDEN) */}
+              {forgotStep === 'enter_code' && (
+                <form onSubmit={handleVerifyCodeOnly} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div
+                    style={{
+                      background: '#0b0f19',
+                      border: '1px solid #1e293b',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '2px' }}>
+                      Verification code sent to {forgotChannel === 'phone' ? 'Phone' : 'Gmail'}:
+                    </div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#10b981' }}>
+                      {forgotTargetMasked || (forgotChannel === 'phone' ? adminProfile.phone : adminProfile.email)}
+                    </div>
+                  </div>
+
                   <div>
-                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
-                      6-Digit Verification Code
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '8px', color: '#e2e8f0', textAlign: 'center' }}>
+                      Enter 6-Digit Verification Code
                     </label>
                     <input
                       type="text"
+                      inputMode="numeric"
+                      autoFocus
                       maxLength={6}
-                      placeholder="Enter 6-digit code..."
+                      placeholder="• • • • • •"
                       value={forgotOtp}
-                      onChange={(e) => setForgotOtp(e.target.value)}
+                      onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       style={{
                         width: '100%',
-                        padding: '11px 14px',
-                        borderRadius: '10px',
+                        padding: '14px',
+                        borderRadius: '12px',
                         background: '#0b0f19',
-                        border: '1px solid #334155',
+                        border: '1.5px solid #10b981',
                         color: '#f8fafc',
-                        fontSize: '16px',
-                        letterSpacing: '2px',
+                        fontSize: '24px',
+                        letterSpacing: '8px',
                         textAlign: 'center',
-                        fontWeight: 700,
+                        fontWeight: 800,
+                        fontFamily: 'monospace',
+                        outline: 'none',
                       }}
                     />
-                    {demoOtpHint && (
-                      <div style={{ fontSize: '11.5px', color: '#10b981', marginTop: '4px' }}>
-                        ✓ Code Sent: <strong>{demoOtpHint}</strong>
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
-                      New Password
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="At least 4 characters..."
-                      value={forgotNewPass}
-                      onChange={(e) => setForgotNewPass(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '11px 14px',
-                        borderRadius: '10px',
-                        background: '#0b0f19',
-                        border: '1px solid #334155',
-                        color: '#f8fafc',
-                        fontSize: '13.5px',
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
-                      Confirm New Password
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="Re-enter new password..."
-                      value={forgotConfirmPass}
-                      onChange={(e) => setForgotConfirmPass(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '11px 14px',
-                        borderRadius: '10px',
-                        background: '#0b0f19',
-                        border: '1px solid #334155',
-                        color: '#f8fafc',
-                        fontSize: '13.5px',
-                      }}
-                    />
+                    <div style={{ fontSize: '11.5px', color: '#94a3b8', textAlign: 'center', marginTop: '6px' }}>
+                      Please check your inbox/messages and enter the 6-digit code.
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
                     <button
                       type="button"
-                      onClick={() => setForgotStep('channel')}
+                      onClick={() => {
+                        setForgotStep('channel');
+                        setForgotMsg(null);
+                      }}
                       style={{
                         flex: 1,
                         padding: '12px',
@@ -1008,7 +1074,127 @@ export default function AdminConsole() {
                     </button>
                     <button
                       type="submit"
+                      disabled={forgotLoading || forgotOtp.trim().length !== 6}
+                      style={{
+                        flex: 2,
+                        padding: '12px',
+                        borderRadius: '12px',
+                        background: forgotOtp.trim().length === 6 ? '#10b981' : '#334155',
+                        color: '#ffffff',
+                        fontWeight: 700,
+                        fontSize: '13.5px',
+                        border: 'none',
+                        cursor: forgotOtp.trim().length === 6 ? 'pointer' : 'not-allowed',
+                        transition: 'background 0.2s',
+                      }}
+                    >
+                      {forgotLoading ? 'Verifying...' : 'Verify Code'}
+                    </button>
+                  </div>
+
+                  <div style={{ textAlign: 'center', marginTop: '4px' }}>
+                    <button
+                      type="button"
+                      onClick={handleSendForgotOtp}
                       disabled={forgotLoading}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#38bdf8',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                      }}
+                    >
+                      Didn&apos;t receive code? Resend
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* STEP 3: SET NEW PASSWORD (REVEALED ONLY AFTER CODE IS VERIFIED) */}
+              {forgotStep === 'set_password' && (
+                <form onSubmit={handleSetNewPasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div
+                    style={{
+                      background: 'rgba(16,185,129,0.1)',
+                      border: '1px solid rgba(16,185,129,0.3)',
+                      borderRadius: '10px',
+                      padding: '10px 14px',
+                      fontSize: '12.5px',
+                      color: '#34d399',
+                      fontWeight: 600,
+                      textAlign: 'center',
+                    }}
+                  >
+                    ✓ Code verified successfully! Create your new password now.
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
+                      New Admin Password
+                    </label>
+                    <input
+                      type="password"
+                      autoFocus
+                      placeholder="At least 4 characters..."
+                      value={forgotNewPass}
+                      onChange={(e) => setForgotNewPass(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        borderRadius: '10px',
+                        background: '#0b0f19',
+                        border: '1px solid #334155',
+                        color: '#f8fafc',
+                        fontSize: '14px',
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
+                      Confirm New Password
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="Re-enter new password..."
+                      value={forgotConfirmPass}
+                      onChange={(e) => setForgotConfirmPass(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        borderRadius: '10px',
+                        background: '#0b0f19',
+                        border: '1px solid #334155',
+                        color: '#f8fafc',
+                        fontSize: '14px',
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotModal(false)}
+                      style={{
+                        flex: 1,
+                        padding: '12px',
+                        borderRadius: '12px',
+                        background: '#1f2937',
+                        color: '#e2e8f0',
+                        fontWeight: 600,
+                        fontSize: '13.5px',
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={forgotLoading || !forgotNewPass}
                       style={{
                         flex: 2,
                         padding: '12px',
@@ -1018,10 +1204,10 @@ export default function AdminConsole() {
                         fontWeight: 700,
                         fontSize: '13.5px',
                         border: 'none',
-                        cursor: 'pointer',
+                        cursor: forgotLoading || !forgotNewPass ? 'not-allowed' : 'pointer',
                       }}
                     >
-                      {forgotLoading ? 'Verifying...' : 'Set New Password'}
+                      {forgotLoading ? 'Updating Password...' : 'Save New Password'}
                     </button>
                   </div>
                 </form>
