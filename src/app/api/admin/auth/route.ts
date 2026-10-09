@@ -27,10 +27,7 @@ export async function POST(req: NextRequest) {
       const { passcode } = body;
       const cleanPass = (passcode || '').trim();
 
-      const isValid =
-        cleanPass === account.passcode ||
-        cleanPass === 'toolghor2026' ||
-        cleanPass === 'admin123';
+      const isValid = cleanPass === account.passcode;
 
       if (isValid) {
         return NextResponse.json({
@@ -69,10 +66,7 @@ export async function POST(req: NextRequest) {
 
       // Verify current passcode
       const cleanCurrent = (current_passcode || '').trim();
-      const isCurrentValid =
-        cleanCurrent === account.passcode ||
-        cleanCurrent === 'toolghor2026' ||
-        cleanCurrent === 'admin123';
+      const isCurrentValid = cleanCurrent === account.passcode;
 
       if (!isCurrentValid) {
         return NextResponse.json(

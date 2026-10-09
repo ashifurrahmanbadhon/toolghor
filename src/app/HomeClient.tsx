@@ -106,7 +106,7 @@ export default function HomeClient({ initialData }: HomeClientProps) {
     });
   }, [publicData]);
 
-  // Compute active tools list based on database status
+  // Compute active tools list based on database status and active categories
   const activeTools = useMemo(() => {
     if (!publicData || !publicData.tools || publicData.tools.length === 0) {
       return DEFAULT_TOOLS;
@@ -116,9 +116,14 @@ export default function HomeClient({ initialData }: HomeClientProps) {
       dbToolMap[t.slug] = t;
     });
 
+    const activeCatIds = new Set(activeCategories.map((c) => c.id));
+
     return DEFAULT_TOOLS.filter((t) => {
       const dbTool = dbToolMap[t.slug];
-      return dbTool ? dbTool.is_active : true;
+      const isToolActive = dbTool ? dbTool.is_active : true;
+      if (!isToolActive) return false;
+      // Exclude tool if its categories have all been deactivated
+      return t.cats.some((cId) => activeCatIds.has(cId));
     }).map((t) => {
       const dbTool = dbToolMap[t.slug];
       if (dbTool) {
@@ -133,7 +138,7 @@ export default function HomeClient({ initialData }: HomeClientProps) {
       }
       return t;
     });
-  }, [publicData]);
+  }, [publicData, activeCategories]);
 
   // Close suggestions on outside click
   useEffect(() => {

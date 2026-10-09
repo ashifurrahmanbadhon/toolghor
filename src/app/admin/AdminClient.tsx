@@ -353,14 +353,7 @@ export default function AdminConsole() {
         setPinError(true);
       }
     } catch {
-      if (cleanPin === 'admin123' || cleanPin === 'toolghor2026') {
-        sessionStorage.setItem('toolghor_admin_auth', 'true');
-        setIsAuthenticated(true);
-        setPinError(false);
-        fetchAllSections();
-      } else {
-        setPinError(true);
-      }
+      setPinError(true);
     } finally {
       setLoginLoading(false);
     }
