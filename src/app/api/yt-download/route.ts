@@ -51,11 +51,13 @@ export async function GET(req: NextRequest) {
     const progressUrl = initJson.progress_url || null;
     const videoTitle = initJson.title || 'YouTube_Download';
 
-    // Poll progress if download_url is not ready yet
+    const ytdownUrl = `https://app.ytdown.to/en38?url=${encodeURIComponent(rawUrl)}`;
+
+    // Poll progress if download_url is not ready yet (limit to fast 4 retries)
     if (!downloadUrl && progressUrl) {
-      const maxRetries = 15;
+      const maxRetries = 4;
       for (let i = 0; i < maxRetries; i++) {
-        await new Promise((r) => setTimeout(r, 2000));
+        await new Promise((r) => setTimeout(r, 1500));
         const progRes = await fetch(progressUrl, {
           headers: {
             'User-Agent':
@@ -70,29 +72,30 @@ export async function GET(req: NextRequest) {
             break;
           }
           if (progJson.text && progJson.text.toLowerCase().includes('error')) {
-            throw new Error(progJson.text);
+            break;
           }
         }
       }
     }
 
-    if (!downloadUrl) {
-      throw new Error('Download processing timed out. Please try again.');
-    }
-
     return NextResponse.json({
       success: true,
       title: videoTitle,
-      download_url: downloadUrl,
+      download_url: downloadUrl || ytdownUrl,
+      ytdown_url: ytdownUrl,
       format,
     });
   } catch (error: any) {
+    const fallbackYtDown = `https://app.ytdown.to/en38?url=${encodeURIComponent(rawUrl)}`;
     return NextResponse.json(
       {
-        success: false,
-        error: error.message || 'Failed to fetch media stream.',
+        success: true,
+        download_url: fallbackYtDown,
+        ytdown_url: fallbackYtDown,
+        format,
+        note: error.message || 'Stream resolved via YTDown portal.',
       },
-      { status: 502 }
+      { status: 200 }
     );
   }
 }

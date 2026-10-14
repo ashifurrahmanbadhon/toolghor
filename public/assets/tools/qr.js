@@ -14,6 +14,29 @@
     return d;
   }
 
+  function getByteLength(str) {
+    if (!str) return 0;
+    try {
+      return new TextEncoder().encode(str).length;
+    } catch (e) {
+      return encodeURIComponent(str).replace(/%[A-F\d]{2}/g, 'U').length;
+    }
+  }
+  function fitTextToQrBytes(str, maxBytes) {
+    maxBytes = maxBytes || 2850;
+    if (!str) return '';
+    try {
+      var enc = new TextEncoder();
+      var dec = new TextDecoder();
+      var bytes = enc.encode(str);
+      if (bytes.length <= maxBytes) return str;
+      var sliced = bytes.slice(0, maxBytes);
+      return dec.decode(sliced);
+    } catch (e) {
+      return str.slice(0, maxBytes);
+    }
+  }
+
   /* ================= জেনারেটর ================= */
   T['qr-generator'] = function (root) {
     var type = 'text';
@@ -33,7 +56,7 @@
       },
       tel: { label: tr('ফোন নম্বর', "Phone number"), fields: [{ k: 'num', label: tr('ফোন নম্বর', "Phone number"), ph: '01712345678' }], build: function (v) { return v.num ? 'tel:' + UI.toEn(v.num).replace(/\s/g, '') : ''; } }
     };
-    var vals = {}, formBox = UI.el('div', { class: 'stack' }), preview = UI.el('div', { class: 'stack' });
+    var vals = {}, inputEls = {}, formBox = UI.el('div', { class: 'stack' }), preview = UI.el('div', { class: 'stack' });
     var size = UI.select([{ value: 256, label: tr('ছোট (২৫৬ px)', "Small (256 px)") }, { value: 512, label: tr('মাঝারি (৫১২ px)', "Medium (512 px)") }, { value: 1024, label: tr('বড় (১০২৪ px)', "Large (1024 px)") }, { value: 2048, label: tr('প্রিন্টের জন্য (২০৪৮ px)', "For print (2048 px)") }], 512, draw);
     var ecc = UI.select([{ value: 'L', label: tr('L – কম (বেশি তথ্য ধরে)', "L – Low (holds more data)") }, { value: 'M', label: tr('M – মাঝারি (প্রস্তাবিত)', "M – Medium (recommended)") }, { value: 'Q', label: tr('Q – ভালো', "Q – Good") }, { value: 'H', label: tr('H – সর্বোচ্চ (লোগো বসাতে)', "H – Highest (for adding a logo)") }], 'M', draw);
     var margin = UI.select([{ value: 0, label: tr('কোনো ফাঁকা নেই', "No border") }, { value: 2, label: tr('ছোট', "Small") }, { value: 4, label: tr('স্ট্যান্ডার্ড', "Standard") }, { value: 6, label: tr('বড়', "Large") }], 4, draw);
@@ -42,14 +65,63 @@
     var tabs = UI.seg(Object.keys(FORMS).map(function (k) { return { value: k, label: FORMS[k].label }; }), type, function (k) { type = k; vals = {}; buildForm(); draw(); });
     function buildForm() {
       UI.clear(formBox);
+      inputEls = {};
       FORMS[type].fields.forEach(function (f) {
         var c;
-        if (f.kind === 'select') { c = UI.select(f.opts.map(function (o) { return { value: o[0], label: o[1] }; }), f.opts[0][0], function () { vals[f.k] = c.value; draw(); }); vals[f.k] = f.opts[0][0]; }
-        else {
-          c = f.kind === 'textarea' ? UI.el('textarea', { placeholder: f.ph || '' }) : UI.el('input', { type: 'text', placeholder: f.ph || '', autocomplete: 'off' });
-          c.addEventListener('input', function () { vals[f.k] = c.value; drawD(); });
+        if (f.kind === 'select') {
+          c = UI.select(f.opts.map(function (o) { return { value: o[0], label: o[1] }; }), f.opts[0][0], function () { vals[f.k] = c.value; draw(); });
+          vals[f.k] = f.opts[0][0];
+          formBox.appendChild(UI.field(f.label, c, f.hint));
+        } else {
+          c = f.kind === 'textarea' ? UI.el('textarea', { placeholder: f.ph || '', rows: '4' }) : UI.el('input', { type: 'text', placeholder: f.ph || '', autocomplete: 'off' });
+          inputEls[f.k] = c;
+
+          var countWrap = UI.el('div', { style: { display: 'none', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px', fontSize: '12px', flexWrap: 'wrap', gap: '6px' } });
+          var countLbl = UI.el('span', { class: 'lbl' }, '');
+          var trimBtn = UI.el('button', {
+            type: 'button',
+            class: 'btn sm',
+            style: { padding: '2px 8px', fontSize: '11px', display: 'none' }
+          }, tr('✂️ কিউআর কোডের মাপে আনুন (Auto-trim)', '✂️ Auto-trim to fit QR limit'));
+
+          function updateCounter() {
+            var val = c.value || '';
+            var bLen = getByteLength(val);
+            if (!val) {
+              countWrap.style.display = 'none';
+              return;
+            }
+            countWrap.style.display = 'flex';
+            var pct = Math.min(100, Math.round((bLen / 2900) * 100));
+            if (bLen > 2900) {
+              countLbl.innerHTML = '<span style="color:#d9534f;font-weight:700;">⚠️ ' + tr(UI.n(bLen) + ' বাইট (সর্বোচ্চ সীমার চেয়ে ' + UI.n(bLen - 2900) + ' বাইট বেশি)', bLen + ' bytes (exceeds limit by ' + (bLen - 2900) + ' bytes)') + '</span>';
+              trimBtn.style.display = 'inline-flex';
+            } else {
+              countLbl.innerHTML = tr('দৈর্ঘ্য: ' + UI.n(val.length) + ' অক্ষর • সাইজ: ' + UI.n(bLen) + ' / ২,৯০০ বাইট (' + UI.n(pct) + '%)', 'Length: ' + val.length + ' chars • Size: ' + bLen + ' / 2,900 bytes (' + pct + '%)');
+              trimBtn.style.display = 'none';
+            }
+          }
+
+          trimBtn.addEventListener('click', function () {
+            c.value = fitTextToQrBytes(c.value, 2850);
+            vals[f.k] = c.value;
+            updateCounter();
+            draw();
+            UI.toast(tr('✓ লেখাটি কিউআর কোডের সর্বোচ্চ মাপে নিয়ে আসা হয়েছে!', '✓ Text auto-trimmed to fit QR limit!'));
+          });
+
+          c.addEventListener('input', function () {
+            vals[f.k] = c.value;
+            updateCounter();
+            drawD();
+          });
+
+          var fieldWrap = UI.field(f.label, c, f.hint);
+          countWrap.appendChild(countLbl);
+          countWrap.appendChild(trimBtn);
+          fieldWrap.appendChild(countWrap);
+          formBox.appendChild(fieldWrap);
         }
-        formBox.appendChild(UI.field(f.label, c, f.hint));
       });
     }
     var drawD = UI.debounce(draw, 150), last = null;
@@ -86,12 +158,43 @@
         }
       }
 
+      var wasAutoTrimmed = false;
+      var trimmedText = '';
+      if (!q) {
+        // Try safe auto-trimming so QR code is NEVER blocked
+        trimmedText = fitTextToQrBytes(text, 2850);
+        try {
+          if (qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs['UTF-8']) {
+            qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
+          }
+          var autoQ = qrcode(0, 'L');
+          autoQ.addData(trimmedText);
+          autoQ.make();
+          q = autoQ;
+          usedEcc = 'L';
+          wasAutoTrimmed = true;
+        } catch (trimErr) {}
+      }
+
       if (!q) {
         preview.appendChild(UI.notice('err', tr('লেখাটি অনেক বেশি বড় (কিউআর কোডের সর্বোচ্চ ধারণক্ষমতা ২,৯০০ অক্ষরের বেশি)। অনুগ্রহ করে লেখাটি সামান্য সংক্ষেপ করুন।', "The text is too long (exceeds the maximum 2,900 character limit of QR codes). Please shorten the text slightly.")));
         return;
       }
 
-      if (autoAdjusted) {
+      if (wasAutoTrimmed) {
+        var curByteCount = getByteLength(text);
+        var trimNotice = UI.el('div', { class: 'notice warn stack', style: { gap: '8px', marginBottom: '10px' } },
+          UI.el('div', {}, tr('⚠️ লেখাটি কিউআর কোডের সর্বোচ্চ আন্তর্জাতিক সীমা (' + UI.n(curByteCount) + ' বাইট) অতিক্রম করায় প্রথম অংশ দিয়ে স্বয়ংক্রিয়ভাবে কিউআর কোড তৈরি করা হয়েছে।', '⚠️ The text exceeded QR capacity (' + curByteCount + ' bytes). Auto-trimmed to fit the maximum possible QR capacity.')),
+          UI.btn(tr('✂️ ইনপুট বক্সের লেখাও ট্রিম করুন', '✂️ Trim input text as well'), function () {
+            if (inputEls['v']) {
+              inputEls['v'].value = trimmedText;
+              vals['v'] = trimmedText;
+              draw();
+            }
+          }, { cls: 'alt sm' })
+        );
+        preview.appendChild(trimNotice);
+      } else if (autoAdjusted) {
         preview.appendChild(UI.notice('info', tr('লেখাটি বড় হওয়ায় কিউআর কোডটি স্বয়ংক্রিয়ভাবে অপটিমাইজ করে তৈরি করা হয়েছে (ত্রুটি-সংশোধন: ' + usedEcc + ')।', "Auto-optimized error correction level to fit long text (ECC: " + usedEcc + ").")));
       }
       var n = q.getModuleCount(), m = +margin.value, total = n + 2 * m, cell = Math.max(1, Math.floor(+size.value / total));
