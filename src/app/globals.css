@@ -317,20 +317,12 @@ body {
   background: transparent !important;
 }
 
-/* Top Header - Completely Transparent so animated background flows uninterrupted */
+/* Top Header - Stays strictly at the very top, scrolls away naturally when moving down */
 .top {
+  position: relative !important;
+  top: auto !important;
   background: transparent !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
   border-bottom: 1px solid color-mix(in srgb, var(--line) 35%, transparent) !important;
-}
-
-.top.scrolled {
-  background: color-mix(in srgb, var(--paper) 60%, transparent) !important;
-  backdrop-filter: blur(18px) !important;
-  -webkit-backdrop-filter: blur(18px) !important;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
 }
 
 /* Header Action Pills */
