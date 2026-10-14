@@ -5,12 +5,12 @@ import { revalidatePath } from 'next/cache';
 
 export async function GET(req: NextRequest) {
   try {
-    await initDatabase();
     const sql = getDb();
 
-    // Query each section from its own separate table
-    const [heroRows, announcementRows, categoryRows, toolRows, footerRows, creatorRows, apiKeysRows, analyticsRows] =
-      await Promise.all([
+    // Query each section from its own separate table in parallel
+    let rows: any;
+    try {
+      rows = await Promise.all([
         sql`SELECT * FROM section_hero WHERE id = 1 LIMIT 1`,
         sql`SELECT * FROM section_announcement WHERE id = 1 LIMIT 1`,
         sql`SELECT * FROM section_categories ORDER BY display_order ASC`,
@@ -20,6 +20,21 @@ export async function GET(req: NextRequest) {
         sql`SELECT * FROM section_api_keys WHERE id = 1 LIMIT 1`,
         sql`SELECT slug, count, last_used FROM tool_analytics`,
       ]);
+    } catch {
+      await initDatabase();
+      rows = await Promise.all([
+        sql`SELECT * FROM section_hero WHERE id = 1 LIMIT 1`,
+        sql`SELECT * FROM section_announcement WHERE id = 1 LIMIT 1`,
+        sql`SELECT * FROM section_categories ORDER BY display_order ASC`,
+        sql`SELECT * FROM section_tools ORDER BY display_order ASC`,
+        sql`SELECT * FROM section_footer_social WHERE id = 1 LIMIT 1`,
+        sql`SELECT * FROM section_creator_about WHERE id = 1 LIMIT 1`,
+        sql`SELECT * FROM section_api_keys WHERE id = 1 LIMIT 1`,
+        sql`SELECT slug, count, last_used FROM tool_analytics`,
+      ]);
+    }
+
+    const [heroRows, announcementRows, categoryRows, toolRows, footerRows, creatorRows, apiKeysRows, analyticsRows] = rows;
 
     const analyticsMap: Record<string, number> = {};
     analyticsRows.forEach((r: any) => {
@@ -55,7 +70,6 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    await initDatabase();
     const sql = getDb();
     const body = await req.json();
     const { action, payload } = body;
