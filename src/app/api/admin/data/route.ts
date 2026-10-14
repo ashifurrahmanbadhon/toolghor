@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, initDatabase } from '@/lib/db';
+import { clearSiteDataCache } from '@/lib/siteData';
+import { revalidatePath } from 'next/cache';
 
 export async function GET(req: NextRequest) {
   try {
@@ -58,6 +60,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { action, payload } = body;
 
+    function notifyLiveUpdate(message: string, extra: any = {}) {
+      clearSiteDataCache();
+      try {
+        revalidatePath('/', 'page');
+        revalidatePath('/tools/[slug]', 'page');
+      } catch (e) {}
+      return NextResponse.json({ success: true, message, ...extra });
+    }
+
     // 1. Update Hero section independently
     if (action === 'update_hero') {
       const { is_active, tagline_bn, tagline_en, search_placeholder_bn, search_placeholder_en } = payload;
@@ -72,7 +83,7 @@ export async function POST(req: NextRequest) {
           updated_at = CURRENT_TIMESTAMP
         WHERE id = 1;
       `;
-      return NextResponse.json({ success: true, message: 'Hero section updated successfully' });
+      return notifyLiveUpdate('Hero section updated successfully');
     }
 
     // 2. Update Announcement section independently
@@ -88,7 +99,7 @@ export async function POST(req: NextRequest) {
           updated_at = CURRENT_TIMESTAMP
         WHERE id = 1;
       `;
-      return NextResponse.json({ success: true, message: 'Announcement updated successfully' });
+      return notifyLiveUpdate('Announcement updated successfully');
     }
 
     // 3. Category Operations
@@ -115,7 +126,7 @@ export async function POST(req: NextRequest) {
           is_active = EXCLUDED.is_active,
           updated_at = CURRENT_TIMESTAMP;
       `;
-      return NextResponse.json({ success: true, message: `Category ${slug} saved successfully` });
+      return notifyLiveUpdate(`Category ${slug} saved successfully`);
     }
 
     if (action === 'update_category') {
@@ -132,13 +143,13 @@ export async function POST(req: NextRequest) {
           updated_at = CURRENT_TIMESTAMP
         WHERE slug = ${slug};
       `;
-      return NextResponse.json({ success: true, message: `Category ${slug} updated successfully` });
+      return notifyLiveUpdate(`Category ${slug} updated successfully`);
     }
 
     if (action === 'delete_category') {
       const { slug } = payload;
       await sql`DELETE FROM section_categories WHERE slug = ${slug};`;
-      return NextResponse.json({ success: true, message: `Category ${slug} deleted successfully` });
+      return notifyLiveUpdate(`Category ${slug} deleted successfully`);
     }
 
     // 4. Tool Operations
@@ -167,7 +178,7 @@ export async function POST(req: NextRequest) {
           is_active = EXCLUDED.is_active,
           updated_at = CURRENT_TIMESTAMP;
       `;
-      return NextResponse.json({ success: true, message: `Tool ${slug} saved successfully` });
+      return notifyLiveUpdate(`Tool ${slug} saved successfully`);
     }
 
     if (action === 'update_tool') {
@@ -185,13 +196,13 @@ export async function POST(req: NextRequest) {
           updated_at = CURRENT_TIMESTAMP
         WHERE slug = ${slug};
       `;
-      return NextResponse.json({ success: true, message: `Tool ${slug} updated successfully` });
+      return notifyLiveUpdate(`Tool ${slug} updated successfully`);
     }
 
     if (action === 'delete_tool') {
       const { slug } = payload;
       await sql`DELETE FROM section_tools WHERE slug = ${slug};`;
-      return NextResponse.json({ success: true, message: `Tool ${slug} deleted successfully` });
+      return notifyLiveUpdate(`Tool ${slug} deleted successfully`);
     }
 
     // 5. Update Footer & Social section independently
@@ -230,7 +241,7 @@ export async function POST(req: NextRequest) {
           updated_at = CURRENT_TIMESTAMP
         WHERE id = 1;
       `;
-      return NextResponse.json({ success: true, message: 'Footer & Social section updated successfully' });
+      return notifyLiveUpdate('Footer & Social section updated successfully');
     }
 
     // 6. Update Creator & About section independently
@@ -254,7 +265,7 @@ export async function POST(req: NextRequest) {
           updated_at = CURRENT_TIMESTAMP
         WHERE id = 1;
       `;
-      return NextResponse.json({ success: true, message: 'Creator & About section updated successfully' });
+      return notifyLiveUpdate('Creator & About section updated successfully');
     }
 
     // 7. Update API Keys section independently
@@ -275,7 +286,7 @@ export async function POST(req: NextRequest) {
           updated_at = CURRENT_TIMESTAMP
         WHERE id = 1;
       `;
-      return NextResponse.json({ success: true, message: 'API Keys updated successfully' });
+      return notifyLiveUpdate('API Keys updated successfully');
     }
 
     return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 });

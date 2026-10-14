@@ -1106,7 +1106,7 @@
       if (!k) {
         try { k = (localStorage.getItem('th_api_removebg') || '').trim(); } catch (e) { }
       }
-      return k;
+      return k || '***REMOVED***';
     }
 
     // Main workspace container
@@ -1497,17 +1497,32 @@
       var resultCanvas = null;
 
       // Tier 1: remove.bg API if key configured in backend
+      // Tier 1: remove.bg Studio AI API
       var rbgKey = getRemoveBgKey();
-      if (rbgKey && imageFile) {
+      if (imageFile) {
         try {
           var fd = new FormData();
           fd.append('image_file', imageFile);
           fd.append('size', 'auto');
-          var res = await fetch('https://api.remove.bg/v1.0/removebg', {
+
+          // 1. Try secure server proxy
+          var res = await fetch('/api/remove-bg', {
             method: 'POST',
-            headers: { 'X-Api-Key': rbgKey },
             body: fd
           });
+
+          // 2. Direct API call fallback if proxy returned non-200
+          if (!res.ok && rbgKey) {
+            var directFd = new FormData();
+            directFd.append('image_file', imageFile);
+            directFd.append('size', 'auto');
+            res = await fetch('https://api.remove.bg/v1.0/removebg', {
+              method: 'POST',
+              headers: { 'X-Api-Key': rbgKey },
+              body: directFd
+            });
+          }
+
           if (res.ok) {
             var blob = await res.blob();
             var aiImg = await UI.readImage(blob);
@@ -1515,7 +1530,7 @@
             resultCanvas.getContext('2d').drawImage(aiImg, 0, 0);
           }
         } catch (e) {
-          console.warn('remove.bg API call error:', e);
+          console.warn('remove.bg API call error, using local AI model:', e);
         }
       }
 

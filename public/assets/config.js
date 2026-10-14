@@ -46,7 +46,7 @@ var SITE_CONFIG = {
   // এআই API কী (ঐচ্ছিক — ইউজাররা পেজ থেকেও তাদের নিজস্ব কি সেট করতে পারবেন)
   apis: {
     // remove.bg API Key (ব্যাকগ্রাউন্ড রিমুভ টুলে ব্যাকএন্ডে স্বয়ংক্রিয়ভাবে ব্যবহারের জন্য: https://www.remove.bg/api)
-    removeBgKey: '',
+    removeBgKey: '***REMOVED***',
     // Google Gemini API Key (বিশাল ফ্রি কোটা: https://aistudio.google.com/app/apikey)
     geminiKey: '',
     // OpenAI API Key (https://platform.openai.com/api-keys)

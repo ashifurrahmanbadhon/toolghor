@@ -51,3 +51,9 @@ export async function getPublicSiteData() {
     return null;
   }
 }
+
+export function clearSiteDataCache() {
+  cachedSiteData = null;
+  lastCacheTime = 0;
+}
+
