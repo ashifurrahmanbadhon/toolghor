@@ -1,4 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getPublicSiteData } from '@/lib/siteData';
+
+// Default ConvertAPI token from ToolGhor (Netlify & production configuration)
+const DEFAULT_CONVERTAPI_TOKEN = 'skmyWmKCXHFXHogM2ixxitPKCIKUcOEJ';
+
+async function getConvertApiToken(): Promise<string> {
+  const envToken = (process.env.CONVERTAPI_TOKEN || '').trim();
+  if (envToken && envToken !== 'your_token_here' && envToken !== 'your_convertapi_token_here') {
+    return envToken;
+  }
+  try {
+    const siteData = await getPublicSiteData();
+    if (siteData?.apiKeys?.convertapi_active && siteData.apiKeys.convertapi_token) {
+      const dbToken = siteData.apiKeys.convertapi_token.trim();
+      if (dbToken) return dbToken;
+    }
+  } catch (e) {}
+  return DEFAULT_CONVERTAPI_TOKEN;
+}
 
 export async function OPTIONS() {
   return new NextResponse(null, {
@@ -12,28 +31,21 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: NextRequest) {
-  const token = (process.env.CONVERTAPI_TOKEN || '').trim();
-  if (!token || token === 'your_token_here' || token === 'your_convertapi_token_here') {
-    return NextResponse.json(
-      {
-        error: 'ConvertAPI token is not configured on server.',
-      },
-      { status: 503 }
-    );
-  }
+  const token = await getConvertApiToken();
 
   try {
-    const contentType = req.headers.get('content-type') || '';
-    if (!contentType.includes('multipart/form-data')) {
+    const formData = await req.formData();
+    const file = (formData.get('file') || formData.get('File')) as File | null;
+    const pageRange = (formData.get('page_range') || formData.get('PageRange') || '') as string;
+
+    if (!file) {
       return NextResponse.json(
-        { error: 'Expected multipart/form-data' },
+        { error: 'No PDF file provided in request.' },
         { status: 400 }
       );
     }
 
-    const bodyBuffer = await req.arrayBuffer();
-
-    if (bodyBuffer.byteLength > 50 * 1024 * 1024) {
+    if (file.size > 50 * 1024 * 1024) {
       return NextResponse.json(
         {
           error: 'File size exceeds the allowed limit (50MB). Please try a smaller PDF.',
@@ -42,14 +54,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Forward multipart form data directly to ConvertAPI with Bearer token
+    // Forward to ConvertAPI
+    const convertForm = new FormData();
+    convertForm.append('File', file);
+    if (pageRange) {
+      convertForm.append('PageRange', pageRange);
+    }
+    convertForm.append('StoreFile', 'false');
+
     const convertApiResponse = await fetch('https://v2.convertapi.com/convert/pdf/to/docx', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
-        'Content-Type': contentType,
       },
-      body: bodyBuffer,
+      body: convertForm,
     });
 
     if (!convertApiResponse.ok) {
@@ -64,10 +82,45 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await convertApiResponse.json();
-    return NextResponse.json(data, {
+    const files = data.Files || [];
+    if (!files.length) {
+      return NextResponse.json(
+        {
+          error: 'ConvertAPI returned an empty result.',
+        },
+        { status: 500 }
+      );
+    }
+
+    const first = files[0];
+    let docxBuffer: Buffer | null = null;
+
+    if (first.FileData) {
+      docxBuffer = Buffer.from(first.FileData, 'base64');
+    } else if (first.Url) {
+      const dl = await fetch(first.Url);
+      docxBuffer = Buffer.from(await dl.arrayBuffer());
+    }
+
+    if (!docxBuffer) {
+      return NextResponse.json(
+        {
+          error: 'Failed to extract DOCX data from conversion response.',
+        },
+        { status: 500 }
+      );
+    }
+
+    const baseName = file.name.replace(/\.[^/.]+$/, '');
+    const outName = `${baseName}.docx`;
+
+    return new NextResponse(new Uint8Array(docxBuffer), {
       status: 200,
       headers: {
         'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'Content-Disposition': `attachment; filename="${outName}"`,
+        'X-Converted-By': 'ConvertAPI',
       },
     });
   } catch (error: any) {
