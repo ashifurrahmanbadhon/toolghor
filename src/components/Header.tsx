@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 
 export default function Header() {
-  const { lang, setLang, theme, toggleTheme } = useApp();
+  const { lang, setLang } = useApp();
 
   const handleOpenAbout = () => {
     const w = window as any;
@@ -48,7 +48,7 @@ export default function Header() {
             <img
               className="brand-logo"
               data-cfg="logo"
-              src={theme === 'dark' ? '/assets/logo-dark.png' : '/assets/logo.png'}
+              src="/assets/logo.png"
               alt="ToolGhor"
               width={205}
               height={50}
@@ -108,37 +108,6 @@ export default function Header() {
               </button>
             )}
           </div>
-
-          {/* Dark / Light Mode Switcher */}
-          <button
-            type="button"
-            className="pill btn-theme-toggle"
-            id="btn-theme-toggle"
-            aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            title={
-              theme === 'dark'
-                ? lang === 'bn'
-                  ? 'লাইট মোডে পরিবর্তন করুন'
-                  : 'Switch to Light Mode'
-                : lang === 'bn'
-                ? 'ডার্ক মোডে পরিবর্তন করুন'
-                : 'Switch to Dark Mode'
-            }
-            onClick={toggleTheme}
-          >
-            <span aria-hidden="true" style={{ fontSize: '14px' }}>
-              {theme === 'dark' ? '☀️' : '🌙'}
-            </span>
-            <span>
-              {theme === 'dark'
-                ? lang === 'bn'
-                  ? 'লাইট'
-                  : 'Light'
-                : lang === 'bn'
-                ? 'ডার্ক'
-                : 'Dark'}
-            </span>
-          </button>
 
 
           {/* Connect API Keys */}

@@ -185,79 +185,126 @@
       UI.el('small', { class: 'lbl' }, tr('বড় ভিডিওতে সময় লাগে। ১–২ মিনিটের ভিডিওর জন্য সবচেয়ে ভালো। প্রসেস চলার সময় ট্যাব বন্ধ করবেন না।', "Large videos take time. Works best for videos of 1–2 minutes. Do not close this tab while processing."))));
   };
 
-  /* ================= ইউটিউব ভিডিও ও অডিও ডাউনলোডার ================= */
+  /* ================= SnapYT YouTube Downloader (https://www.snapyt.app) ================= */
   T['youtube-downloader'] = function (root) {
     var curData = null;
-    var curMode = 'video'; // 'video' | 'audio' | 'thumb'
-    var selVideoQuality = '720';
-    var selAudioQuality = '320';
+    var curTab = 'video'; // 'video' | 'audio' | 'thumb'
+    var isFetching = false;
 
-    var container = UI.el('div', { class: 'stack yt-box' });
-    var inputWrap = UI.el('div', { class: 'yt-input-row' });
+    var container = UI.el('div', { class: 'stack snapyt-box' });
+
+    // 1. Hero Header
+    var hero = UI.el('div', { class: 'snapyt-hero' },
+      UI.el('span', { class: 'snapyt-badge' }, '⚡ ' + tr('SnapYT ইঞ্জিন • হাই স্পিড', 'SnapYT Engine • High Speed')),
+      UI.el('h2', {}, tr('ইউটিউব ভিডিও ও অডিও ডাউনলোডার', 'YouTube Video & Audio Downloader')),
+      UI.el('p', {}, tr('ইউটিউব ভিডিও বা শর্টস-এর লিংক দিন, পছন্দের কোয়ালিটি নির্বাচন করুন এবং এক ক্লিকে সরাসরি ফাইলে সেভ করুন।', 'Paste a YouTube video or Shorts link, choose your preferred quality, and save the video or audio in seconds.'))
+    );
+
+    // 2. Input Shell (SnapYT styled)
+    var inputShell = UI.el('div', { class: 'snapyt-input-shell' });
+    var inputIcon = UI.el('span', { class: 'snapyt-input-icon', 'aria-hidden': 'true' },
+      UI.icon('youtube', 22)
+    );
     var urlInput = UI.el('input', {
       type: 'url',
-      class: 'yt-url-input',
-      placeholder: tr('ইউটিউব ভিডিও বা শর্টসের লিংক পেস্ট করুন (যেমন: https://www.youtube.com/watch?v=...)', 'Paste YouTube video or Shorts link (e.g. https://www.youtube.com/watch?v=...)'),
+      class: 'snapyt-url-input',
+      id: 'snapyt-video-url',
+      placeholder: tr('ইউটিউব ভিডিও বা শর্টসের লিংক পেস্ট করুন… (যেমন: https://youtu.be/...)', 'Paste YouTube video or Shorts link here…'),
       autocomplete: 'off',
       autocorrect: 'off',
       autocapitalize: 'off',
       spellcheck: 'false'
     });
 
-    var pasteBtn = UI.btn(tr('পেস্ট', 'Paste'), doPaste, { icon: 'copy', cls: 'btn-sub' });
-    var fetchBtn = UI.btn(tr('তথ্য খুঁজুন', 'Fetch Info'), function () { doFetch(urlInput.value); }, { icon: 'search', cls: 'btn-pri' });
     var clearBtn = UI.el('button', {
       type: 'button',
-      class: 'yt-clear-btn',
+      class: 'snapyt-clear-btn',
       title: tr('মুছে ফেলুন', 'Clear'),
       onclick: function () {
         urlInput.value = '';
         clearBtn.hidden = true;
-        renderState(null);
+        renderResult(null);
         urlInput.focus();
       }
     }, '✕');
     clearBtn.hidden = true;
 
-    inputWrap.appendChild(UI.icon('youtube', 22));
-    inputWrap.appendChild(urlInput);
-    inputWrap.appendChild(clearBtn);
-    inputWrap.appendChild(pasteBtn);
-    inputWrap.appendChild(fetchBtn);
+    var pasteBtn = UI.el('button', {
+      type: 'button',
+      class: 'snapyt-paste-btn',
+      title: tr('ক্লিপবোর্ড থেকে পেস্ট করুন', 'Paste from clipboard'),
+      onclick: doClipboardPaste
+    }, '📋 ' + tr('পেস্ট', 'Paste'));
 
-    // Quick samples
-    var samplesWrap = UI.el('div', { class: 'yt-samples-row' },
-      UI.el('span', { class: 'yt-samples-lbl' }, tr('টেস্ট করতে স্যাম্পল লিংক:', 'Test with sample:')),
+    var submitBtn = UI.el('button', {
+      type: 'button',
+      class: 'snapyt-submit-btn',
+      id: 'snapyt-submit-btn',
+      onclick: function () { doFetch(urlInput.value); }
+    }, '🚀 ' + tr('ডাউনলোড', 'Download'));
+
+    inputShell.appendChild(inputIcon);
+    inputShell.appendChild(urlInput);
+    inputShell.appendChild(clearBtn);
+    inputShell.appendChild(pasteBtn);
+    inputShell.appendChild(submitBtn);
+
+    // Tip line
+    var tipLine = UI.el('p', { class: 'snapyt-tip' },
+      tr('💡 পরামর্শ: ইউটিউবে ভিডিওর নিচে Share চেপে "Copy link" চাপুন এবং ওপরের বক্সে পেস্ট করুন।', '💡 Tip: open the YouTube video, tap Share → Copy link, then paste it above.')
+    );
+
+    // Feature Highlights Row (SnapYT style)
+    var featuresRow = UI.el('div', { class: 'snapyt-features' },
+      UI.el('span', { class: 'snapyt-feat-pill' }, '⚡ ' + tr('ইনস্ট্যান্ট ফেচ', 'Instant Fetch')),
+      UI.el('span', { class: 'snapyt-feat-pill' }, '🎬 ' + tr('১০৮০p Full HD পর্যন্ত', 'Up to 1080p Full HD')),
+      UI.el('span', { class: 'snapyt-feat-pill' }, '🎵 ' + tr('হাই-কোয়ালিটি MP3 অডিও', 'High Quality MP3')),
+      UI.el('span', { class: 'snapyt-feat-pill' }, '🔒 ' + tr('১০০% নিরাপদ ও ব্রাউজার-ভিত্তিক', '100% Private, No Login'))
+    );
+
+    // Sample links
+    var samplesWrap = UI.el('div', { class: 'snapyt-samples' },
+      UI.el('span', { style: 'font-size:12px; color:var(--ink-3); font-weight:600;' }, tr('স্যাম্পল টেস্ট:', 'Try sample:')),
       UI.el('button', {
         type: 'button',
-        class: 'yt-sample-chip',
+        class: 'snapyt-sample-chip',
         onclick: function () {
           urlInput.value = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
           clearBtn.hidden = false;
           doFetch(urlInput.value);
         }
-      }, '🎵 Rick Astley - Never Gonna Give You Up'),
+      }, '🎵 Rick Astley (Video)'),
       UI.el('button', {
         type: 'button',
-        class: 'yt-sample-chip',
+        class: 'snapyt-sample-chip',
         onclick: function () {
           urlInput.value = 'https://www.youtube.com/shorts/J46a_iGf3Yg';
           clearBtn.hidden = false;
           doFetch(urlInput.value);
         }
-      }, tr('⚡ ইউটিউব শর্টস', '⚡ YouTube Shorts'))
+      }, '⚡ Shorts Sample')
     );
 
-    var statusBox = UI.el('div', { class: 'yt-status-box' });
-    var resultCard = UI.el('div', { class: 'yt-result-card' });
+    var statusBox = UI.el('div', { class: 'snapyt-status-box' });
+    var resultCard = UI.el('div', { class: 'snapyt-result-card' });
     resultCard.hidden = true;
 
+    // Input handlers
     urlInput.addEventListener('input', function () {
       clearBtn.hidden = !urlInput.value.trim();
       var id = parseYtId(urlInput.value);
       if (id && (!curData || curData.id !== id)) {
         doFetch(urlInput.value);
       }
+    });
+
+    urlInput.addEventListener('paste', function () {
+      setTimeout(function () {
+        clearBtn.hidden = !urlInput.value.trim();
+        if (urlInput.value.trim()) {
+          doFetch(urlInput.value);
+        }
+      }, 50);
     });
 
     urlInput.addEventListener('keydown', function (e) {
@@ -267,11 +314,11 @@
       }
     });
 
-    async function doPaste() {
+    async function doClipboardPaste() {
       try {
         if (navigator.clipboard && navigator.clipboard.readText) {
           var clip = await navigator.clipboard.readText();
-          if (clip) {
+          if (clip && clip.trim()) {
             urlInput.value = clip.trim();
             clearBtn.hidden = false;
             doFetch(urlInput.value);
@@ -280,7 +327,7 @@
         }
       } catch (err) {}
       urlInput.focus();
-      UI.toast(tr('লিংকটি বক্সে পেস্ট (Ctrl+V) করুন', 'Please paste (Ctrl+V) the link into the box'));
+      UI.toast(tr('লিংকটি বক্সে পেস্ট (Ctrl+V) করুন', 'Please paste the link into the box'));
     }
 
     function parseYtId(url) {
@@ -292,19 +339,22 @@
     }
 
     async function doFetch(rawUrl) {
+      if (isFetching) return;
       var id = parseYtId(rawUrl);
       if (!id) {
         UI.clear(statusBox);
         if (rawUrl.trim()) {
-          statusBox.appendChild(UI.notice('err', tr('দয়া করে একটি সঠিক ইউটিউব ভিডিও বা শর্টসের লিংক দিন।', 'Please provide a valid YouTube video or Shorts link.')));
+          statusBox.appendChild(UI.notice('err', tr('দয়া করে একটি সঠিক ইউটিউব ভিডিও বা শর্টসের লিংক প্রদান করুন।', 'Please enter a valid YouTube video or Shorts link.')));
         }
-        renderState(null);
+        renderResult(null);
         return;
       }
 
+      isFetching = true;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '⏳ ' + tr('তথ্য আনা হচ্ছে…', 'Fetching…');
       UI.clear(statusBox);
-      statusBox.appendChild(UI.notice('info', tr('ভিডিওর তথ্য আনা হচ্ছে…', 'Fetching video details…')));
-      fetchBtn.disabled = true;
+      statusBox.appendChild(UI.notice('info', '⏳ ' + tr('ভিডিওর তথ্য অনুসন্ধান করা হচ্ছে, অপেক্ষা করুন…', 'Fetching video details, please wait…')));
 
       var isShorts = /shorts/i.test(rawUrl);
       var canonical = 'https://www.youtube.com/watch?v=' + id;
@@ -323,17 +373,15 @@
           id: id,
           url: canonical,
           title: (meta && meta.title) || tr('ইউটিউব ভিডিও (' + id + ')', 'YouTube Video (' + id + ')'),
-          author: (meta && meta.author_name) || tr('ইউটিউব ক্রিয়েটর', 'YouTube Creator'),
+          author: (meta && meta.author_name) || tr('ইউটিউব চ্যানেল', 'YouTube Channel'),
           isShorts: isShorts,
           thumbMax: thumbMax,
-          thumbHq: thumbHq,
-          thumb: thumbMax
+          thumbHq: thumbHq
         };
 
         UI.clear(statusBox);
-        renderState(curData);
+        renderResult(curData);
       } catch (e) {
-        // Fallback even if oembed is unreachable
         curData = {
           id: id,
           url: canonical,
@@ -341,17 +389,18 @@
           author: tr('ইউটিউব', 'YouTube'),
           isShorts: isShorts,
           thumbMax: thumbMax,
-          thumbHq: thumbHq,
-          thumb: thumbHq
+          thumbHq: thumbHq
         };
         UI.clear(statusBox);
-        renderState(curData);
+        renderResult(curData);
       } finally {
-        fetchBtn.disabled = false;
+        isFetching = false;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '🚀 ' + tr('ডাউনলোড', 'Download');
       }
     }
 
-    function renderState(data) {
+    function renderResult(data) {
       if (!data) {
         resultCard.hidden = true;
         UI.clear(resultCard);
@@ -361,12 +410,11 @@
       resultCard.hidden = false;
       UI.clear(resultCard);
 
-      // Top info section: Thumbnail + Details
-      var previewRow = UI.el('div', { class: 'yt-preview-row' });
-      
-      var thumbBox = UI.el('div', { class: 'yt-thumb-box' });
+      // 1. Preview Top Row
+      var previewRow = UI.el('div', { class: 'snapyt-preview-row' });
+      var thumbWrap = UI.el('div', { class: 'snapyt-thumb-wrap' });
       var img = UI.el('img', {
-        class: 'yt-thumb-img',
+        class: 'snapyt-thumb-img',
         src: data.thumbMax,
         alt: data.title,
         loading: 'lazy',
@@ -374,292 +422,248 @@
           if (this.src !== data.thumbHq) this.src = data.thumbHq;
         }
       });
-      var badge = UI.el('span', { class: 'yt-thumb-badge' }, data.isShorts ? tr('⚡ শর্টস', '⚡ Shorts') : tr('🎬 ইউটিউব HD', '🎬 YouTube HD'));
-      thumbBox.appendChild(img);
-      thumbBox.appendChild(badge);
+      var badge = UI.el('span', { class: 'snapyt-thumb-badge' }, data.isShorts ? '⚡ ' + tr('শর্টস', 'Shorts') : '🎬 HD');
+      thumbWrap.appendChild(img);
+      thumbWrap.appendChild(badge);
 
-      var detailsBox = UI.el('div', { class: 'yt-details-box' });
-      var titleEl = UI.el('h3', { class: 'yt-title' }, data.title);
-      var authorEl = UI.el('div', { class: 'yt-author-row' },
+      var metaCol = UI.el('div', { class: 'snapyt-meta' });
+      metaCol.appendChild(UI.el('h3', { class: 'snapyt-title' }, data.title));
+      metaCol.appendChild(UI.el('div', { class: 'snapyt-author-row' },
         UI.icon('youtube', 18),
-        UI.el('span', { class: 'yt-author-name' }, data.author)
-      );
-      var watchLink = UI.el('a', {
-        class: 'yt-watch-link',
+        UI.el('span', {}, data.author)
+      ));
+      metaCol.appendChild(UI.el('a', {
+        class: 'snapyt-watch-btn',
         href: data.url,
         target: '_blank',
         rel: 'noopener noreferrer'
-      }, UI.icon('external-link', 14), tr('ইউটিউবে সরাসরি দেখুন', 'Watch on YouTube'));
+      }, UI.icon('external-link', 14), tr('ইউটিউবে সরাসরি দেখুন', 'Watch on YouTube')));
 
-      detailsBox.appendChild(titleEl);
-      detailsBox.appendChild(authorEl);
-      detailsBox.appendChild(watchLink);
-
-      previewRow.appendChild(thumbBox);
-      previewRow.appendChild(detailsBox);
+      previewRow.appendChild(thumbWrap);
+      previewRow.appendChild(metaCol);
       resultCard.appendChild(previewRow);
 
-      // Format tabs: Video | Audio | Thumbnail
-      var tabsRow = UI.el('div', { class: 'yt-tabs-nav', role: 'tablist' });
-      var tabVideo = UI.el('button', {
+      // 2. Tabs Switcher: Video | Audio | Thumbnail
+      var tabsNav = UI.el('div', { class: 'snapyt-tabs-nav', role: 'tablist' });
+      var tabVideoBtn = UI.el('button', {
         type: 'button',
-        class: 'yt-tab-btn' + (curMode === 'video' ? ' active' : ''),
-        onclick: function () { curMode = 'video'; updateTabs(); }
+        class: 'snapyt-tab-btn' + (curTab === 'video' ? ' active' : ''),
+        onclick: function () { curTab = 'video'; syncTabs(); }
       }, '🎬 ' + tr('ভিডিও (MP4)', 'Video (MP4)'));
 
-      var tabAudio = UI.el('button', {
+      var tabAudioBtn = UI.el('button', {
         type: 'button',
-        class: 'yt-tab-btn' + (curMode === 'audio' ? ' active' : ''),
-        onclick: function () { curMode = 'audio'; updateTabs(); }
+        class: 'snapyt-tab-btn' + (curTab === 'audio' ? ' active' : ''),
+        onclick: function () { curTab = 'audio'; syncTabs(); }
       }, '🎵 ' + tr('অডিও (MP3/M4A)', 'Audio (MP3/M4A)'));
 
-      var tabThumb = UI.el('button', {
+      var tabThumbBtn = UI.el('button', {
         type: 'button',
-        class: 'yt-tab-btn' + (curMode === 'thumb' ? ' active' : ''),
-        onclick: function () { curMode = 'thumb'; updateTabs(); }
-      }, '🖼️ ' + tr('HD থাম্বনেইল', 'HD Thumbnail'));
+        class: 'snapyt-tab-btn' + (curTab === 'thumb' ? ' active' : ''),
+        onclick: function () { curTab = 'thumb'; syncTabs(); }
+      }, '🖼️ ' + tr('থাম্বনেইল (HD)', 'HD Thumbnail'));
 
-      tabsRow.appendChild(tabVideo);
-      tabsRow.appendChild(tabAudio);
-      tabsRow.appendChild(tabThumb);
-      resultCard.appendChild(tabsRow);
+      tabsNav.appendChild(tabVideoBtn);
+      tabsNav.appendChild(tabAudioBtn);
+      tabsNav.appendChild(tabThumbBtn);
+      resultCard.appendChild(tabsNav);
 
-      var tabContent = UI.el('div', { class: 'yt-tab-content' });
+      var tabContent = UI.el('div', { class: 'snapyt-tab-content' });
       resultCard.appendChild(tabContent);
 
-      function updateTabs() {
-        tabVideo.className = 'yt-tab-btn' + (curMode === 'video' ? ' active' : '');
-        tabAudio.className = 'yt-tab-btn' + (curMode === 'audio' ? ' active' : '');
-        tabThumb.className = 'yt-tab-btn' + (curMode === 'thumb' ? ' active' : '');
+      var downloadStatusWrap = UI.el('div', { class: 'snapyt-dl-status-wrap' });
+      resultCard.appendChild(downloadStatusWrap);
+
+      function syncTabs() {
+        tabVideoBtn.className = 'snapyt-tab-btn' + (curTab === 'video' ? ' active' : '');
+        tabAudioBtn.className = 'snapyt-tab-btn' + (curTab === 'audio' ? ' active' : '');
+        tabThumbBtn.className = 'snapyt-tab-btn' + (curTab === 'thumb' ? ' active' : '');
         UI.clear(tabContent);
 
-        if (curMode === 'video') {
-          renderVideoOptions(tabContent, data);
-        } else if (curMode === 'audio') {
-          renderAudioOptions(tabContent, data);
+        if (curTab === 'video') {
+          renderVideoTable(tabContent, data, downloadStatusWrap);
+        } else if (curTab === 'audio') {
+          renderAudioTable(tabContent, data, downloadStatusWrap);
         } else {
-          renderThumbOptions(tabContent, data);
+          renderThumbnailPanel(tabContent, data, downloadStatusWrap);
         }
       }
 
-      updateTabs();
+      syncTabs();
     }
 
-    function renderVideoOptions(target, data) {
-      var sec = UI.el('div', { class: 'yt-opt-panel' });
-      var head = UI.el('div', { class: 'yt-opt-head' },
-        UI.el('h4', {}, tr('ভিডিও রেজোলিউশন ও কোয়ালিটি নির্বাচন করুন:', 'Select Video Resolution & Quality:'))
+    // Video Table (SnapYT layout)
+    function renderVideoTable(target, data, statusWrap) {
+      var tableWrap = UI.el('div', { class: 'snapyt-table-wrap' });
+      var table = UI.el('table', { class: 'snapyt-table' });
+
+      var thead = UI.el('thead', {},
+        UI.el('tr', {},
+          UI.el('th', {}, tr('রেজোলিউশন / কোয়ালিটি', 'Resolution / Quality')),
+          UI.el('th', {}, tr('ফরম্যাট', 'Format')),
+          UI.el('th', {}, tr('স্ট্যাটাস', 'Status')),
+          UI.el('th', { style: 'text-align:right;' }, tr('অ্যাকশন', 'Action'))
+        )
       );
 
-      var qGrid = UI.el('div', { class: 'yt-q-grid' });
-      var qualities = [
-        { id: '1080', label: '1080p (Full HD)', sub: tr('সেরা মান • বড় সাইজ', 'Best Quality • Crisp Details') },
-        { id: '720', label: '720p (HD)', sub: tr('প্রস্তাবিত • দ্রুত ডাউনলোড', 'Recommended • Fast Download'), rec: true },
-        { id: '480', label: '480p (SD)', sub: tr('মাঝারি কোয়ালিটি', 'Standard Definition • Light') },
-        { id: '360', label: '360p (Mobile)', sub: tr('কম ডাটা খরচ • ছোট সাইজ', 'Mobile Friendly • Low Data') }
+      var tbody = UI.el('tbody');
+      var videoRows = [
+        { id: '1080', label: '1080p (Full HD)', tag: tr('🔥 সেরা মান', 'Ultra HD'), rec: true },
+        { id: '720', label: '720p (HD)', tag: tr('✨ প্রস্তাবিত', 'Recommended'), rec: true },
+        { id: '480', label: '480p (SD)', tag: tr('স্ট্যান্ডার্ড', 'Standard'), rec: false },
+        { id: '360', label: '360p (Mobile)', tag: tr('📱 কম ডাটা', 'Lightweight'), rec: false }
       ];
 
-      qualities.forEach(function (q) {
-        var card = UI.el('button', {
+      videoRows.forEach(function (v) {
+        var trRow = UI.el('tr');
+        var tdQual = UI.el('td', {},
+          UI.el('strong', { style: 'font-size:15px;' }, v.label)
+        );
+        var tdFmt = UI.el('td', {},
+          UI.el('span', { style: 'font-weight:700; color:var(--ink-2);' }, 'MP4')
+        );
+        var tdStatus = UI.el('td', {},
+          UI.el('span', { class: 'snapyt-badge-tag ' + (v.rec ? 'rec' : 'std') }, v.tag)
+        );
+
+        var dlBtn = UI.el('button', {
           type: 'button',
-          class: 'yt-q-card' + (selVideoQuality === q.id ? ' sel' : '') + (q.rec ? ' rec' : ''),
-          title: tr('ক্লিক করলেই ডাউনলোড শুরু হবে', 'Click to start download immediately'),
+          class: 'snapyt-table-btn',
+          title: tr('ক্লিক করলেই ফাইল ডাউনলোড শুরু হবে', 'Click to start direct file download'),
           onclick: function () {
-            selVideoQuality = q.id;
-            qGrid.querySelectorAll('.yt-q-card').forEach(function (c) { c.classList.remove('sel'); });
-            card.classList.add('sel');
-            triggerDownload('video', data, q.id, mainBtn, statusTarget);
+            startDirectDownload('video', data, v.id, dlBtn, statusWrap);
           }
-        });
-        if (q.rec) {
-          card.appendChild(UI.el('span', { class: 'yt-q-rec-badge' }, tr('সেরা পছন্দ', 'Popular')));
-        }
-        card.appendChild(UI.el('b', { class: 'yt-q-title' }, q.label));
-        card.appendChild(UI.el('small', { class: 'yt-q-sub' }, q.sub));
-        card.appendChild(UI.el('span', { class: 'yt-card-dl-tag' }, '📥 ' + tr('ডাউনলোড শুরু করুন', 'Download Now')));
-        qGrid.appendChild(card);
+        }, '📥 ' + tr('ডাউনলোড', 'Download'));
+
+        var tdAction = UI.el('td', { style: 'text-align:right;' }, dlBtn);
+
+        trRow.appendChild(tdQual);
+        trRow.appendChild(tdFmt);
+        trRow.appendChild(tdStatus);
+        trRow.appendChild(tdAction);
+        tbody.appendChild(trRow);
       });
 
-      var actionWrap = UI.el('div', { class: 'yt-action-wrap' });
-      var statusTarget = UI.el('div', { class: 'yt-action-status' });
-      var mainBtn = UI.btn(tr('🎬 MP4 ভিডিও ডাউনলোড শুরু করুন', '🎬 Download MP4 Video'), function () {
-        triggerDownload('video', data, selVideoQuality, mainBtn, statusTarget);
-      }, { cls: 'btn-pri yt-main-dl-btn' });
-      actionWrap.appendChild(mainBtn);
-      actionWrap.appendChild(statusTarget);
+      table.appendChild(thead);
+      table.appendChild(tbody);
+      tableWrap.appendChild(table);
+      target.appendChild(tableWrap);
+    }
 
-      var altNote = UI.el('div', { class: 'yt-server-note' },
-        UI.el('p', { class: 'yt-note-text' }, tr('💡 দ্রুত ডাউনলোডের বিকল্প সার্ভার গেটওয়ে:', '💡 Alternative download server gateways:')),
-        UI.el('div', { class: 'yt-server-buttons' },
-          UI.btn('⚡ ' + tr('সার্ভার ১ (YTDown - ফাস্ট ডাউনলোড)', 'Server 1 (YTDown - Fast Direct)'), function () {
-            openResolver('ytdown', data.url);
-          }, { cls: 'btn-sub' }),
-          UI.btn('🚀 ' + tr('সার্ভার ২ (Cobalt - বিজ্ঞাপনমুক্ত)', 'Server 2 (Cobalt - Ad-Free)'), function () {
-            openResolver('cobalt', data.url);
-          }, { cls: 'btn-sub' }),
-          UI.btn('🔥 ' + tr('সার্ভার ৩ (SaveFrom ডিরেক্ট)', 'Server 3 (SaveFrom Direct)'), function () {
-            openResolver('savefrom', data.url);
-          }, { cls: 'btn-sub' }),
-          UI.btn('✨ ' + tr('সার্ভার ৪ (Y2Mate গেটওয়ে)', 'Server 4 (Y2Mate Gateway)'), function () {
-            openResolver('y2mate', data.url);
-          }, { cls: 'btn-sub' })
+    // Audio Table (SnapYT layout)
+    function renderAudioTable(target, data, statusWrap) {
+      var tableWrap = UI.el('div', { class: 'snapyt-table-wrap' });
+      var table = UI.el('table', { class: 'snapyt-table' });
+
+      var thead = UI.el('thead', {},
+        UI.el('tr', {},
+          UI.el('th', {}, tr('অডিও ফরম্যাট', 'Audio Format')),
+          UI.el('th', {}, tr('বিপরেট / মান', 'Quality')),
+          UI.el('th', {}, tr('স্ট্যাটাস', 'Status')),
+          UI.el('th', { style: 'text-align:right;' }, tr('অ্যাকশন', 'Action'))
         )
       );
 
-      sec.appendChild(head);
-      sec.appendChild(qGrid);
-      sec.appendChild(actionWrap);
-      sec.appendChild(altNote);
-      target.appendChild(sec);
-    }
-
-    function renderAudioOptions(target, data) {
-      var sec = UI.el('div', { class: 'yt-opt-panel' });
-      var head = UI.el('div', { class: 'yt-opt-head' },
-        UI.el('h4', {}, tr('অডিও ফরম্যাট ও সাউন্ড কোয়ালিটি নির্বাচন করুন:', 'Select Audio Format & Sound Quality:'))
-      );
-
-      var qGrid = UI.el('div', { class: 'yt-q-grid' });
-      var audios = [
-        { id: '320', label: tr('MP3 (৩২০ kbps)', 'MP3 (320 kbps)'), sub: tr('স্টুডিও সাউন্ড • সর্বোচ্চ মান', 'Studio Sound • Ultra Quality'), rec: true },
-        { id: '256', label: tr('MP3 (২৫৬ kbps)', 'MP3 (256 kbps)'), sub: tr('উচ্চমানের অডিও • ক্লিয়ার বেস', 'High Quality • Clear Sound') },
-        { id: '128', label: tr('MP3 (১২৮ kbps)', 'MP3 (128 kbps)'), sub: tr('স্ট্যান্ডার্ড সাইজ • দ্রুত ডাউনলোড', 'Standard Size • Fast Download') },
-        { id: 'm4a', label: tr('M4A (AAC অরিজিনাল)', 'M4A (Original AAC)'), sub: tr('ইউটিউবের মূল অডিও ট্র্যাক', 'Original YouTube Audio Track') }
+      var tbody = UI.el('tbody');
+      var audioRows = [
+        { id: 'mp3', label: 'MP3 Audio (320 kbps)', sub: tr('স্টুডিও সাউন্ড', 'Studio Sound'), tag: tr('🎵 সেরা কোয়ালিটি', 'High Quality'), rec: true },
+        { id: 'm4a', label: 'M4A Audio (AAC)', sub: tr('অরিজিনাল ইউটিউব অডিও', 'Original Audio'), tag: tr('⚡ সুপার ফাস্ট', 'Super Fast'), rec: false }
       ];
 
-      audios.forEach(function (q) {
-        var card = UI.el('button', {
+      audioRows.forEach(function (a) {
+        var trRow = UI.el('tr');
+        var tdFmt = UI.el('td', {},
+          UI.el('strong', { style: 'font-size:15px;' }, a.label),
+          UI.el('div', { style: 'font-size:12px; color:var(--ink-3); margin-top:2px;' }, a.sub)
+        );
+        var tdBitrate = UI.el('td', {},
+          UI.el('span', { style: 'font-weight:700; color:var(--ink-2);' }, a.id.toUpperCase())
+        );
+        var tdStatus = UI.el('td', {},
+          UI.el('span', { class: 'snapyt-badge-tag ' + (a.rec ? 'rec' : 'std') }, a.tag)
+        );
+
+        var dlBtn = UI.el('button', {
           type: 'button',
-          class: 'yt-q-card' + (selAudioQuality === q.id ? ' sel' : '') + (q.rec ? ' rec' : ''),
-          title: tr('ক্লিক করলেই অডিও ডাউনলোড শুরু হবে', 'Click to start audio download immediately'),
+          class: 'snapyt-table-btn',
+          title: tr('ক্লিক করলেই অডিও ডাউনলোড শুরু হবে', 'Click to start direct audio download'),
           onclick: function () {
-            selAudioQuality = q.id;
-            qGrid.querySelectorAll('.yt-q-card').forEach(function (c) { c.classList.remove('sel'); });
-            card.classList.add('sel');
-            triggerDownload('audio', data, q.id, mainBtn, statusTarget);
+            startDirectDownload('audio', data, a.id, dlBtn, statusWrap);
           }
-        });
-        if (q.rec) {
-          card.appendChild(UI.el('span', { class: 'yt-q-rec-badge' }, tr('সেরা সাউন্ড', 'Best Audio')));
-        }
-        card.appendChild(UI.el('b', { class: 'yt-q-title' }, q.label));
-        card.appendChild(UI.el('small', { class: 'yt-q-sub' }, q.sub));
-        card.appendChild(UI.el('span', { class: 'yt-card-dl-tag' }, '📥 ' + tr('ডাউনলোড শুরু করুন', 'Download Now')));
-        qGrid.appendChild(card);
+        }, '📥 ' + tr('ডাউনলোড', 'Download'));
+
+        var tdAction = UI.el('td', { style: 'text-align:right;' }, dlBtn);
+
+        trRow.appendChild(tdFmt);
+        trRow.appendChild(tdBitrate);
+        trRow.appendChild(tdStatus);
+        trRow.appendChild(tdAction);
+        tbody.appendChild(trRow);
       });
 
-      var actionWrap = UI.el('div', { class: 'yt-action-wrap' });
-      var statusTarget = UI.el('div', { class: 'yt-action-status' });
-      var mainBtn = UI.btn(tr('🎵 MP3 অডিও ডাউনলোড শুরু করুন', '🎵 Download MP3 Audio'), function () {
-        triggerDownload('audio', data, selAudioQuality, mainBtn, statusTarget);
-      }, { cls: 'btn-pri yt-main-dl-btn' });
-      actionWrap.appendChild(mainBtn);
-      actionWrap.appendChild(statusTarget);
-
-      var altNote = UI.el('div', { class: 'yt-server-note' },
-        UI.el('p', { class: 'yt-note-text' }, tr('💡 অডিও ডাউনলোডের বিকল্প গেটওয়ে:', '💡 Alternative Audio Download Gateways:')),
-        UI.el('div', { class: 'yt-server-buttons' },
-          UI.btn('⚡ ' + tr('অডিও সার্ভার ১ (YTDown MP3)', 'Audio Server 1 (YTDown MP3)'), function () {
-            openResolver('ytdown-audio', data.url);
-          }, { cls: 'btn-sub' }),
-          UI.btn('🚀 ' + tr('অডিও সার্ভার ২ (Cobalt অডিও)', 'Audio Server 2 (Cobalt Audio)'), function () {
-            openResolver('cobalt-audio', data.url);
-          }, { cls: 'btn-sub' }),
-          UI.btn('🔥 ' + tr('অডিও সার্ভার ৩ (Y2Mate MP3)', 'Audio Server 3 (Y2Mate MP3)'), function () {
-            openResolver('y2mate-audio', data.url);
-          }, { cls: 'btn-sub' }),
-          UI.btn('✨ ' + tr('অডিও সার্ভার ৪ (YT1s MP3)', 'Audio Server 4 (YT1s MP3)'), function () {
-            openResolver('yt1s-audio', data.url);
-          }, { cls: 'btn-sub' })
-        )
-      );
-
-      // Local companion tool banner
-      var rootUrl = UI.getRoot ? UI.getRoot() : '';
-      var companionBanner = UI.el('div', { class: 'yt-companion-box' },
-        UI.icon('audio-lines', 24),
-        UI.el('div', { class: 'yt-companion-text' },
-          UI.el('b', {}, tr('আপনার কাছে কি আগেই কোনো ভিডিও ফাইল ডাউনলোড করা আছে?', 'Already have a video file saved on your device?')),
-          UI.el('p', {}, tr('সেটির অডিও আলাদা করতে আমাদের সম্পূর্ণ অফলাইন ও ব্রাউজার-ভিত্তিক ', 'To extract its audio 100% locally in your browser, try our '),
-            UI.el('a', { href: rootUrl + (UI.lang === 'bn' ? 'bn/' : '') + 'tools/audio-extractor/index.html' }, tr('ভিডিও থেকে অডিও (Audio Extractor)', 'Audio Extractor')),
-            tr(' টুলটি ব্যবহার করতে পারেন। কোনো ইন্টারনেট ডাটা খরচ হবে না।', ' tool. No extra internet data is used.')
-          )
-        )
-      );
-
-      sec.appendChild(head);
-      sec.appendChild(qGrid);
-      sec.appendChild(actionWrap);
-      sec.appendChild(altNote);
-      sec.appendChild(companionBanner);
-      target.appendChild(sec);
+      table.appendChild(thead);
+      table.appendChild(tbody);
+      tableWrap.appendChild(table);
+      target.appendChild(tableWrap);
     }
 
-    function renderThumbOptions(target, data) {
-      var sec = UI.el('div', { class: 'yt-opt-panel' });
-      var head = UI.el('div', { class: 'yt-opt-head' },
-        UI.el('h4', {}, tr('হাই-রেজুলেশন থাম্বনেইল (HD Thumbnail):', 'High-Resolution Thumbnail (HD):'))
-      );
-
-      var preview = UI.el('div', { class: 'yt-thumb-full-wrap' },
+    // Thumbnail Panel
+    function renderThumbnailPanel(target, data) {
+      var wrap = UI.el('div', { style: 'display:flex; flex-direction:column; gap:14px; align-items:center;' });
+      var imgBox = UI.el('div', { style: 'width:100%; max-width:540px; border-radius:14px; overflow:hidden; border:1px solid var(--line); box-shadow:0 6px 20px rgba(0,0,0,0.12);' },
         UI.el('img', {
-          class: 'yt-thumb-full-img',
           src: data.thumbMax,
-          alt: data.title,
+          style: 'width:100%; height:auto; display:block;',
           onerror: function () { if (this.src !== data.thumbHq) this.src = data.thumbHq; }
         })
       );
 
-      var dlThumbBtn = UI.btn(tr('🖼️ HD থাম্বনেইল সরাসরি ডাউনলোড করুন (JPG)', '🖼️ Download HD Thumbnail (JPG)'), async function () {
-        dlThumbBtn.disabled = true;
-        try {
-          UI.toast(tr('থাম্বনেইল ডাউনলোড হচ্ছে…', 'Downloading thumbnail…'));
-          var r = await fetch(data.thumbMax);
-          if (!r.ok) r = await fetch(data.thumbHq);
-          var blob = await r.blob();
-          var safeName = (data.title || 'thumbnail').replace(/[^\w\s\u0980-\u09FF-]/g, '').trim().slice(0, 40) || 'youtube-thumbnail';
-          UI.download(blob, safeName + '-thumbnail.jpg');
-          UI.toast(tr('✓ থাম্বনেইল ডাউনলোড সম্পন্ন হয়েছে', '✓ Thumbnail downloaded successfully'));
-        } catch (e) {
-          window.open(data.thumbMax, '_blank');
-        } finally {
-          dlThumbBtn.disabled = false;
+      var dlThumbBtn = UI.el('button', {
+        type: 'button',
+        class: 'snapyt-table-btn',
+        style: 'padding:12px 28px; font-size:15px;',
+        onclick: async function () {
+          dlThumbBtn.disabled = true;
+          dlThumbBtn.innerHTML = '⏳ ' + tr('ডাউনলোড হচ্ছে…', 'Downloading…');
+          try {
+            var r = await fetch(data.thumbMax);
+            if (!r.ok) r = await fetch(data.thumbHq);
+            var blob = await r.blob();
+            var safeName = (data.title || 'youtube-thumbnail').replace(/[/\\?%*:|"<>]/g, '_').slice(0, 45);
+            UI.download(blob, safeName + '-thumbnail.jpg');
+            UI.toast(tr('✓ থাম্বনেইল সফলভাবে ডাউনলোড সম্পন্ন!', '✓ Thumbnail downloaded!'));
+          } catch (e) {
+            window.open(data.thumbMax, '_blank');
+          } finally {
+            dlThumbBtn.disabled = false;
+            dlThumbBtn.innerHTML = '🖼️ ' + tr('HD থাম্বনেইল ডাউনলোড করুন (JPG)', 'Download HD Thumbnail (JPG)');
+          }
         }
-      }, { cls: 'btn-pri yt-main-dl-btn' });
+      }, '🖼️ ' + tr('HD থাম্বনেইল ডাউনলোড করুন (JPG)', 'Download HD Thumbnail (JPG)'));
 
-      sec.appendChild(head);
-      sec.appendChild(preview);
-      sec.appendChild(UI.el('div', { class: 'yt-action-wrap' }, dlThumbBtn));
-      target.appendChild(sec);
+      wrap.appendChild(imgBox);
+      wrap.appendChild(dlThumbBtn);
+      target.appendChild(wrap);
     }
 
-    async function triggerDownload(mode, data, quality, btn, statusTarget) {
-      var origContent = btn ? btn.innerHTML : '';
-      if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '⏳ ' + tr('প্রস্তুত হচ্ছে…', 'Preparing…');
-      }
+    // SnapYT Direct in-browser download executor
+    async function startDirectDownload(mode, data, quality, btn, statusWrap) {
+      var origBtnContent = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ ' + tr('প্রস্তুত হচ্ছে…', 'Preparing…');
 
-      var fmt = '720';
-      if (mode === 'audio') {
-        fmt = (quality === 'm4a') ? 'm4a' : 'mp3';
-      } else {
-        fmt = quality || '720';
-      }
-
+      var fmt = quality || (mode === 'audio' ? 'mp3' : '720');
       var ext = mode === 'audio' ? (quality === 'm4a' ? 'm4a' : 'mp3') : 'mp4';
-      var cleanTitle = (data.title || 'video').replace(/[/\\?%*:|"<>]/g, '_');
-      var downloadFileName = cleanTitle + '.' + ext;
+      var cleanTitle = (data.title || 'video').replace(/[/\\?%*:|"<>]/g, '_').trim();
+      var fileName = cleanTitle + '.' + ext;
 
-      if (statusTarget) {
-        UI.clear(statusTarget);
-        var loadingCard = UI.el('div', {
-          class: 'stack yt-success-box',
-          style: 'margin-top:14px; padding:18px; background:color-mix(in srgb, var(--paddy) 8%, var(--paper)); border-radius:14px; border:1.5px solid color-mix(in srgb, var(--paddy) 35%, var(--line)); animation: spaFadeIn .2s ease-out;'
-        });
-        loadingCard.appendChild(UI.notice('info', '⏳ ' + tr('আপনার ' + (mode === 'audio' ? 'অডিও' : 'ভিডিও') + ' (' + quality + ') ফাইলটি প্রস্তুত করা হচ্ছে, অনুগ্রহ করে কয়েক সেকেন্ড অপেক্ষা করুন…', 'Preparing ' + (mode === 'audio' ? 'audio' : 'video') + ' (' + quality + ') file, please wait a moment…')));
-        statusTarget.appendChild(loadingCard);
-      }
+      UI.clear(statusWrap);
+      var progressNotice = UI.el('div', {
+        class: 'snapyt-dl-alert',
+        style: 'background:color-mix(in srgb, var(--paddy) 9%, var(--paper)); border-color:var(--paddy);'
+      });
+      progressNotice.appendChild(UI.notice('info', '⏳ ' + tr('আপনার ' + (mode === 'audio' ? 'অডিও' : 'ভিডিও') + ' (' + quality + ') ফাইলটি প্রস্তুত হচ্ছে, অনুগ্রহ করে কয়েক সেকেন্ড অপেক্ষা করুন…', 'Preparing ' + (mode === 'audio' ? 'audio' : 'video') + ' (' + quality + ') download stream, please wait a moment…')));
+      statusWrap.appendChild(progressNotice);
 
       try {
         var endpoint = '/api/yt-download?url=' + encodeURIComponent(data.url) + '&format=' + encodeURIComponent(fmt);
@@ -667,100 +671,60 @@
         var json = await res.json();
 
         if (json && json.download_url) {
-          // Trigger browser direct download instantly
+          // Trigger in-browser direct download instantly
           var dlAnchor = document.createElement('a');
           dlAnchor.href = json.download_url;
-          dlAnchor.setAttribute('download', downloadFileName);
+          dlAnchor.setAttribute('download', fileName);
           dlAnchor.setAttribute('target', '_blank');
           dlAnchor.setAttribute('rel', 'noopener noreferrer');
           document.body.appendChild(dlAnchor);
           dlAnchor.click();
           setTimeout(function () { dlAnchor.remove(); }, 2000);
 
-          if (statusTarget) {
-            UI.clear(statusTarget);
-            var successWrap = UI.el('div', {
-              class: 'stack yt-success-box',
-              style: 'margin-top:14px; padding:18px; background:color-mix(in srgb, #10b981 12%, var(--paper)); border-radius:14px; border:1.5px solid #10b981;'
-            });
-            successWrap.appendChild(UI.notice('ok', tr('✓ আপনার ' + (mode === 'audio' ? 'অডিও' : 'ভিডিও') + ' ডাউনলোডটি শুরু হয়েছে! আপনার ব্রাউজারের ডাউনলোড হিস্ট্রি চেক করুন।', '✓ Your download has started! Please check your browser downloads.')));
+          UI.clear(statusWrap);
+          var successNotice = UI.el('div', { class: 'snapyt-dl-alert' });
+          successNotice.appendChild(UI.notice('ok', tr('✓ আপনার ' + (mode === 'audio' ? 'অডিও' : 'ভিডিও') + ' ডাউনলোডটি শুরু হয়েছে! আপনার ব্রাউজারের ডাউনলোড ফোল্ডার চেক করুন।', '✓ Download started! Please check your browser downloads.')));
 
-            var actionRow = UI.el('div', { style: 'display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:center;' });
-            var manualDl = UI.btn('📥 ' + tr('ডাউনলোড শুরু না হলে সরাসরি এখানে ক্লিক করুন', 'Click here if download did not start'), function () {
-              window.location.href = json.download_url;
-            }, { cls: 'btn-pri sm' });
-            actionRow.appendChild(manualDl);
-            successWrap.appendChild(actionRow);
-            statusTarget.appendChild(successWrap);
-          }
+          var manualBtnWrap = UI.el('div', { style: 'margin-top:10px;' });
+          var manualBtn = UI.btn('📥 ' + tr('ডাউনলোড শুরু না হলে সরাসরি এখানে ক্লিক করুন', 'Click here if download did not start'), function () {
+            window.location.href = json.download_url;
+          }, { cls: 'btn-pri sm' });
+          manualBtnWrap.appendChild(manualBtn);
+          successNotice.appendChild(manualBtnWrap);
+          statusWrap.appendChild(successNotice);
 
-          UI.toast(tr('✓ আপনার ফাইলটি ডাউনলোড হচ্ছে!', '✓ File downloading!'));
+          UI.toast(tr('✓ ডাউনলোড শুরু হয়েছে!', '✓ Download started!'));
         } else {
-          // Server could not obtain direct stream link immediately, provide direct 1-click fallback
+          // Upstream fallback
           var ytdownUrl = json.ytdown_url || ('https://app.ytdown.to/en38?url=' + encodeURIComponent(data.url));
-          if (statusTarget) {
-            UI.clear(statusTarget);
-            var fallbackCard = UI.el('div', {
-              class: 'stack yt-success-box',
-              style: 'margin-top:14px; padding:18px; background:color-mix(in srgb, #f59e0b 10%, var(--paper)); border-radius:14px; border:1.5px solid #f59e0b;'
-            });
-            fallbackCard.appendChild(UI.notice('warn', tr('⚡ স্ট্রিম সার্ভারে সরাসরি ফাইল তৈরি হয়েছে। নিচের বাটনে ক্লিক করে ফাইলটি সেভ করুন:', '⚡ Stream ready. Click the button below to save your file:')));
-
-            var fallbackRow = UI.el('div', { style: 'display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;' });
-            var saveBtn = UI.btn('🚀 ' + tr('ফাইল ডাউনলোড করুন (Save File)', 'Download / Save File'), function () {
-              window.open(ytdownUrl, '_blank', 'noopener,noreferrer');
-            }, { cls: 'btn-pri sm' });
-            fallbackRow.appendChild(saveBtn);
-            fallbackCard.appendChild(fallbackRow);
-            statusTarget.appendChild(fallbackCard);
-          }
+          UI.clear(statusWrap);
+          var fallbackNotice = UI.el('div', {
+            class: 'snapyt-dl-alert',
+            style: 'background:color-mix(in srgb, #f59e0b 12%, var(--paper)); border-color:#f59e0b;'
+          });
+          fallbackNotice.appendChild(UI.notice('warn', tr('⚡ স্ট্রিম প্রস্তুত। ফাইলটি সেভ করতে নিচের বাটনে চাপুন:', '⚡ Stream ready. Click the button below to save file:')));
+          var saveBtn = UI.btn('🚀 ' + tr('ফাইল সেভ করুন', 'Save File'), function () {
+            window.open(ytdownUrl, '_blank', 'noopener,noreferrer');
+          }, { cls: 'btn-pri sm', style: 'margin-top:10px;' });
+          fallbackNotice.appendChild(saveBtn);
+          statusWrap.appendChild(fallbackNotice);
         }
       } catch (err) {
-        console.warn('[Direct download error]', err);
-        var ytdownUrlErr = 'https://app.ytdown.to/en38?url=' + encodeURIComponent(data.url);
-        if (statusTarget) {
-          UI.clear(statusTarget);
-          var errCard = UI.el('div', { class: 'stack', style: 'margin-top:12px;' });
-          errCard.appendChild(UI.notice('warn', tr('⚡ ডাউনলোড লিঙ্কটি প্রস্তুত। নিচে ক্লিক করে সেভ করুন:', '⚡ Download ready. Click below to save:')));
-          errCard.appendChild(UI.btn('📥 ' + tr('ফাইল সেভ করুন', 'Save File'), function () {
-            window.open(ytdownUrlErr, '_blank', 'noopener,noreferrer');
-          }, { cls: 'btn-pri sm' }));
-          statusTarget.appendChild(errCard);
-        }
+        console.warn('[SnapYT download error]', err);
+        UI.clear(statusWrap);
+        var errNotice = UI.el('div', { class: 'snapyt-dl-alert', style: 'background:color-mix(in srgb, #ef4444 12%, var(--paper)); border-color:#ef4444;' });
+        errNotice.appendChild(UI.notice('err', tr('ডাউনলোড স্ট্রিম প্রস্তুত করতে সাময়িক সমস্যা হয়েছে। পুনরায় চেষ্টা করুন।', 'Failed to fetch download stream. Please try again.')));
+        statusWrap.appendChild(errNotice);
       } finally {
-        if (btn) {
-          btn.disabled = false;
-          btn.innerHTML = origContent;
-        }
+        btn.disabled = false;
+        btn.innerHTML = origBtnContent;
       }
     }
 
-    function openResolver(service, url) {
-      var id = parseYtId(url);
-      var targetUrl = '';
-      if (service === 'ytdown' || service === 'ytdown-audio') {
-        targetUrl = 'https://app.ytdown.to/en38?url=' + encodeURIComponent(url);
-      } else if (service === 'cobalt' || service === 'cobalt-audio') {
-        targetUrl = 'https://cobalt.tools/#url=' + encodeURIComponent(url);
-      } else if (service === 'savefrom') {
-        targetUrl = 'https://ssyoutube.com/watch?v=' + id;
-      } else if (service === 'y2mate') {
-        targetUrl = 'https://www.y2mate.com/youtube/' + id;
-      } else if (service === 'y2mate-audio') {
-        targetUrl = 'https://www.y2mate.com/youtube-mp3/' + id;
-      } else if (service === 'yt1s-audio') {
-        targetUrl = 'https://yt1s.com/en/youtube-to-mp3?q=' + encodeURIComponent(url);
-      } else {
-        targetUrl = 'https://app.ytdown.to/en38?url=' + encodeURIComponent(url);
-      }
-
-      var win = window.open(targetUrl, '_blank', 'noopener,noreferrer');
-      if (!win) {
-        location.href = targetUrl;
-      }
-    }
-
-    container.appendChild(inputWrap);
+    container.appendChild(hero);
+    container.appendChild(inputShell);
+    container.appendChild(tipLine);
+    container.appendChild(featuresRow);
     container.appendChild(samplesWrap);
     container.appendChild(statusBox);
     container.appendChild(resultCard);
