@@ -198,6 +198,16 @@
 .spark-5 { width: 7px; height: 7px; top: 12%; right: 38%; animation: sparkFloat2 19s ease-in-out infinite alternate; }
 .spark-6 { width: 9px; height: 9px; bottom: 15%; left: 12%; animation: sparkFloat3 26s ease-in-out infinite alternate; }
 
+/* 4. Dynamic Particle Network Canvas */
+.bg-particle-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
 /* 5. Horizon and Vignette Layers */
 .bg-site-horizon {
   position: absolute;
