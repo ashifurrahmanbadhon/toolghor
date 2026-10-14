@@ -34,8 +34,17 @@
   transition: background-color 0.4s ease;
 }
 
+[data-theme="dark"] .bg-site-base,
+html.dark .bg-site-base {
+  background: #09130f;
+}
+
+[data-theme="light"] .bg-site-base {
+  background: #f0f5f2;
+}
+
 @media (prefers-color-scheme: dark) {
-  .bg-site-base {
+  :root:not([data-theme="light"]) .bg-site-base {
     background: #09130f;
   }
 }
@@ -55,8 +64,14 @@
   opacity: 0.85;
 }
 
+[data-theme="dark"] .bg-site-grid,
+html.dark .bg-site-grid {
+  background-image: radial-gradient(circle at 1.5px 1.5px, rgba(47, 182, 139, 0.22) 1.5px, transparent 0);
+  opacity: 0.75;
+}
+
 @media (prefers-color-scheme: dark) {
-  .bg-site-grid {
+  :root:not([data-theme="light"]) .bg-site-grid {
     background-image: radial-gradient(circle at 1.5px 1.5px, rgba(47, 182, 139, 0.22) 1.5px, transparent 0);
     opacity: 0.75;
   }

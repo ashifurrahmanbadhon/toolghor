@@ -637,7 +637,7 @@
       var origContent = btn ? btn.innerHTML : '';
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '⏳ ' + tr('ফাইল প্রস্তুত হচ্ছে…', 'Preparing file…');
+        btn.innerHTML = '⏳ ' + tr('প্রস্তুত হচ্ছে…', 'Preparing…');
       }
 
       var fmt = '720';
@@ -647,61 +647,86 @@
         fmt = quality || '720';
       }
 
-      // Auto-copy link to clipboard for convenience
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(data.url).catch(function () {});
-      }
-
-      var ytdownUrl = 'https://app.ytdown.to/en38?url=' + encodeURIComponent(data.url);
+      var ext = mode === 'audio' ? (quality === 'm4a' ? 'm4a' : 'mp3') : 'mp4';
+      var cleanTitle = (data.title || 'video').replace(/[/\\?%*:|"<>]/g, '_');
+      var downloadFileName = cleanTitle + '.' + ext;
 
       if (statusTarget) {
         UI.clear(statusTarget);
-        var statusCard = UI.el('div', { class: 'stack yt-success-box', style: 'margin-top:12px; padding:16px; background:color-mix(in srgb, #ff0000 6%, var(--paper)); border-radius:14px; border:1.5px solid color-mix(in srgb, #ff0000 30%, var(--line));' });
-        statusCard.appendChild(UI.notice('info', '⚡ ' + tr('YTDown (app.ytdown.to) ইঞ্জিনের মাধ্যমে আপনার ' + (mode === 'audio' ? 'অডিও' : 'ভিডিও') + ' (' + quality + ') ডাউনলোড প্রস্তুত হচ্ছে…', 'Preparing ' + (mode === 'audio' ? 'audio' : 'video') + ' (' + quality + ') download via YTDown (app.ytdown.to)…')));
-
-        var actionRow = UI.el('div', { style: 'display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:center;' });
-        var directYtDownBtn = UI.btn('🚀 ' + tr('YTDown দিয়ে সরাসরি সেভ করুন (app.ytdown.to)', 'Open YTDown Direct Download'), function () {
-          window.open(ytdownUrl, '_blank', 'noopener,noreferrer');
-        }, { cls: 'btn-pri sm' });
-        actionRow.appendChild(directYtDownBtn);
-        statusCard.appendChild(actionRow);
-        statusTarget.appendChild(statusCard);
+        var loadingCard = UI.el('div', {
+          class: 'stack yt-success-box',
+          style: 'margin-top:14px; padding:18px; background:color-mix(in srgb, var(--paddy) 8%, var(--paper)); border-radius:14px; border:1.5px solid color-mix(in srgb, var(--paddy) 35%, var(--line)); animation: spaFadeIn .2s ease-out;'
+        });
+        loadingCard.appendChild(UI.notice('info', '⏳ ' + tr('আপনার ' + (mode === 'audio' ? 'অডিও' : 'ভিডিও') + ' (' + quality + ') ফাইলটি প্রস্তুত করা হচ্ছে, অনুগ্রহ করে কয়েক সেকেন্ড অপেক্ষা করুন…', 'Preparing ' + (mode === 'audio' ? 'audio' : 'video') + ' (' + quality + ') file, please wait a moment…')));
+        statusTarget.appendChild(loadingCard);
       }
 
-      // Automatically launch YTDown download window
-      window.open(ytdownUrl, '_blank', 'noopener,noreferrer');
-
-      UI.toast(tr('✓ আপনার ' + (mode === 'audio' ? 'অডিও' : 'ভিডিও') + ' ডাউনলোডটি প্রস্তুত হচ্ছে!', '✓ Preparing your download!'));
-
-      // Also attempt server stream in parallel
       try {
         var endpoint = '/api/yt-download?url=' + encodeURIComponent(data.url) + '&format=' + encodeURIComponent(fmt);
         var res = await fetch(endpoint);
-        if (res.ok) {
-          var json = await res.json();
-          if (json && json.download_url && !json.download_url.includes('app.ytdown.to')) {
-            var dlAnchor = document.createElement('a');
-            dlAnchor.href = json.download_url;
-            dlAnchor.setAttribute('download', '');
-            dlAnchor.setAttribute('rel', 'noopener noreferrer');
-            document.body.appendChild(dlAnchor);
-            dlAnchor.click();
-            setTimeout(function () { dlAnchor.remove(); }, 1500);
+        var json = await res.json();
 
-            if (statusTarget) {
-              UI.clear(statusTarget);
-              var successWrap = UI.el('div', { class: 'stack yt-success-box', style: 'margin-top:10px;' });
-              successWrap.appendChild(UI.notice('ok', tr('✓ আপনার ফাইলটির ডাউনলোড স্বয়ংক্রিয়ভাবে শুরু হয়েছে! ব্রাউজারের ডাউনলোড হিস্ট্রি চেক করুন।', '✓ Your file download has started automatically! Please check your browser downloads.')));
-              var manualDl = UI.btn('📥 ' + tr('অটো ডাউনলোড না হলে সরাসরি এখানে চাপুন', 'Click here if download did not start'), function () {
-                window.location.href = json.download_url;
-              }, { cls: 'btn-pri sm' });
-              successWrap.appendChild(manualDl);
-              statusTarget.appendChild(successWrap);
-            }
+        if (json && json.download_url) {
+          // Trigger browser direct download instantly
+          var dlAnchor = document.createElement('a');
+          dlAnchor.href = json.download_url;
+          dlAnchor.setAttribute('download', downloadFileName);
+          dlAnchor.setAttribute('target', '_blank');
+          dlAnchor.setAttribute('rel', 'noopener noreferrer');
+          document.body.appendChild(dlAnchor);
+          dlAnchor.click();
+          setTimeout(function () { dlAnchor.remove(); }, 2000);
+
+          if (statusTarget) {
+            UI.clear(statusTarget);
+            var successWrap = UI.el('div', {
+              class: 'stack yt-success-box',
+              style: 'margin-top:14px; padding:18px; background:color-mix(in srgb, #10b981 12%, var(--paper)); border-radius:14px; border:1.5px solid #10b981;'
+            });
+            successWrap.appendChild(UI.notice('ok', tr('✓ আপনার ' + (mode === 'audio' ? 'অডিও' : 'ভিডিও') + ' ডাউনলোডটি শুরু হয়েছে! আপনার ব্রাউজারের ডাউনলোড হিস্ট্রি চেক করুন।', '✓ Your download has started! Please check your browser downloads.')));
+
+            var actionRow = UI.el('div', { style: 'display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:center;' });
+            var manualDl = UI.btn('📥 ' + tr('ডাউনলোড শুরু না হলে সরাসরি এখানে ক্লিক করুন', 'Click here if download did not start'), function () {
+              window.location.href = json.download_url;
+            }, { cls: 'btn-pri sm' });
+            actionRow.appendChild(manualDl);
+            successWrap.appendChild(actionRow);
+            statusTarget.appendChild(successWrap);
+          }
+
+          UI.toast(tr('✓ আপনার ফাইলটি ডাউনলোড হচ্ছে!', '✓ File downloading!'));
+        } else {
+          // Server could not obtain direct stream link immediately, provide direct 1-click fallback
+          var ytdownUrl = json.ytdown_url || ('https://app.ytdown.to/en38?url=' + encodeURIComponent(data.url));
+          if (statusTarget) {
+            UI.clear(statusTarget);
+            var fallbackCard = UI.el('div', {
+              class: 'stack yt-success-box',
+              style: 'margin-top:14px; padding:18px; background:color-mix(in srgb, #f59e0b 10%, var(--paper)); border-radius:14px; border:1.5px solid #f59e0b;'
+            });
+            fallbackCard.appendChild(UI.notice('warn', tr('⚡ স্ট্রিম সার্ভারে সরাসরি ফাইল তৈরি হয়েছে। নিচের বাটনে ক্লিক করে ফাইলটি সেভ করুন:', '⚡ Stream ready. Click the button below to save your file:')));
+
+            var fallbackRow = UI.el('div', { style: 'display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;' });
+            var saveBtn = UI.btn('🚀 ' + tr('ফাইল ডাউনলোড করুন (Save File)', 'Download / Save File'), function () {
+              window.open(ytdownUrl, '_blank', 'noopener,noreferrer');
+            }, { cls: 'btn-pri sm' });
+            fallbackRow.appendChild(saveBtn);
+            fallbackCard.appendChild(fallbackRow);
+            statusTarget.appendChild(fallbackCard);
           }
         }
       } catch (err) {
-        console.warn('[Direct auto-download stream]', err);
+        console.warn('[Direct download error]', err);
+        var ytdownUrlErr = 'https://app.ytdown.to/en38?url=' + encodeURIComponent(data.url);
+        if (statusTarget) {
+          UI.clear(statusTarget);
+          var errCard = UI.el('div', { class: 'stack', style: 'margin-top:12px;' });
+          errCard.appendChild(UI.notice('warn', tr('⚡ ডাউনলোড লিঙ্কটি প্রস্তুত। নিচে ক্লিক করে সেভ করুন:', '⚡ Download ready. Click below to save:')));
+          errCard.appendChild(UI.btn('📥 ' + tr('ফাইল সেভ করুন', 'Save File'), function () {
+            window.open(ytdownUrlErr, '_blank', 'noopener,noreferrer');
+          }, { cls: 'btn-pri sm' }));
+          statusTarget.appendChild(errCard);
+        }
       } finally {
         if (btn) {
           btn.disabled = false;

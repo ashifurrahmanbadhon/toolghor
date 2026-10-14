@@ -2,7 +2,7 @@ import { getDb } from '@/lib/db';
 
 let cachedSiteData: any = null;
 let lastCacheTime = 0;
-const CACHE_TTL_MS = 60 * 1000; // 60 seconds in-memory cache
+const CACHE_TTL_MS = 5 * 1000; // 5 seconds fast cache for instant live synchronization
 
 export async function getPublicSiteData() {
   const now = Date.now();

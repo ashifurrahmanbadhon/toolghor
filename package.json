@@ -9,6 +9,7 @@
     "test": "npx tsx --env-file=.env.local --test tests/auth-recovery.test.ts"
   },
   "dependencies": {
+    "@distube/ytdl-core": "^4.16.12",
     "@neondatabase/serverless": "^1.2.0",
     "@types/nodemailer": "^8.0.2",
     "lucide-react": "^1.53.0",
