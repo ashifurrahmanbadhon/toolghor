@@ -2901,143 +2901,239 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
   .pdf-file-thumb canvas { width: auto; height: 100%; margin: 0 auto; }
 }
 
-/* ============ YouTube Downloader Tool ============ */
-.yt-box {
+/* ============ SnapYT YouTube Downloader (https://www.snapyt.app) ============ */
+.snapyt-box {
   width: 100%;
-  max-width: 760px;
+  max-width: 860px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
-.yt-input-row {
+.snapyt-hero {
+  text-align: center;
+  padding: 8px 4px 14px;
+}
+.snapyt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: color-mix(in srgb, #ff0033 12%, var(--paper));
+  color: #ff0033;
+  border: 1px solid color-mix(in srgb, #ff0033 30%, transparent);
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  letter-spacing: 0.3px;
+}
+.snapyt-hero h2 {
+  font-size: clamp(22px, 3.4vw, 32px);
+  font-weight: 800;
+  color: var(--ink);
+  margin: 0 0 8px;
+  letter-spacing: -0.4px;
+}
+.snapyt-hero p {
+  color: var(--ink-2);
+  font-size: 15px;
+  margin: 0 auto;
+  max-width: 620px;
+  line-height: 1.5;
+}
+.snapyt-input-shell {
   display: flex;
   align-items: center;
   gap: 8px;
   background: var(--paper);
   border: 2px solid var(--line);
-  border-radius: 14px;
-  padding: 6px 10px 6px 14px;
-  transition: all .2s ease;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  border-radius: 16px;
+  padding: 6px 8px 6px 16px;
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.06);
+  transition: border-color .2s ease, box-shadow .2s ease;
 }
-.yt-input-row:focus-within {
-  border-color: #ff0000;
-  box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.15);
+.snapyt-input-shell:focus-within {
+  border-color: #ff0033;
+  box-shadow: 0 0 0 3.5px rgba(255, 0, 51, 0.16), 0 10px 30px -4px rgba(255, 0, 51, 0.15);
 }
-.yt-input-row > .ic {
-  color: #ff0000;
+.snapyt-input-icon {
+  color: #ff0033;
+  display: flex;
+  align-items: center;
   flex-shrink: 0;
 }
-.yt-url-input {
+.snapyt-url-input {
   flex: 1;
   min-width: 0;
   border: 0;
   background: transparent;
-  font-size: 15.5px;
-  padding: 8px 4px;
+  font-size: 16px;
+  padding: 10px 4px;
   outline: none;
   color: var(--ink);
 }
-.yt-clear-btn {
-  background: none;
-  border: 0;
-  font-size: 16px;
+.snapyt-url-input::placeholder {
   color: var(--ink-3);
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
+  opacity: 0.8;
 }
-.yt-clear-btn:hover {
+.snapyt-clear-btn {
+  background: transparent;
+  border: none;
+  color: var(--ink-3);
+  font-size: 16px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.snapyt-clear-btn:hover {
   background: var(--mist);
   color: var(--danger);
 }
-.yt-samples-row {
-  display: flex;
+.snapyt-paste-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--mist);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all .2s ease;
+}
+.snapyt-paste-btn:hover {
+  background: color-mix(in srgb, var(--ink) 8%, var(--mist));
+  transform: translateY(-1px);
+}
+.snapyt-submit-btn {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
-  padding: 4px 2px;
+  background: linear-gradient(135deg, #ff0033 0%, #cc0029 100%);
+  color: #ffffff !important;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(255, 0, 51, 0.35);
+  transition: all .2s ease;
 }
-.yt-samples-lbl {
-  font-size: 12.5px;
-  font-weight: 600;
+.snapyt-submit-btn:hover:not(:disabled) {
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 18px rgba(255, 0, 51, 0.45);
+}
+.snapyt-submit-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.snapyt-tip {
+  font-size: 13px;
   color: var(--ink-3);
+  text-align: center;
+  margin: -6px 0 4px;
 }
-.yt-sample-chip {
+.snapyt-features {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.snapyt-feat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 3px 10px;
+  padding: 5px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.snapyt-samples {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.snapyt-sample-chip {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 12px;
   font-size: 12px;
-  font-weight: 500;
   color: var(--ink-2);
   cursor: pointer;
   transition: all .2s ease;
 }
-.yt-sample-chip:hover {
-  border-color: #ff0000;
-  color: #ff0000;
-  background: color-mix(in srgb, #ff0000 6%, var(--paper));
+.snapyt-sample-chip:hover {
+  border-color: #ff0033;
+  color: #ff0033;
+  background: color-mix(in srgb, #ff0033 6%, var(--paper));
 }
-.yt-status-box {
-  margin-top: 6px;
-}
-.yt-result-card {
+.snapyt-result-card {
   background: var(--paper);
   border: 1.5px solid var(--line);
-  border-radius: 16px;
-  padding: 20px;
-  margin-top: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
   animation: spaFadeIn .25s ease-out;
 }
-.yt-preview-row {
+.snapyt-preview-row {
   display: flex;
-  gap: 18px;
+  gap: 20px;
   align-items: flex-start;
-  padding-bottom: 18px;
+  padding-bottom: 20px;
   border-bottom: 1px solid var(--line);
 }
-.yt-thumb-box {
+.snapyt-thumb-wrap {
   position: relative;
-  width: 220px;
+  width: 240px;
   aspect-ratio: 16 / 9;
   border-radius: 12px;
   overflow: hidden;
   background: #000;
   flex-shrink: 0;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
-.yt-thumb-img {
+.snapyt-thumb-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform .3s ease;
 }
-.yt-thumb-box:hover .yt-thumb-img {
-  transform: scale(1.04);
-}
-.yt-thumb-badge {
+.snapyt-thumb-badge {
   position: absolute;
   bottom: 8px;
   right: 8px;
-  background: rgba(0, 0, 0, 0.82);
+  background: rgba(0, 0, 0, 0.85);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
-  padding: 2px 7px;
+  padding: 3px 8px;
   border-radius: 6px;
   backdrop-filter: blur(4px);
 }
-.yt-details-box {
+.snapyt-meta {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
-.yt-title {
-  font-size: 17px;
-  font-weight: 700;
+.snapyt-title {
+  font-size: 18px;
+  font-weight: 800;
   line-height: 1.35;
   color: var(--ink);
   margin: 0;
@@ -3046,248 +3142,159 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.yt-author-row {
+.snapyt-author-row {
   display: flex;
   align-items: center;
   gap: 6px;
   color: var(--ink-2);
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
 }
-.yt-author-row .ic {
-  color: #ff0000;
-}
-.yt-watch-link {
+.snapyt-watch-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   font-size: 13px;
-  color: var(--paddy-d);
+  color: #ff0033;
+  font-weight: 700;
   text-decoration: none;
-  font-weight: 600;
-  margin-top: 4px;
+  width: fit-content;
 }
-.yt-watch-link:hover {
+.snapyt-watch-btn:hover {
   text-decoration: underline;
 }
-.yt-tabs-nav {
+.snapyt-tabs-nav {
   display: flex;
   gap: 8px;
   margin-top: 18px;
   background: var(--mist);
-  padding: 5px;
-  border-radius: 12px;
+  padding: 6px;
+  border-radius: 14px;
 }
-.yt-tab-btn {
+.snapyt-tab-btn {
   flex: 1;
-  padding: 9px 12px;
+  padding: 10px 14px;
   border: 0;
   background: transparent;
   color: var(--ink-2);
-  font-size: 14px;
+  font-size: 14.5px;
   font-weight: 700;
-  border-radius: 9px;
+  border-radius: 10px;
   cursor: pointer;
   transition: all .2s ease;
   text-align: center;
 }
-.yt-tab-btn:hover {
+.snapyt-tab-btn:hover {
   color: var(--ink);
 }
-.yt-tab-btn.active {
+.snapyt-tab-btn.active {
   background: var(--paper);
-  color: #ff0000;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  color: #ff0033;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
 }
-.yt-tab-content {
+.snapyt-tab-content {
   margin-top: 18px;
 }
-.yt-opt-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.yt-opt-head h4 {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--ink);
-  margin: 0;
-}
-.yt-q-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
-}
-.yt-q-card {
-  position: relative;
-  background: var(--paper);
-  border: 1.5px solid var(--line);
+.snapyt-table-wrap {
+  width: 100%;
+  overflow-x: auto;
   border-radius: 12px;
-  padding: 12px 14px;
+  border: 1px solid var(--line);
+}
+.snapyt-table {
+  width: 100%;
+  border-collapse: collapse;
   text-align: left;
-  cursor: pointer;
-  transition: all .2s ease;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
-.yt-q-card:hover {
-  border-color: #ff0000;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-}
-.yt-q-card.sel {
-  border-color: #ff0000;
-  background: color-mix(in srgb, #ff0000 6%, var(--paper));
-  box-shadow: 0 0 0 2px #ff0000;
-}
-.yt-q-rec-badge {
-  position: absolute;
-  top: -8px;
-  right: 8px;
-  background: #ff0000;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 800;
-  padding: 2px 6px;
-  border-radius: 6px;
-  text-transform: uppercase;
-}
-.yt-q-title {
-  font-size: 14.5px;
+.snapyt-table th {
+  background: var(--mist);
+  padding: 12px 16px;
+  font-size: 13px;
   font-weight: 700;
-  color: var(--ink);
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--line);
 }
-.yt-q-sub {
-  font-size: 12px;
-  color: var(--ink-3);
-  line-height: 1.3;
+.snapyt-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14.5px;
+  vertical-align: middle;
 }
-.yt-card-dl-tag {
+.snapyt-table tr:last-child td {
+  border-bottom: none;
+}
+.snapyt-table tr:hover td {
+  background: color-mix(in srgb, #ff0033 3%, var(--paper));
+}
+.snapyt-badge-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.snapyt-badge-tag.rec {
+  background: #ff0033;
+  color: #ffffff;
+}
+.snapyt-badge-tag.std {
+  background: var(--mist);
+  color: var(--ink-2);
+}
+.snapyt-table-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  background: color-mix(in srgb, #ff0000 12%, var(--paper));
-  color: #d90000;
-  font-size: 11px;
+  gap: 6px;
+  background: #ff0033;
+  color: #ffffff !important;
+  font-size: 13.5px;
   font-weight: 700;
-  padding: 4px 8px;
-  border-radius: 6px;
-  margin-top: 6px;
-  width: fit-content;
-  border: 1px solid color-mix(in srgb, #ff0000 25%, transparent);
-  transition: all .15s ease;
+  padding: 8px 18px;
+  border-radius: 9px;
+  border: none;
+  cursor: pointer;
+  transition: all .2s ease;
+  white-space: nowrap;
 }
-.yt-q-card:hover .yt-card-dl-tag,
-.yt-q-card.sel .yt-card-dl-tag {
-  background: #ff0000;
-  color: #fff;
-  border-color: #ff0000;
+.snapyt-table-btn:hover:not(:disabled) {
+  background: #cc0029;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 0, 51, 0.35);
 }
-.yt-action-wrap {
-  display: flex;
-  justify-content: center;
-  margin-top: 4px;
+.snapyt-table-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
-.yt-main-dl-btn {
-  width: 100%;
-  max-width: 420px;
-  font-size: 16px !important;
-  font-weight: 700 !important;
-  padding: 12px 24px !important;
-  background: linear-gradient(135deg, #e60000, #c40000) !important;
-  color: #fff !important;
-  border-radius: 12px !important;
-  box-shadow: 0 6px 18px rgba(230, 0, 0, 0.28) !important;
-  transition: all .2s ease !important;
+.snapyt-dl-alert {
+  margin-top: 14px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: color-mix(in srgb, #10b981 12%, var(--paper));
+  border: 1.5px solid #10b981;
+  animation: spaFadeIn .2s ease-out;
 }
-.yt-main-dl-btn:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 8px 22px rgba(230, 0, 0, 0.38) !important;
-}
-.yt-server-note {
-  background: var(--mist);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 14px 16px;
-  margin-top: 8px;
-}
-.yt-note-text {
-  font-size: 13px;
-  color: var(--ink-2);
-  margin: 0 0 10px;
-  font-weight: 600;
-}
-.yt-server-buttons {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.yt-server-buttons .btn {
-  font-size: 13px;
-  padding: 6px 14px;
-  border-radius: 8px;
-}
-.yt-companion-box {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: color-mix(in srgb, var(--paddy) 8%, var(--paper));
-  border: 1.5px solid color-mix(in srgb, var(--paddy) 24%, var(--line));
-  border-radius: 12px;
-  padding: 14px 16px;
-  margin-top: 8px;
-}
-.yt-companion-box > .ic {
-  color: var(--paddy-d);
-  flex-shrink: 0;
-}
-.yt-companion-text b {
-  display: block;
-  font-size: 14px;
-  color: var(--paddy-d);
-  margin-bottom: 2px;
-}
-.yt-companion-text p {
-  font-size: 13px;
-  color: var(--ink-2);
-  margin: 0;
-}
-.yt-companion-text a {
-  color: var(--paddy-d);
-  font-weight: 700;
-  text-decoration: underline;
-}
-.yt-thumb-full-wrap {
-  width: 100%;
-  max-width: 520px;
-  margin: 0 auto;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
-  background: #000;
-}
-.yt-thumb-full-img {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-@media (max-width: 600px) {
-  .yt-preview-row {
+@media (max-width: 650px) {
+  .snapyt-input-shell {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+  }
+  .snapyt-submit-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .snapyt-preview-row {
     flex-direction: column;
   }
-  .yt-thumb-box {
+  .snapyt-thumb-wrap {
     width: 100%;
   }
-  .yt-input-row {
-    flex-wrap: wrap;
-  }
-  .yt-input-row .btn {
-    flex: 1;
-  }
-  .yt-tabs-nav {
+  .snapyt-tabs-nav {
     flex-direction: column;
+  }
+  .snapyt-table th:nth-child(3),
+  .snapyt-table td:nth-child(3) {
+    display: none;
   }
 }
 
