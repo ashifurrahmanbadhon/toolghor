@@ -188,7 +188,7 @@ export const TOOLS: ToolItem[] = [
     bn: 'ছবি থেকে পিডিএফ',
     en: 'JPG to PDF',
     icon: 'ImageDown',
-    cats: ['images', 'documents'],
+    cats: ['documents'],
     group: 'pdf',
     desc: 'JPG, PNG ছবি জুড়ে একটি পিডিএফ বানান',
     descEn: 'Combine JPG or PNG images into a PDF',

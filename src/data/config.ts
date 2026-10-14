@@ -65,7 +65,7 @@ export const siteConfig: SiteConfig = {
     }
   },
   apis: {
-    removeBgKey: process.env.REMOVE_BG_API_KEY || '',
+    removeBgKey: process.env.REMOVE_BG_API_KEY || 'PPD1y7eUpoyQfgbuqRMJ1iqF',
     geminiKey: process.env.GEMINI_API_KEY || '',
     openaiKey: process.env.OPENAI_API_KEY || '',
     ilovepdfPublicKey: process.env.ILOVEPDF_PUBLIC_KEY || 'project_public_d3a21718d02285b2005ba3571e3946f6_rw99Gce4ea394dce81730b8c0bbc1a8f9b23a'

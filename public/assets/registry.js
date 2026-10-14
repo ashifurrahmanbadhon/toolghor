@@ -52,7 +52,7 @@ var REGISTRY = {
       steps: ['"ওয়ার্ড ফাইল বেছে নিন" চাপুন বা ফাইল টেনে এনে ড্রপ করুন।', '"পিডিএফে রূপান্তর করুন" চাপুন।', 'তৈরি হওয়া পিডিএফ ফাইলটি ডাউনলোড করুন।']
     },
     {
-      slug: 'jpg-to-pdf', bn: 'ছবি থেকে পিডিএফ', en: 'JPG to PDF', icon: 'file-stack', cats: ['images'], group: 'pdf', needs: ['pdf-lib'],
+      slug: 'jpg-to-pdf', bn: 'ছবি থেকে পিডিএফ', en: 'JPG to PDF', icon: 'file-stack', cats: ['documents'], group: 'pdf', needs: ['pdf-lib'],
       desc: 'JPG, PNG ছবি জুড়ে একটি পিডিএফ বানান',
       keywords: 'jpg to pdf image to pdf png to pdf photo to pdf chobi theke pdf ছবি থেকে পিডিএফ',
       intro: 'এক বা একাধিক ছবি দিয়ে একটি পিডিএফ ফাইল বানান। ডকুমেন্টের ছবি তুলে জমা দেওয়ার জন্য কাজের।',

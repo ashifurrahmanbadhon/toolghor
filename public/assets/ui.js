@@ -120,7 +120,29 @@
     wrap.set = function (v) { cur = v; draw(); };
     return wrap;
   };
-  UI.notice = function (type, text) { return UI.el('div', { class: 'notice ' + type, role: type === 'err' ? 'alert' : 'status' }, text); };
+  UI.notice = function (type, text) {
+    var el = UI.el('div', { class: 'notice ' + type, role: type === 'err' ? 'alert' : 'status' });
+    if (type === 'info' && typeof text === 'string' && (text.includes(' · ') || text.includes('KB') || text.includes('MB') || text.includes('Bytes') || text.includes('পৃষ্ঠা'))) {
+      el.classList.add('file-selected-notice');
+      var parts = text.split(' · ');
+      var fileName = parts[0] || text;
+      var fileMeta = parts.slice(1).join(' · ');
+      var inner = UI.el('div', { class: 'selected-file-inner' },
+        UI.el('div', { class: 'selected-file-badge' }, '✓ ' + tr('নির্বাচিত ফাইল', 'Selected File')),
+        UI.el('div', { class: 'selected-file-row' },
+          UI.el('span', { class: 'selected-file-icon', 'aria-hidden': 'true' }, '📄'),
+          UI.el('div', { class: 'selected-file-info' },
+            UI.el('span', { class: 'selected-file-name', title: fileName }, fileName),
+            fileMeta ? UI.el('span', { class: 'selected-file-meta' }, fileMeta) : null
+          )
+        )
+      );
+      el.appendChild(inner);
+      return el;
+    }
+    el.textContent = text;
+    return el;
+  };
   UI.progress = function () {
     var bar = UI.el('i');
     var txt = UI.el('small', {}, '');
