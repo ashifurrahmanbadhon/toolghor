@@ -304,10 +304,12 @@ export async function initDatabase() {
   await sql`
     CREATE INDEX IF NOT EXISTS idx_pwd_reset_email ON password_reset_challenges(email);
   `;
-  // 11. Section: UI & Animation Settings (Cursor Animation, High Performance Mode)
+  // 11. Section: UI & Animation Settings (Cursor Animation, Default Theme, High Performance Mode)
   await sql`
     CREATE TABLE IF NOT EXISTS section_ui_settings (
       id INT PRIMARY KEY DEFAULT 1,
+      default_theme VARCHAR(20) NOT NULL DEFAULT 'dark',
+      cursor_animation_type VARCHAR(50) NOT NULL DEFAULT 'cyber-comet',
       cursor_animation_active BOOLEAN NOT NULL DEFAULT true,
       background_animation_active BOOLEAN NOT NULL DEFAULT true,
       high_performance_mode BOOLEAN NOT NULL DEFAULT true,
@@ -316,8 +318,8 @@ export async function initDatabase() {
   `;
 
   await sql`
-    INSERT INTO section_ui_settings (id, cursor_animation_active, background_animation_active, high_performance_mode)
-    VALUES (1, true, true, true)
+    INSERT INTO section_ui_settings (id, default_theme, cursor_animation_type, cursor_animation_active, background_animation_active, high_performance_mode)
+    VALUES (1, 'dark', 'cyber-comet', true, true, true)
     ON CONFLICT (id) DO NOTHING;
   `;
 

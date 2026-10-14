@@ -37,18 +37,15 @@ export default function Header() {
               type="image/webp"
               data-cfg="logoDarkWebp"
               srcSet="/assets/logo-dark.webp"
-              media="(prefers-color-scheme: dark)"
             />
             <source
               data-cfg="logoDark"
               srcSet="/assets/logo-dark.png"
-              media="(prefers-color-scheme: dark)"
             />
-            <source type="image/webp" data-cfg="logoWebp" srcSet="/assets/logo.webp" />
             <img
               className="brand-logo"
               data-cfg="logo"
-              src="/assets/logo.png"
+              src="/assets/logo-dark.png"
               alt="ToolGhor"
               width={205}
               height={50}

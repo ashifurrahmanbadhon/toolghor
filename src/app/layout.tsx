@@ -21,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-theme="dark" className="dark" suppressHydrationWarning>
       <head>
         <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
         <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
@@ -37,7 +37,7 @@ export default function RootLayout({
         <script src="/assets/icons.js" defer></script>
         <script src="/assets/ui.js" defer></script>
       </head>
-      <body suppressHydrationWarning>
+      <body className="dark" suppressHydrationWarning>
         <SmoothCursor />
         <BackgroundAnimation />
         <AppProvider>{children}</AppProvider>
