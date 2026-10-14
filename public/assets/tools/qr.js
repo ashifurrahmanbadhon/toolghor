@@ -62,11 +62,38 @@
       UI.clear(preview); last = null;
       var text = FORMS[type].build(vals);
       if (!text || !String(text).trim()) { preview.appendChild(UI.notice('info', tr('তথ্য লিখলে কিউআর কোড এখানে তৈরি হবে।', "Enter the details and the QR code will appear here."))); return; }
-      var q;
-      try {
-        qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
-        q = qrcode(0, ecc.value); q.addData(text); q.make();
-      } catch (e) { preview.appendChild(UI.notice('err', tr('লেখাটি এত বড় যে কিউআর কোডে ধরছে না। ছোট করুন বা ত্রুটি-সংশোধন "L" বেছে নিন।', "The text is too long to fit in a QR code. Shorten it or choose error correction \"L\"."))); return; }
+      var q = null, usedEcc = ecc.value, autoAdjusted = false;
+      var candidateEccs = [ecc.value];
+      ['H', 'Q', 'M', 'L'].forEach(function (lvl) {
+        if (candidateEccs.indexOf(lvl) === -1) candidateEccs.push(lvl);
+      });
+
+      for (var ei = 0; ei < candidateEccs.length; ei++) {
+        var testEcc = candidateEccs[ei];
+        try {
+          if (qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs['UTF-8']) {
+            qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
+          }
+          var testQ = qrcode(0, testEcc);
+          testQ.addData(text);
+          testQ.make();
+          q = testQ;
+          usedEcc = testEcc;
+          if (testEcc !== ecc.value) autoAdjusted = true;
+          break;
+        } catch (err) {
+          // If capacity exceeded for this ECC level, gracefully try next level down
+        }
+      }
+
+      if (!q) {
+        preview.appendChild(UI.notice('err', tr('লেখাটি অনেক বেশি বড় (কিউআর কোডের সর্বোচ্চ ধারণক্ষমতা ২,৯০০ অক্ষরের বেশি)। অনুগ্রহ করে লেখাটি সামান্য সংক্ষেপ করুন।', "The text is too long (exceeds the maximum 2,900 character limit of QR codes). Please shorten the text slightly.")));
+        return;
+      }
+
+      if (autoAdjusted) {
+        preview.appendChild(UI.notice('info', tr('লেখাটি বড় হওয়ায় কিউআর কোডটি স্বয়ংক্রিয়ভাবে অপটিমাইজ করে তৈরি করা হয়েছে (ত্রুটি-সংশোধন: ' + usedEcc + ')।', "Auto-optimized error correction level to fit long text (ECC: " + usedEcc + ").")));
+      }
       var n = q.getModuleCount(), m = +margin.value, total = n + 2 * m, cell = Math.max(1, Math.floor(+size.value / total));
       var c = UI.canvas(cell * total, cell * total), ctx = c.getContext('2d');
       ctx.fillStyle = bg.value; ctx.fillRect(0, 0, c.width, c.height); ctx.fillStyle = fg.value;
@@ -140,15 +167,48 @@
   }
   T['qr-decoder'] = function (root) {
     var out = UI.el('div'), stage = UI.el('div'), camBox = UI.el('div'), stream = null, raf = 0;
-    function scan(src, w, h) {
-      var sizes = [1600, 1000, 600];
-      for (var i = 0; i < sizes.length; i++) {
-        var s = Math.min(1, sizes[i] / Math.max(w, h)), cw = Math.max(1, Math.round(w * s)), ch = Math.max(1, Math.round(h * s));
-        var c = UI.canvas(cw, ch), ctx = c.getContext('2d', { willReadFrequently: true });
-        ctx.drawImage(src, 0, 0, cw, ch);
-        var d = ctx.getImageData(0, 0, cw, ch), code = jsQR(d.data, cw, ch, { inversionAttempts: 'attemptBoth' });
-        if (code && code.data) return code.data;
-        if (s === 1) { /* ছোট ছবির জন্য পরের স্কেলের দরকার নেই */ if (Math.max(w, h) <= 600) break; }
+    async function scan(src, w, h) {
+      // 1. Try native BarcodeDetector if available (hardware accelerated, extremely accurate)
+      if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
+        try {
+          var detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+          var barcodes = await detector.detect(src);
+          if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+            return barcodes[0].rawValue;
+          }
+        } catch (e) { }
+      }
+
+      // 2. jsQR Multi-scale decoding
+      if (typeof jsQR === 'function') {
+        var sizes = [Math.max(w, h), 1600, 1000, 600];
+        for (var i = 0; i < sizes.length; i++) {
+          var s = Math.min(1, sizes[i] / Math.max(w, h));
+          var cw = Math.max(1, Math.round(w * s)), ch = Math.max(1, Math.round(h * s));
+          var c = UI.canvas(cw, ch), ctx = c.getContext('2d', { willReadFrequently: true });
+          ctx.drawImage(src, 0, 0, cw, ch);
+          var d = ctx.getImageData(0, 0, cw, ch);
+          var code = jsQR(d.data, cw, ch, { inversionAttempts: 'attemptBoth' });
+          if (code && code.data) return code.data;
+          if (s === 1 && Math.max(w, h) <= 600) break;
+        }
+
+        // 3. Contrast & Binarization fallback pass for difficult / low-contrast scans
+        try {
+          var s3 = Math.min(1, 1000 / Math.max(w, h));
+          var cw3 = Math.max(1, Math.round(w * s3)), ch3 = Math.max(1, Math.round(h * s3));
+          var c3 = UI.canvas(cw3, ch3), ctx3 = c3.getContext('2d', { willReadFrequently: true });
+          ctx3.drawImage(src, 0, 0, cw3, ch3);
+          var imgData = ctx3.getImageData(0, 0, cw3, ch3);
+          var pixels = imgData.data;
+          for (var p = 0; p < pixels.length; p += 4) {
+            var gray = (pixels[p] * 0.299 + pixels[p + 1] * 0.587 + pixels[p + 2] * 0.114);
+            var b = gray > 128 ? 255 : 0;
+            pixels[p] = b; pixels[p + 1] = b; pixels[p + 2] = b;
+          }
+          var code3 = jsQR(pixels, cw3, ch3, { inversionAttempts: 'attemptBoth' });
+          if (code3 && code3.data) return code3.data;
+        } catch (e3) { }
       }
       return null;
     }
@@ -213,7 +273,7 @@
       try {
         var img = await UI.readImage(f);
         stage.appendChild(UI.el('img', { src: img._url, alt: tr('আপলোড করা ছবি', "Uploaded image"), style: { maxWidth: '260px', maxHeight: '260px', borderRadius: '8px', border: '1px solid var(--line)' } }));
-        var t = scan(img, img.naturalWidth, img.naturalHeight);
+        var t = await scan(img, img.naturalWidth, img.naturalHeight);
         if (t) show(t); else fail();
       } catch (e) { out.appendChild(UI.notice('err', UI.err(e))); }
     }

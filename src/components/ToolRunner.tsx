@@ -113,6 +113,7 @@ export default function ToolRunner({ tool }: ToolRunnerProps) {
           if (!w.JSZip) vendorPromises.push(loadScript('/assets/vendor/jszip.min.js'));
         } else if (tool.group === 'qr') {
           if (!w.QRCode) vendorPromises.push(loadScript('/assets/vendor/qrcode.js'));
+          if (tool.slug === 'qr-decoder' && !w.jsQR) vendorPromises.push(loadScript('/assets/vendor/jsQR.js'));
         }
         if (vendorPromises.length > 0) {
           await Promise.all(vendorPromises);
