@@ -10,15 +10,21 @@ import {
 
 export async function POST(req: NextRequest) {
   try {
-    await initDatabase();
     const sql = getDb();
     const body = await req.json().catch(() => ({}));
     const { action } = body;
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
 
-    // Fetch existing admin account row
-    const rows = await sql`SELECT * FROM admin_account WHERE id = 1 LIMIT 1`;
-    let account = rows[0];
+    // Direct fast query to admin_account with lazy fallback only if table missing
+    let account: any = null;
+    try {
+      const rows = await sql`SELECT * FROM admin_account WHERE id = 1 LIMIT 1`;
+      account = rows[0];
+    } catch {
+      await initDatabase();
+      const rows = await sql`SELECT * FROM admin_account WHERE id = 1 LIMIT 1`;
+      account = rows[0];
+    }
 
     if (!account) {
       await sql`
@@ -30,20 +36,21 @@ export async function POST(req: NextRequest) {
       account = fresh[0];
     }
 
-    // 1. LOGIN (Timing-safe verification + Automatic scrypt hash upgrade)
+    // 1. LOGIN (Timing-safe verification + Ultra-fast response)
     if (action === 'login') {
       const cleanPass = (body.passcode || '').trim();
       const isValid = await verifyPassword(cleanPass, account.passcode);
 
       if (isValid) {
-        // Upgrade legacy plaintext passwords in-place to scrypt
+        // Upgrade legacy plaintext passwords in background without delaying user login response
         if (needsRehash(account.passcode)) {
-          const upgradedHash = await hashPassword(cleanPass);
-          await sql`
-            UPDATE admin_account
-            SET passcode = ${upgradedHash}, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ${account.id};
-          `;
+          hashPassword(cleanPass).then((upgradedHash) => {
+            sql`
+              UPDATE admin_account
+              SET passcode = ${upgradedHash}, updated_at = CURRENT_TIMESTAMP
+              WHERE id = ${account.id};
+            `.catch(() => {});
+          });
         }
 
         return NextResponse.json({
