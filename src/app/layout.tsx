@@ -3,6 +3,7 @@ import './globals.css';
 import { AppProvider } from '@/context/AppContext';
 import { siteConfig } from '@/data/config';
 import BackgroundAnimation from '@/components/BackgroundAnimation';
+import SmoothCursor from '@/components/SmoothCursor';
 
 export const metadata: Metadata = {
   title: `${siteConfig.name} – ${siteConfig.tagline}`,
@@ -22,6 +23,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -35,6 +38,7 @@ export default function RootLayout({
         <script src="/assets/ui.js" defer></script>
       </head>
       <body suppressHydrationWarning>
+        <SmoothCursor />
         <BackgroundAnimation />
         <AppProvider>{children}</AppProvider>
       </body>

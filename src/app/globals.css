@@ -28,25 +28,9 @@
   -webkit-transform: translate3d(0, 0, 0);
 }
 
-/* Base Light / Dark Tones */
+/* Base Light Tones */
 .bg-site-base {
   background: #f0f5f2;
-  transition: background-color 0.4s ease;
-}
-
-[data-theme="dark"] .bg-site-base,
-html.dark .bg-site-base {
-  background: #09130f;
-}
-
-[data-theme="light"] .bg-site-base {
-  background: #f0f5f2;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .bg-site-base {
-    background: #09130f;
-  }
 }
 
 .bg-admin-base {
@@ -596,12 +580,161 @@ body {
   color: #059669;
   font-weight: 600;
 }
-[data-theme="dark"] .selected-file-meta {
-  color: #34d399 !important;
+/* ==========================================================================
+   INSTANT CLICK RESPONSIVENESS & ZERO-LATENCY TOUCH
+   ========================================================================== */
+html {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
 }
-[data-theme="dark"] .notice.file-selected-notice {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(6, 182, 212, 0.12) 100%) !important;
-  border-color: #34d399 !important;
-  box-shadow: 0 4px 24px -2px rgba(16, 185, 129, 0.35) !important;
+
+button,
+a,
+input[type="button"],
+input[type="submit"],
+.btn,
+.tool,
+.chip,
+.cat-head {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
+
+/* Snappy, Instant Click Feedback */
+.tool:active,
+.btn:active,
+.btn-pri:active,
+.cat-head:active,
+.chip:active,
+.snapyt-submit-btn:active,
+.snapyt-table-btn:active,
+.snapyt-paste-btn:active {
+  transform: scale(0.975) !important;
+  transition: transform 0.04s cubic-bezier(0, 0, 0.2, 1) !important;
+}
+
+/* ==========================================================================
+   HIGH-PERFORMANCE ZERO-LAG HARDWARE-ACCELERATED CURSOR SYSTEM
+   ========================================================================== */
+.cursor-canvas-wrap {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999999;
+  overflow: hidden;
+  contain: strict;
+}
+
+/* Strictly disable on touchscreens and mobile devices */
+@media (hover: none) or (pointer: coarse) {
+  .cursor-canvas-wrap {
+    display: none !important;
+  }
+}
+
+/* Precision Center Dot (0ms latency direct position) */
+.cursor-dot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.9), 0 0 3px #ffffff;
+  pointer-events: none;
+  will-change: transform;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.08s ease;
+}
+
+.cursor-dot.cursor-dot--hover {
+  transform: scale(0.6) !important;
+  background: #059669;
+}
+
+.cursor-dot.cursor-dot--click {
+  transform: scale(1.6) !important;
+  background: #047857;
+}
+
+/* Fluid Trailing Aura Ring (Spring physics lerp) */
+.cursor-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 32px;
+  height: 32px;
+  margin-left: -16px;
+  margin-top: -16px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(16, 185, 129, 0.65);
+  background: rgba(16, 185, 129, 0.06);
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.2);
+  pointer-events: none;
+  will-change: transform;
+  opacity: 0;
+  transition: opacity 0.25s ease, width 0.22s cubic-bezier(0.16, 1, 0.3, 1), height 0.22s cubic-bezier(0.16, 1, 0.3, 1), margin 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Hover State: Magnetically expands with glowing emerald halo */
+.cursor-ring.cursor-ring--hover {
+  width: 48px;
+  height: 48px;
+  margin-left: -24px;
+  margin-top: -24px;
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.45);
+}
+
+/* Click State: Spring-loaded contraction */
+.cursor-ring.cursor-ring--click {
+  width: 24px;
+  height: 24px;
+  margin-left: -12px;
+  margin-top: -12px;
+  border-color: #059669;
+  background: rgba(16, 185, 129, 0.28);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+}
+
+/* Click Ripple Wave */
+.cursor-ripple {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60px;
+  height: 60px;
+  margin-left: -30px;
+  margin-top: -30px;
+  border-radius: 50%;
+  border: 2px solid rgba(16, 185, 129, 0.7);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.cursor-ripple.cursor-ripple--active {
+  animation: cursor-ripple-anim 0.4s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+
+@keyframes cursor-ripple-anim {
+  0% {
+    transform: scale(0.15);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
 

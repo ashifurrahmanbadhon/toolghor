@@ -304,8 +304,21 @@ export async function initDatabase() {
   await sql`
     CREATE INDEX IF NOT EXISTS idx_pwd_reset_email ON password_reset_challenges(email);
   `;
+  // 11. Section: UI & Animation Settings (Cursor Animation, High Performance Mode)
   await sql`
-    CREATE INDEX IF NOT EXISTS idx_pwd_reset_token_hash ON password_reset_challenges(reset_token_hash);
+    CREATE TABLE IF NOT EXISTS section_ui_settings (
+      id INT PRIMARY KEY DEFAULT 1,
+      cursor_animation_active BOOLEAN NOT NULL DEFAULT true,
+      background_animation_active BOOLEAN NOT NULL DEFAULT true,
+      high_performance_mode BOOLEAN NOT NULL DEFAULT true,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+
+  await sql`
+    INSERT INTO section_ui_settings (id, cursor_animation_active, background_animation_active, high_performance_mode)
+    VALUES (1, true, true, true)
+    ON CONFLICT (id) DO NOTHING;
   `;
 
   isInitialized = true;
