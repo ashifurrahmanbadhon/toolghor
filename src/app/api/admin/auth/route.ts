@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, initDatabase } from '@/lib/db';
-import { sendOtpEmail, sendOtpSms } from '@/lib/notifier';
+import { verifyPassword, hashPassword, needsRehash } from '@/lib/password';
+import {
+  requestPasswordReset,
+  resendPasswordResetOtp,
+  verifyPasswordResetOtp,
+  completePasswordReset,
+} from '@/lib/passwordReset';
 
 export async function POST(req: NextRequest) {
   try {
     await initDatabase();
     const sql = getDb();
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const { action } = body;
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
 
     // Fetch existing admin account row
     const rows = await sql`SELECT * FROM admin_account WHERE id = 1 LIMIT 1`;
@@ -23,14 +30,22 @@ export async function POST(req: NextRequest) {
       account = fresh[0];
     }
 
-    // 1. LOGIN
+    // 1. LOGIN (Timing-safe verification + Automatic scrypt hash upgrade)
     if (action === 'login') {
-      const { passcode } = body;
-      const cleanPass = (passcode || '').trim();
-
-      const isValid = cleanPass === account.passcode;
+      const cleanPass = (body.passcode || '').trim();
+      const isValid = await verifyPassword(cleanPass, account.passcode);
 
       if (isValid) {
+        // Upgrade legacy plaintext passwords in-place to scrypt
+        if (needsRehash(account.passcode)) {
+          const upgradedHash = await hashPassword(cleanPass);
+          await sql`
+            UPDATE admin_account
+            SET passcode = ${upgradedHash}, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ${account.id};
+          `;
+        }
+
         return NextResponse.json({
           success: true,
           message: 'Authenticated successfully',
@@ -61,13 +76,12 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 3. UPDATE PROFILE & CHANGE PASSWORD
+    // 3. UPDATE PROFILE & CHANGE PASSWORD (Always hashes new password)
     if (action === 'update_profile') {
       const { email, phone, current_passcode, new_passcode } = body;
 
-      // Verify current passcode
       const cleanCurrent = (current_passcode || '').trim();
-      const isCurrentValid = cleanCurrent === account.passcode;
+      const isCurrentValid = await verifyPassword(cleanCurrent, account.passcode);
 
       if (!isCurrentValid) {
         return NextResponse.json(
@@ -76,7 +90,17 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const updatedPass = new_passcode && new_passcode.trim() ? new_passcode.trim() : account.passcode;
+      let updatedPass = account.passcode;
+      if (new_passcode && new_passcode.trim()) {
+        if (new_passcode.trim().length < 8) {
+          return NextResponse.json(
+            { success: false, message: 'New password must be at least 8 characters.' },
+            { status: 400 }
+          );
+        }
+        updatedPass = await hashPassword(new_passcode.trim());
+      }
+
       const updatedEmail = email && email.trim() ? email.trim() : account.email;
       const updatedPhone = phone && phone.trim() ? phone.trim() : account.phone;
 
@@ -101,125 +125,77 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 4. FORGOT PASSWORD - DISPATCH CODE TO GMAIL OR PHONE
+    // 4. FORGOT PASSWORD - DISPATCH CODE TO REGISTERED EMAIL ONLY
     if (action === 'forgot_password_send_otp') {
-      const { channel } = body; // 'email' or 'phone'
-      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      // Require email input from the user or default to account email
+      const targetEmail = (body.email || account.email || '').trim();
 
-      await sql`
-        UPDATE admin_account
-        SET
-          reset_otp = ${otpCode},
-          reset_otp_expires_at = CURRENT_TIMESTAMP + INTERVAL '15 minutes'
-        WHERE id = 1;
-      `;
+      const result = await requestPasswordReset(targetEmail, ip);
 
-      const target =
-        channel === 'phone'
-          ? account.phone || '+8801521417284'
-          : account.email || 'ashifur.badhon@gmail.com';
+      // Mask email for display in UI: e.g. as***@gmail.com
+      const maskedEmail = targetEmail.replace(/^(.{2})(.*)(@.*)$/, '$1***$3');
 
-      const maskedTarget =
-        channel === 'phone'
-          ? target.slice(0, 4) + '******' + target.slice(-2)
-          : target.replace(/^(.{2})(.*)(@.*)$/, '$1***$3');
-
-      // Dispatch to external Gmail / Phone (Never return the code to the client!)
-      if (channel === 'phone') {
-        await sendOtpSms(target, otpCode);
-      } else {
-        await sendOtpEmail(target, otpCode);
-      }
-
-      return NextResponse.json({
-        success: true,
-        message: `A 6-digit verification code has been sent to your ${channel === 'phone' ? 'Phone (' + maskedTarget + ')' : 'Gmail (' + maskedTarget + ')'}.`,
-        channel,
-        targetMasked: maskedTarget,
-      });
+      return NextResponse.json(
+        {
+          success: result.success,
+          message: result.message,
+          challengeId: result.challengeId,
+          resendCooldownSeconds: result.resendCooldownSeconds,
+          targetMasked: maskedEmail,
+        },
+        { status: result.statusCode || (result.success ? 200 : 400) }
+      );
     }
 
-    // 5. FORGOT PASSWORD - VERIFY 6-DIGIT CODE
+    // 5. RESEND OTP
+    if (action === 'resend_otp') {
+      const challengeId = body.challengeId || '';
+      const result = await resendPasswordResetOtp(challengeId, ip);
+
+      return NextResponse.json(
+        {
+          success: result.success,
+          message: result.message,
+          resendCooldownSeconds: result.resendCooldownSeconds,
+        },
+        { status: result.statusCode || (result.success ? 200 : 400) }
+      );
+    }
+
+    // 6. FORGOT PASSWORD - VERIFY 6-DIGIT EMAIL CODE (Issues resetToken)
     if (action === 'verify_otp') {
-      const { otp } = body;
-      const cleanOtp = (otp || '').trim();
+      const challengeId = body.challengeId || '';
+      const otp = body.otp || '';
 
-      if (!cleanOtp || cleanOtp.length !== 6) {
-        return NextResponse.json(
-          { success: false, message: 'Please enter a valid 6-digit verification code.' },
-          { status: 400 }
-        );
-      }
+      const result = await verifyPasswordResetOtp(challengeId, otp);
 
-      // Check OTP in database and verify it has not expired
-      const otpMatches = account.reset_otp && account.reset_otp === cleanOtp;
-
-      // Check expiration if timestamp exists
-      let isExpired = false;
-      if (account.reset_otp_expires_at) {
-        const expiry = new Date(account.reset_otp_expires_at).getTime();
-        if (Date.now() > expiry) {
-          isExpired = true;
-        }
-      }
-
-      if (!otpMatches || isExpired) {
-        return NextResponse.json(
-          { success: false, message: 'Invalid or expired verification code. Please check your message or request a new one.' },
-          { status: 400 }
-        );
-      }
-
-      return NextResponse.json({
-        success: true,
-        message: 'Code verified successfully! Now please enter your new password.',
-      });
+      return NextResponse.json(
+        {
+          success: result.success,
+          message: result.message,
+          resetToken: result.resetToken,
+          attemptsRemaining: result.attemptsRemaining,
+        },
+        { status: result.statusCode || (result.success ? 200 : 400) }
+      );
     }
 
-    // 6. FORGOT PASSWORD - RESET TO NEW PASSWORD AFTER VERIFICATION
+    // 7. FORGOT PASSWORD - COMPLETE PASSWORD RESET (Gated by resetToken)
     if (action === 'reset_password_verify_otp') {
-      const { otp, new_passcode } = body;
-      const cleanOtp = (otp || '').trim();
-      const cleanNewPass = (new_passcode || '').trim();
+      const challengeId = body.challengeId || '';
+      const resetToken = body.resetToken || '';
+      const newPasscode = body.new_passcode || body.newPassword || '';
+      const confirmPasscode = body.confirm_passcode || body.confirmPassword || '';
 
-      if (!cleanNewPass || cleanNewPass.length < 4) {
-        return NextResponse.json(
-          { success: false, message: 'New password must be at least 4 characters long.' },
-          { status: 400 }
-        );
-      }
+      const result = await completePasswordReset(challengeId, resetToken, newPasscode, confirmPasscode);
 
-      const isOtpValid = account.reset_otp && account.reset_otp === cleanOtp;
-
-      let isExpired = false;
-      if (account.reset_otp_expires_at) {
-        const expiry = new Date(account.reset_otp_expires_at).getTime();
-        if (Date.now() > expiry) {
-          isExpired = true;
-        }
-      }
-
-      if (!isOtpValid || isExpired) {
-        return NextResponse.json(
-          { success: false, message: 'Invalid or expired verification session. Please restart verification.' },
-          { status: 400 }
-        );
-      }
-
-      await sql`
-        UPDATE admin_account
-        SET
-          passcode = ${cleanNewPass},
-          reset_otp = NULL,
-          reset_otp_expires_at = NULL,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = 1;
-      `;
-
-      return NextResponse.json({
-        success: true,
-        message: 'Password reset successfully! You can now log in with your new password.',
-      });
+      return NextResponse.json(
+        {
+          success: result.success,
+          message: result.message,
+        },
+        { status: result.statusCode || (result.success ? 200 : 400) }
+      );
     }
 
     return NextResponse.json({ success: false, message: 'Unknown action' }, { status: 400 });
