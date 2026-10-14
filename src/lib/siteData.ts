@@ -26,9 +26,10 @@ export async function getPublicSiteData() {
       sql`SELECT * FROM section_footer_social WHERE id = 1 LIMIT 1`,
       sql`SELECT * FROM section_creator_about WHERE id = 1 LIMIT 1`,
       sql`SELECT * FROM section_api_keys WHERE id = 1 LIMIT 1`,
+      sql`SELECT * FROM section_ui_settings WHERE id = 1 LIMIT 1`,
     ]);
 
-    const [heroRows, announcementRows, categoryRows, toolRows, footerRows, creatorRows, apiKeysRows] =
+    const [heroRows, announcementRows, categoryRows, toolRows, footerRows, creatorRows, apiKeysRows, uiSettingsRows] =
       (await Promise.race([queryPromise, timeoutPromise])) as any;
 
     const data = {
@@ -40,6 +41,7 @@ export async function getPublicSiteData() {
       footerSocial: footerRows[0] || null,
       creatorAbout: creatorRows[0] || null,
       apiKeys: apiKeysRows[0] || null,
+      uiSettings: uiSettingsRows[0] || null,
     };
 
     cachedSiteData = data;

@@ -59,6 +59,9 @@ export default function HomeClient({ initialData }: HomeClientProps) {
           w.SITE_CONFIG.apis.removeBgKey = data.apiKeys.removebg_key;
         }
       }
+      if (data.uiSettings) {
+        w.UI_SETTINGS = data.uiSettings;
+      }
     };
 
     if (publicData) {

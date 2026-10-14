@@ -48,6 +48,30 @@ export default function ToolCard({ tool, category }: ToolCardProps) {
   const cat = category || tool.cats[0] || 'documents';
   const iconSvg = TOOL_ICONS[tool.slug] || '<path d="M12 2v20M2 12h20" />';
 
+  const preloadToolAssets = () => {
+    if (typeof window === 'undefined') return;
+    const groupScriptMap: Record<string, string> = {
+      pdf: '/assets/tools/pdf.js',
+      image: '/assets/tools/image.js',
+      calc: '/assets/tools/calc.js',
+      qr: '/assets/tools/qr.js',
+      media: '/assets/tools/media.js',
+      resume: '/assets/tools/resume.js',
+    };
+    const scriptUrl = groupScriptMap[tool.group];
+    if (
+      scriptUrl &&
+      !document.querySelector(`link[href="${scriptUrl}"]`) &&
+      !document.querySelector(`script[src="${scriptUrl}"]`)
+    ) {
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.as = 'script';
+      link.href = scriptUrl;
+      document.head.appendChild(link);
+    }
+  };
+
   const handleToolClick = () => {
     try {
       fetch('/api/analytics/track', {
@@ -64,6 +88,8 @@ export default function ToolCard({ tool, category }: ToolCardProps) {
       data-slug={tool.slug}
       href={`/tools/${tool.slug}`}
       prefetch={true}
+      onMouseEnter={preloadToolAssets}
+      onPointerDown={preloadToolAssets}
       onClick={handleToolClick}
     >
       <span className="ico">
