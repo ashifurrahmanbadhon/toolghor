@@ -1,13 +1,15 @@
 /* সব টুলের কমন হেল্পার */
 (function () {
-  var ROOT = (document.body && document.body.getAttribute('data-root')) || '';
+  var rawRoot = (document.body && document.body.getAttribute('data-root')) || '/';
+  var ROOT = rawRoot.endsWith('/') ? rawRoot : rawRoot + '/';
   var UI = {
     ROOT: ROOT,
     getRoot: function () {
       if (document.body && document.body.hasAttribute('data-root')) {
-        return document.body.getAttribute('data-root') || '';
+        var r = document.body.getAttribute('data-root') || '/';
+        return r.endsWith('/') ? r : r + '/';
       }
-      return UI.ROOT || '';
+      return UI.ROOT || '/';
     }
   };
   var BN = '০১২৩৪৫৬৭৮৯';
