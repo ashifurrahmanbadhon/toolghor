@@ -80,10 +80,11 @@ export async function sendOtpEmail(toEmail: string, otpCode: string): Promise<Se
   }
 
   // 3. SMTP Provider support (Nodemailer / Gmail / custom SMTP)
-  const user = process.env.SMTP_USER || process.env.GMAIL_USER;
-  const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+  const user = process.env.SMTP_USER || process.env.GMAIL_USER || 'ashifur.badhon@gmail.com';
+  const rawPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || 'jedyruaevwhrqkyx';
+  const pass = (rawPass || '').replace(/["']/g, '').replace(/\s+/g, '');
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const port = Number(process.env.SMTP_PORT) || 465;
+  const port = Number(process.env.SMTP_PORT) || 587;
   const isSecure = process.env.SMTP_SECURE != null ? process.env.SMTP_SECURE === 'true' : port === 465;
   const from = process.env.EMAIL_FROM || `"ToolGhor Security" <${user}>`;
 
