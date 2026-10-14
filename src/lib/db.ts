@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless';
-import { CATEGORIES, TOOLS } from '@/data/registry';
-import { siteConfig } from '@/data/config';
+import { CATEGORIES, TOOLS } from '../data/registry';
+import { siteConfig } from '../data/config';
 
 function getDbUrl() {
   const url =
@@ -278,6 +278,34 @@ export async function initDatabase() {
     INSERT INTO admin_account (id, username, passcode, email, phone)
     VALUES (1, 'admin', 'admin123', 'ashifur.badhon@gmail.com', '+8801521417284')
     ON CONFLICT (id) DO NOTHING;
+  `;
+
+  // 10. Password Reset Challenges (Cryptographically secure, hashed OTP, attempts, resend cooldown, and single-use bearer reset tokens)
+  await sql`
+    CREATE TABLE IF NOT EXISTS password_reset_challenges (
+      id VARCHAR(64) PRIMARY KEY,
+      account_id INT NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      otp_hash VARCHAR(128) NOT NULL,
+      otp_expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+      attempts INT NOT NULL DEFAULT 0,
+      max_attempts INT NOT NULL DEFAULT 5,
+      resend_cooldown_until TIMESTAMP WITH TIME ZONE NOT NULL,
+      reset_token_hash VARCHAR(128),
+      reset_token_expires_at TIMESTAMP WITH TIME ZONE,
+      is_verified BOOLEAN NOT NULL DEFAULT false,
+      is_consumed BOOLEAN NOT NULL DEFAULT false,
+      ip_address VARCHAR(100),
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_pwd_reset_email ON password_reset_challenges(email);
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_pwd_reset_token_hash ON password_reset_challenges(reset_token_hash);
   `;
 
   isInitialized = true;

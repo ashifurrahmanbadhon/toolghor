@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "npx tsx --env-file=.env.local --test tests/auth-recovery.test.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
@@ -22,6 +23,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "tailwindcss": "^4",
+    "tsx": "^4.19.2",
     "typescript": "^5"
   }
 }

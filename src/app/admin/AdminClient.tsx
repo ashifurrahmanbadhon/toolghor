@@ -146,16 +146,29 @@ export default function AdminConsole() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Forgot Password Modal State (3-Step Flow: Channel Selection -> Code Input -> Password Creation)
+  // Forgot Password Modal State (3-Step Flow: Email Entry -> Code Input -> Password Creation)
   const [showForgotModal, setShowForgotModal] = useState(false);
-  const [forgotStep, setForgotStep] = useState<'channel' | 'enter_code' | 'set_password'>('channel');
-  const [forgotChannel, setForgotChannel] = useState<'email' | 'phone'>('email');
+  const [forgotStep, setForgotStep] = useState<'email' | 'enter_code' | 'set_password'>('email');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotChallengeId, setForgotChallengeId] = useState('');
+  const [forgotResetToken, setForgotResetToken] = useState('');
   const [forgotTargetMasked, setForgotTargetMasked] = useState<string>('');
   const [forgotOtp, setForgotOtp] = useState('');
   const [forgotNewPass, setForgotNewPass] = useState('');
   const [forgotConfirmPass, setForgotConfirmPass] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMsg, setForgotMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [forgotCooldown, setForgotCooldown] = useState(0);
+  const [forgotAttemptsRemaining, setForgotAttemptsRemaining] = useState<number | null>(null);
+
+  // Resend cooldown timer in admin forgot modal
+  useEffect(() => {
+    if (forgotCooldown <= 0) return;
+    const t = setInterval(() => {
+      setForgotCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [forgotCooldown]);
 
   // Active Menu Tab (Sidebar Navigation)
   const [activeTab, setActiveTab] = useState<MenuTab>('overview');
@@ -404,7 +417,46 @@ export default function AdminConsole() {
     }
   };
 
-  const handleSendForgotOtp = async () => {
+  const handleSendForgotOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setForgotLoading(true);
+    setForgotMsg(null);
+    const targetEmail = (forgotEmail.trim() || adminProfile.email || '').trim();
+    if (!targetEmail) {
+      setForgotMsg({ type: 'error', text: 'Please enter your registered email address.' });
+      setForgotLoading(false);
+      return;
+    }
+    try {
+      const res = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'forgot_password_send_otp',
+          email: targetEmail,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setForgotChallengeId(data.challengeId || '');
+        setForgotTargetMasked(data.targetMasked || targetEmail.replace(/^(.{2})(.*)(@.*)$/, '$1***$3'));
+        setForgotOtp('');
+        setForgotCooldown(data.resendCooldownSeconds || 60);
+        setForgotStep('enter_code');
+        setForgotAttemptsRemaining(null);
+        setForgotMsg({ type: 'success', text: data.message });
+      } else {
+        setForgotMsg({ type: 'error', text: data.message || 'Failed to dispatch verification code.' });
+      }
+    } catch {
+      setForgotMsg({ type: 'error', text: 'Network error sending verification code.' });
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResendForgotOtp = async () => {
+    if (forgotCooldown > 0 || forgotLoading || !forgotChallengeId) return;
     setForgotLoading(true);
     setForgotMsg(null);
     try {
@@ -412,21 +464,24 @@ export default function AdminConsole() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'forgot_password_send_otp',
-          channel: forgotChannel,
+          action: 'resend_otp',
+          challengeId: forgotChallengeId,
         }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setForgotTargetMasked(data.targetMasked || '');
+        setForgotCooldown(data.resendCooldownSeconds || 60);
         setForgotOtp('');
-        setForgotStep('enter_code');
+        setForgotAttemptsRemaining(null);
         setForgotMsg({ type: 'success', text: data.message });
       } else {
-        setForgotMsg({ type: 'error', text: data.message || 'Failed to send verification code.' });
+        setForgotMsg({ type: 'error', text: data.message || 'Failed to resend code.' });
+        if (data.resendCooldownSeconds) {
+          setForgotCooldown(data.resendCooldownSeconds);
+        }
       }
     } catch {
-      setForgotMsg({ type: 'error', text: 'Network error sending verification code.' });
+      setForgotMsg({ type: 'error', text: 'Network error resending code.' });
     } finally {
       setForgotLoading(false);
     }
@@ -447,15 +502,20 @@ export default function AdminConsole() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'verify_otp',
+          challengeId: forgotChallengeId,
           otp: cleanOtp,
         }),
       });
       const data = await res.json();
-      if (res.ok && data.success) {
+      if (res.ok && data.success && data.resetToken) {
+        setForgotResetToken(data.resetToken);
         setForgotMsg({ type: 'success', text: 'Code verified! Now set your new password.' });
         setForgotStep('set_password');
       } else {
         setForgotMsg({ type: 'error', text: data.message || 'Invalid or expired verification code.' });
+        if (typeof data.attemptsRemaining === 'number') {
+          setForgotAttemptsRemaining(data.attemptsRemaining);
+        }
       }
     } catch {
       setForgotMsg({ type: 'error', text: 'Network error verifying code.' });
@@ -467,8 +527,8 @@ export default function AdminConsole() {
   const handleSetNewPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotMsg(null);
-    if (!forgotNewPass || forgotNewPass.length < 4) {
-      setForgotMsg({ type: 'error', text: 'New password must be at least 4 characters.' });
+    if (!forgotNewPass || forgotNewPass.length < 8) {
+      setForgotMsg({ type: 'error', text: 'New password must be at least 8 characters.' });
       return;
     }
     if (forgotNewPass !== forgotConfirmPass) {
@@ -482,19 +542,24 @@ export default function AdminConsole() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'reset_password_verify_otp',
-          otp: forgotOtp.trim(),
+          challengeId: forgotChallengeId,
+          resetToken: forgotResetToken,
           new_passcode: forgotNewPass.trim(),
+          confirm_passcode: forgotConfirmPass.trim(),
         }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
         alert('Password has been successfully updated! You can now log in.');
         setShowForgotModal(false);
-        setPin(forgotNewPass);
-        setForgotStep('channel');
+        setPin('');
+        setForgotStep('email');
+        setForgotEmail('');
         setForgotOtp('');
         setForgotNewPass('');
         setForgotConfirmPass('');
+        setForgotResetToken('');
+        setForgotChallengeId('');
         setForgotMsg(null);
       } else {
         setForgotMsg({ type: 'error', text: data.message || 'Password update failed.' });
@@ -741,12 +806,17 @@ export default function AdminConsole() {
               type="button"
               onClick={() => {
                 setShowForgotModal(true);
-                setForgotStep('channel');
-                setForgotMsg(null);
+                setForgotStep('email');
+                setForgotEmail('');
+                setForgotChallengeId('');
+                setForgotResetToken('');
                 setForgotOtp('');
                 setForgotTargetMasked('');
                 setForgotNewPass('');
                 setForgotConfirmPass('');
+                setForgotAttemptsRemaining(null);
+                setForgotCooldown(0);
+                setForgotMsg(null);
               }}
               style={{
                 background: 'none',
@@ -840,14 +910,14 @@ export default function AdminConsole() {
                   <KeyRound size={26} />
                 </div>
                 <h2 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc' }}>
-                  {forgotStep === 'channel' && 'Reset Admin Password'}
+                  {forgotStep === 'email' && 'Reset Admin Password'}
                   {forgotStep === 'enter_code' && 'Enter Verification Code'}
                   {forgotStep === 'set_password' && 'Create New Password'}
                 </h2>
                 <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
-                  {forgotStep === 'channel' && 'Choose whether to receive the 6-digit code via Gmail or Phone.'}
-                  {forgotStep === 'enter_code' && 'Enter the 6-digit verification code sent to your account.'}
-                  {forgotStep === 'set_password' && 'Enter and confirm your new password to complete the reset.'}
+                  {forgotStep === 'email' && 'Enter your registered admin email address to receive a 6-digit verification code.'}
+                  {forgotStep === 'enter_code' && 'Enter the 6-digit verification code sent to your registered email.'}
+                  {forgotStep === 'set_password' && 'Enter and confirm your new password (minimum 8 characters).'}
                 </p>
               </div>
 
@@ -876,11 +946,11 @@ export default function AdminConsole() {
                     borderRadius: '12px',
                     fontSize: '11px',
                     fontWeight: 700,
-                    background: forgotStep === 'channel' ? '#10b981' : 'rgba(16, 185, 129, 0.2)',
-                    color: forgotStep === 'channel' ? '#ffffff' : '#34d399',
+                    background: forgotStep === 'email' ? '#10b981' : 'rgba(16, 185, 129, 0.2)',
+                    color: forgotStep === 'email' ? '#ffffff' : '#34d399',
                   }}
                 >
-                  1. Method
+                  1. Email
                 </div>
                 <div style={{ width: '12px', height: '1px', background: '#334155' }} />
                 <div
@@ -903,7 +973,7 @@ export default function AdminConsole() {
                         : '#94a3b8',
                   }}
                 >
-                  2. Verify Code
+                  2. Verify OTP
                 </div>
                 <div style={{ width: '12px', height: '1px', background: '#334155' }} />
                 <div
@@ -920,89 +990,57 @@ export default function AdminConsole() {
                 </div>
               </div>
 
-              {/* STEP 1: SELECT CHANNEL */}
-              {forgotStep === 'channel' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <label
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '14px',
-                      borderRadius: '12px',
-                      border: forgotChannel === 'email' ? '1.5px solid #10b981' : '1px solid #334155',
-                      background: forgotChannel === 'email' ? 'rgba(16,185,129,0.08)' : '#0b0f19',
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => setForgotChannel('email')}
-                  >
+              {/* STEP 1: EMAIL ENTRY ONLY */}
+              {forgotStep === 'email' && (
+                <form onSubmit={handleSendForgotOtp} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
+                      Admin Email Address
+                    </label>
                     <input
-                      type="radio"
-                      name="channel"
-                      checked={forgotChannel === 'email'}
-                      onChange={() => setForgotChannel('email')}
-                      style={{ accentColor: '#10b981' }}
+                      type="email"
+                      required
+                      autoFocus
+                      placeholder="e.g. ashifur.badhon@gmail.com"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        borderRadius: '12px',
+                        background: '#0b0f19',
+                        border: '1.5px solid #334155',
+                        color: '#f8fafc',
+                        fontSize: '14px',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                      }}
                     />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Mail size={16} color="#10b981" /> Send to Gmail
-                      </div>
-                      <div style={{ fontSize: '12.5px', color: '#94a3b8' }}>
-                        {adminProfile.email ? adminProfile.email.replace(/^(.{2})(.*)(@.*)$/, '$1***$3') : 'ashifur.badhon@gmail.com'}
-                      </div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px' }}>
+                      A secure 6-digit single-use OTP will be sent to this email address. OTP expires in 5 minutes.
                     </div>
-                  </label>
-
-                  <label
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '14px',
-                      borderRadius: '12px',
-                      border: forgotChannel === 'phone' ? '1.5px solid #10b981' : '1px solid #334155',
-                      background: forgotChannel === 'phone' ? 'rgba(16,185,129,0.08)' : '#0b0f19',
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => setForgotChannel('phone')}
-                  >
-                    <input
-                      type="radio"
-                      name="channel"
-                      checked={forgotChannel === 'phone'}
-                      onChange={() => setForgotChannel('phone')}
-                      style={{ accentColor: '#10b981' }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Phone size={16} color="#10b981" /> Send to Phone / SMS
-                      </div>
-                      <div style={{ fontSize: '12.5px', color: '#94a3b8' }}>
-                        {adminProfile.phone ? adminProfile.phone.slice(0, 4) + '******' + adminProfile.phone.slice(-2) : '+8801521417284'}
-                      </div>
-                    </div>
-                  </label>
+                  </div>
 
                   <button
-                    type="button"
-                    onClick={handleSendForgotOtp}
-                    disabled={forgotLoading}
+                    type="submit"
+                    disabled={forgotLoading || !forgotEmail.trim()}
                     style={{
                       marginTop: '8px',
                       width: '100%',
                       padding: '13px',
                       borderRadius: '12px',
-                      background: '#10b981',
+                      background: forgotEmail.trim() ? '#10b981' : '#334155',
                       color: '#ffffff',
                       fontWeight: 700,
                       fontSize: '14px',
                       border: 'none',
-                      cursor: 'pointer',
+                      cursor: forgotEmail.trim() ? 'pointer' : 'not-allowed',
+                      transition: 'background 0.2s',
                     }}
                   >
                     {forgotLoading ? 'Sending Verification Code...' : 'Send Verification Code'}
                   </button>
-                </div>
+                </form>
               )}
 
               {/* STEP 2: ENTER CODE ONLY (PASSWORD INPUTS ARE HIDDEN) */}
@@ -1018,11 +1056,16 @@ export default function AdminConsole() {
                     }}
                   >
                     <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '2px' }}>
-                      Verification code sent to {forgotChannel === 'phone' ? 'Phone' : 'Gmail'}:
+                      Verification code sent to registered email:
                     </div>
                     <div style={{ fontSize: '14px', fontWeight: 700, color: '#10b981' }}>
-                      {forgotTargetMasked || (forgotChannel === 'phone' ? adminProfile.phone : adminProfile.email)}
+                      {forgotTargetMasked || forgotEmail || adminProfile.email}
                     </div>
+                    {forgotAttemptsRemaining !== null && forgotAttemptsRemaining < 5 && (
+                      <div style={{ fontSize: '12px', color: '#f87171', marginTop: '4px', fontWeight: 600 }}>
+                        {forgotAttemptsRemaining} attempt{forgotAttemptsRemaining === 1 ? '' : 's'} remaining
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -1050,10 +1093,11 @@ export default function AdminConsole() {
                         fontWeight: 800,
                         fontFamily: 'monospace',
                         outline: 'none',
+                        boxSizing: 'border-box',
                       }}
                     />
                     <div style={{ fontSize: '11.5px', color: '#94a3b8', textAlign: 'center', marginTop: '6px' }}>
-                      Please check your inbox/messages and enter the 6-digit code.
+                      Please check your inbox (and spam folder) for the 6-digit code.
                     </div>
                   </div>
 
@@ -1061,7 +1105,7 @@ export default function AdminConsole() {
                     <button
                       type="button"
                       onClick={() => {
-                        setForgotStep('channel');
+                        setForgotStep('email');
                         setForgotMsg(null);
                       }}
                       style={{
@@ -1101,19 +1145,21 @@ export default function AdminConsole() {
                   <div style={{ textAlign: 'center', marginTop: '4px' }}>
                     <button
                       type="button"
-                      onClick={handleSendForgotOtp}
-                      disabled={forgotLoading}
+                      onClick={handleResendForgotOtp}
+                      disabled={forgotLoading || forgotCooldown > 0}
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#38bdf8',
+                        color: forgotCooldown > 0 ? '#64748b' : '#38bdf8',
                         fontSize: '12px',
                         fontWeight: 600,
-                        cursor: 'pointer',
-                        textDecoration: 'underline',
+                        cursor: forgotCooldown > 0 ? 'not-allowed' : 'pointer',
+                        textDecoration: forgotCooldown > 0 ? 'none' : 'underline',
                       }}
                     >
-                      Didn&apos;t receive code? Resend
+                      {forgotCooldown > 0
+                        ? `Resend code in ${forgotCooldown}s`
+                        : "Didn't receive code? Resend OTP"}
                     </button>
                   </div>
                 </form>
@@ -1139,12 +1185,12 @@ export default function AdminConsole() {
 
                   <div>
                     <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
-                      New Admin Password
+                      New Admin Password (Min. 8 characters)
                     </label>
                     <input
                       type="password"
                       autoFocus
-                      placeholder="At least 4 characters..."
+                      placeholder="Enter minimum 8 characters..."
                       value={forgotNewPass}
                       onChange={(e) => setForgotNewPass(e.target.value)}
                       style={{
@@ -1155,6 +1201,7 @@ export default function AdminConsole() {
                         border: '1px solid #334155',
                         color: '#f8fafc',
                         fontSize: '14px',
+                        boxSizing: 'border-box',
                       }}
                     />
                   </div>
@@ -1176,6 +1223,7 @@ export default function AdminConsole() {
                         border: '1px solid #334155',
                         color: '#f8fafc',
                         fontSize: '14px',
+                        boxSizing: 'border-box',
                       }}
                     />
                   </div>
