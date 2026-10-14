@@ -4,9 +4,9 @@ import React from 'react';
 import { usePathname } from 'next/navigation';
 
 /**
- * Ultra-high-performance ambient background animation component.
- * Uses 100% GPU-composited CSS transforms without JS render loops.
- * Zero lag, zero reflow, zero battery drain.
+ * ToolGhor Premium Ambient Motion Background
+ * 100% Hardware GPU Accelerated (Translate3D + Scale + Opacity)
+ * Zero JavaScript thread overhead, zero reflows, buttery-smooth 60/120 FPS.
  */
 export default function BackgroundAnimation() {
   const pathname = usePathname();
@@ -15,15 +15,25 @@ export default function BackgroundAnimation() {
   if (isAdmin) {
     return (
       <div className="bg-ambient-canvas bg-admin-base" aria-hidden="true">
-        {/* High-tech Cyber Grid Lines */}
-        <div className="bg-grid-pattern-admin" />
+        {/* Futuristic Cyber Matrix Grid */}
+        <div className="bg-grid-admin" />
 
-        {/* Ambient Hardware-Accelerated Floating Orbs */}
-        <div className="bg-orb bg-orb-admin-green" />
-        <div className="bg-orb bg-orb-admin-cyan" />
-        <div className="bg-orb bg-orb-admin-indigo" />
+        {/* Ambient High-Tech Floating Plasma Nodes */}
+        <div className="bg-orb bg-admin-plasma-green" />
+        <div className="bg-orb bg-admin-plasma-cyan" />
+        <div className="bg-orb bg-admin-plasma-indigo" />
 
-        {/* Soft Vignette Depth */}
+        {/* Cyber Horizon Scanline */}
+        <div className="bg-admin-scanline" />
+
+        {/* Floating Cyber Sparks */}
+        <div className="cyber-spark spark-1" />
+        <div className="cyber-spark spark-2" />
+        <div className="cyber-spark spark-3" />
+        <div className="cyber-spark spark-4" />
+        <div className="cyber-spark spark-5" />
+
+        {/* Vignette Edge Shading */}
         <div className="bg-vignette-admin" />
       </div>
     );
@@ -31,16 +41,25 @@ export default function BackgroundAnimation() {
 
   return (
     <div className="bg-ambient-canvas bg-site-base" aria-hidden="true">
-      {/* Subtle Developer Micro-Dot Matrix */}
-      <div className="bg-grid-pattern" />
+      {/* Dynamic Geometric Micro-Grid */}
+      <div className="bg-site-grid" />
 
-      {/* Floating Emerald Aurora Mesh Orbs */}
-      <div className="bg-orb bg-orb-emerald" />
-      <div className="bg-orb bg-orb-teal" />
-      <div className="bg-orb bg-orb-cyan" />
+      {/* Brand Flowing Aurora Plasma Waves */}
+      <div className="bg-orb bg-aurora-emerald" />
+      <div className="bg-orb bg-aurora-cyan" />
+      <div className="bg-orb bg-aurora-mint" />
+      <div className="bg-orb bg-aurora-marigold" />
 
-      {/* Horizon Soft Glow */}
-      <div className="bg-horizon-glow" />
+      {/* Radiant Workshop Floating Sparks (Constellation of Tools) */}
+      <div className="tool-spark spark-1" />
+      <div className="tool-spark spark-2" />
+      <div className="tool-spark spark-3" />
+      <div className="tool-spark spark-4" />
+      <div className="tool-spark spark-5" />
+      <div className="tool-spark spark-6" />
+
+      {/* Atmospheric Horizon Depth */}
+      <div className="bg-site-horizon" />
     </div>
   );
 }
