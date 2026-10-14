@@ -46,7 +46,7 @@ describe('Email OTP Password Recovery Flow (End-to-End)', () => {
     const initialHash = await hashPassword('InitialPass123!');
     await sql`
       INSERT INTO admin_account (id, username, email, phone, passcode)
-      VALUES (1, 'test_recovery_admin', ${TEST_EMAIL}, '+8801999999999', ${initialHash})
+      VALUES (9999, 'test_recovery_admin', ${TEST_EMAIL}, '+8801999999999', ${initialHash})
       ON CONFLICT (id) DO UPDATE SET email = ${TEST_EMAIL}, passcode = ${initialHash};
     `;
   });
@@ -198,10 +198,12 @@ describe('Email OTP Password Recovery Flow (End-to-End)', () => {
     // Step E: Verify new password matches in DB
     const sql = getDb();
     const rows = await sql`
-      SELECT passcode FROM admin_account WHERE id = 1
+      SELECT passcode FROM admin_account WHERE id = 9999
     `;
     assert.ok(rows.length > 0);
     const isNewPassValid = await verifyPassword(newPassword, rows[0].passcode);
     assert.equal(isNewPassValid, true, 'Admin account passcode must verify against new password');
+    // Cleanup test account
+    await sql`DELETE FROM admin_account WHERE id = 9999;`;
   });
 });
