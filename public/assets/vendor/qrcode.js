@@ -425,7 +425,7 @@ var qrcode = function() {
       if (_typeNumber < 1) {
         var typeNumber = 1;
 
-        for (; typeNumber < 40; typeNumber++) {
+        for (; typeNumber <= 40; typeNumber++) {
           var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, _errorCorrectionLevel);
           var buffer = qrBitBuffer();
 
@@ -444,6 +444,10 @@ var qrcode = function() {
           if (buffer.getLengthInBits() <= totalDataCount * 8) {
             break;
           }
+        }
+
+        if (typeNumber > 40) {
+          throw 'code length overflow. (exceeds QR code version 40 max capacity)';
         }
 
         _typeNumber = typeNumber;

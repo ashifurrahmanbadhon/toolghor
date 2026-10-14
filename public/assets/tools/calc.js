@@ -157,29 +157,214 @@
     calc();
   };
 
-  /* ================= শতকরা ================= */
+  /* ================= শতকরা (Enhanced & Easy Percentage Calculator) ================= */
   T['percentage-calculator'] = function (root) {
-    function box(title, build, compute) {
-      var ins = [], ans = UI.el('div', { class: 'ans' }, '—');
-      var parts = build(function (ph, w) { var i = numIn(ph); if (w) i.style.width = w; ins.push(i); i.addEventListener('input', upd); return i; });
-      function upd() {
-        var vals = ins.map(function (i) { return UI.parseNum(i.value); });
-        ans.textContent = vals.some(isNaN) ? '—' : compute(vals);
-      }
-      return UI.el('div', { class: 'mini' }, UI.el('h3', {}, title), UI.el('div', { class: 'inline-in' }, parts), ans);
-    }
-    var N = function (v) { return UI.num(v, 4); };
-    var boxes = [
-      box(tr('কোনো সংখ্যার শতকরা কত?', "Percentage of a number"), function (i) { return [i(tr('সংখ্যা', "Number"), '110px'), tr(' এর ', ", find "), i(tr('শতকরা', "Percent"), '90px'), tr(' % কত?', " % of it")]; }, function (v) { return N(v[0] * v[1] / 100); }),
-      box(tr('একটি সংখ্যা অন্যটির কত শতাংশ?', "One number as a percentage of another"), function (i) { return [i(tr('সংখ্যা', "Number"), '110px'), tr(' হলো ', " is what % of "), i(tr('মোট', "Total"), '110px'), tr(' এর কত %?', "?")]; }, function (v) { return v[1] === 0 ? '—' : N(v[0] / v[1] * 100) + '%'; }),
-      box(tr('বৃদ্ধি বা হ্রাসের হার', "Increase or decrease rate"), function (i) { return [tr('এখান থেকে ', "From "), i(tr('আগের', "Before"), '100px'), tr(' ওখানে ', " to "), i(tr('পরের', "After"), '100px')]; }, function (v) {
-        if (v[0] === 0) return '—'; var c = (v[1] - v[0]) / Math.abs(v[0]) * 100; return (c >= 0 ? '▲ ' : '▼ ') + N(Math.abs(c)) + '% ' + (c >= 0 ? tr('বৃদ্ধি', "increase") : tr('হ্রাস', "decrease"));
-      }),
-      box(tr('শতকরা যোগ বা ছাড় (ডিসকাউন্ট)', "Add or subtract a percentage (discount)"), function (i) { return [i(tr('মূল দাম', "Original price"), '110px'), tr(' এর সাথে ', " ± "), i(tr('শতকরা', "Percent"), '90px'), ' %']; }, function (v) {
-        return tr('যোগ করলে: ', "If added: ") + N(v[0] * (1 + v[1] / 100)) + tr(' · ছাড় দিলে: ', " · If discounted: ") + N(v[0] * (1 - v[1] / 100));
-      })
+    var mode = 'basic';
+    var N = function (v, d) { return UI.num(v, d != null ? d : 2); };
+
+    var container = UI.el('div', { class: 'stack' });
+    var modeBox = UI.el('div', { class: 'seg', style: { flexWrap: 'wrap', marginBottom: '8px' } });
+    var bodyBox = UI.el('div', { class: 'stack' });
+
+    var MODES = [
+      { id: 'basic', label: tr('🎯 সহজ শতকরা (% বের করুন)', "🎯 Find % of Number") },
+      { id: 'discount', label: tr('🛍️ ডিসকাউন্ট ও সাশ্রয়', "🛍️ Discount & Savings") },
+      { id: 'ratio', label: tr('📊 প্রাপ্ত নম্বরের % (অনুপাত)', "📊 Marks & Ratio %") },
+      { id: 'change', label: tr('📈 বৃদ্ধি বা হ্রাসের হার', "📈 Increase / Decrease") },
+      { id: 'tax', label: tr('➕ ভ্যাট/ট্যাক্স যোগ বা বিয়োগ', "➕ Add / Subtract %") }
     ];
-    root.appendChild(UI.el('div', { class: 'cmp' }, boxes));
+
+    function renderModeSelector() {
+      UI.clear(modeBox);
+      MODES.forEach(function (m) {
+        var btn = UI.el('button', {
+          type: 'button',
+          'aria-pressed': String(mode === m.id),
+          onclick: function () { mode = m.id; renderModeSelector(); renderBody(); }
+        }, m.label);
+        modeBox.appendChild(btn);
+      });
+    }
+
+    function chipRow(percentages, onSelect) {
+      var row = UI.el('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap', margin: '4px 0 10px 0' } });
+      percentages.forEach(function (p) {
+        var b = UI.el('button', {
+          type: 'button',
+          class: 'btn alt sm',
+          style: { padding: '4px 10px', fontSize: '13px', borderRadius: '14px' },
+          onclick: function () { onSelect(p); }
+        }, UI.num(p, 0) + '%');
+        row.appendChild(b);
+      });
+      return row;
+    }
+
+    function resCard(mainVal, subVal, formula) {
+      var card = UI.el('div', { class: 'result stack', style: { marginTop: '14px', border: '1px solid var(--accent, #10b981)', background: 'linear-gradient(135deg, rgba(16,185,129,0.06), rgba(59,130,246,0.06))', borderRadius: '12px', padding: '16px' } });
+      card.appendChild(UI.el('div', { class: 'lbl' }, tr('হিসাবের ফলাফল', "Calculation Result")));
+      card.appendChild(UI.el('div', { class: 'big-num', style: { color: 'var(--accent, #10b981)', fontSize: '2rem', fontWeight: '700' } }, mainVal));
+      if (subVal) card.appendChild(UI.el('div', { style: { fontWeight: '600', fontSize: '15px' } }, subVal));
+      if (formula) card.appendChild(UI.el('small', { class: 'muted', style: { marginTop: '4px' } }, tr('পদ্ধতি: ', "Formula: ") + formula));
+      var copyBtn = UI.btn(tr('কপি করুন', "Copy result"), function () { UI.copy(mainVal); }, { cls: 'sm alt', icon: 'copy', iconSize: 14 });
+      card.appendChild(UI.el('div', { class: 'row', style: { marginTop: '6px' } }, copyBtn));
+      return card;
+    }
+
+    function renderBody() {
+      UI.clear(bodyBox);
+
+      if (mode === 'basic') {
+        var baseIn = numIn('যেমন: 500'); baseIn.value = '500';
+        var pctIn = numIn('যেমন: 15'); pctIn.value = '15';
+        var out = UI.el('div');
+
+        function calc() {
+          var base = UI.parseNum(baseIn.value), pct = UI.parseNum(pctIn.value);
+          UI.clear(out);
+          if (isNaN(base) || isNaN(pct)) { out.appendChild(UI.notice('info', tr('সংখ্যা এবং শতকরা হার লিখুন।', "Enter both the number and percentage."))); return; }
+          var ans = (base * pct) / 100;
+          out.appendChild(resCard(
+            N(ans),
+            UI.num(base) + tr(' এর ', " of ") + UI.num(pct) + '% = ' + N(ans),
+            '(' + UI.num(base) + ' × ' + UI.num(pct) + ') ÷ 100 = ' + N(ans)
+          ));
+        }
+
+        var chips = chipRow([5, 10, 15, 20, 25, 50, 75], function (p) { pctIn.value = p; calc(); });
+        baseIn.addEventListener('input', calc); pctIn.addEventListener('input', calc);
+
+        bodyBox.appendChild(UI.el('div', { class: 'stack' },
+          UI.el('div', { class: 'row' },
+            UI.field(tr('মূল সংখ্যা (Base Number)', "Base Number"), baseIn),
+            UI.field(tr('শতকরা হার (%)', "Percentage (%)"), pctIn)
+          ),
+          UI.el('div', {}, UI.el('small', { class: 'lbl' }, tr('দ্রুত পার্সেন্টেজ বাটন:', "Quick percentage buttons:")), chips),
+          out
+        ));
+        calc();
+      } else if (mode === 'discount') {
+        var priceIn = numIn('যেমন: 1200'); priceIn.value = '1200';
+        var discIn = numIn('যেমন: 20'); discIn.value = '20';
+        var out = UI.el('div');
+
+        function calc() {
+          var price = UI.parseNum(priceIn.value), disc = UI.parseNum(discIn.value);
+          UI.clear(out);
+          if (isNaN(price) || isNaN(disc)) { out.appendChild(UI.notice('info', tr('মূল দাম এবং ডিসকাউন্টের শতকরা লিখুন।', "Enter original price and discount percentage."))); return; }
+          var saved = (price * disc) / 100;
+          var finalPrice = Math.max(0, price - saved);
+          out.appendChild(resCard(
+            tr('ফাইনাল দাম: ', "Final Price: ") + N(finalPrice) + tr(' টাকা', ""),
+            '🎉 ' + tr('আপনি সাশ্রয় করবেন: ', "You save: ") + N(saved) + tr(' টাকা (', " (") + UI.num(disc) + '%)',
+            UI.num(price) + ' - (' + UI.num(price) + ' × ' + UI.num(disc) + '%) = ' + N(finalPrice)
+          ));
+        }
+
+        var chips = chipRow([5, 10, 15, 20, 25, 30, 40, 50, 70], function (p) { discIn.value = p; calc(); });
+        priceIn.addEventListener('input', calc); discIn.addEventListener('input', calc);
+
+        bodyBox.appendChild(UI.el('div', { class: 'stack' },
+          UI.el('div', { class: 'row' },
+            UI.field(tr('মূল দাম (Original Price)', "Original Price"), priceIn),
+            UI.field(tr('ডিসকাউন্ট বা ছাড় (%)', "Discount (%)"), discIn)
+          ),
+          UI.el('div', {}, UI.el('small', { class: 'lbl' }, tr('জনপ্রিয় ডিসকাউন্ট বাটন:', "Popular discount buttons:")), chips),
+          out
+        ));
+        calc();
+      } else if (mode === 'ratio') {
+        var partIn = numIn('যেমন: 420'); partIn.value = '420';
+        var totalIn = numIn('যেমন: 500'); totalIn.value = '500';
+        var out = UI.el('div');
+
+        function calc() {
+          var part = UI.parseNum(partIn.value), total = UI.parseNum(totalIn.value);
+          UI.clear(out);
+          if (isNaN(part) || isNaN(total)) { out.appendChild(UI.notice('info', tr('প্রাপ্ত মান এবং মোট মান লিখুন।', "Enter obtained and total value."))); return; }
+          if (total === 0) { out.appendChild(UI.notice('err', tr('মোট মান শূন্য (0) হতে পারে না।', "Total cannot be 0."))); return; }
+          var pct = (part / total) * 100;
+          out.appendChild(resCard(
+            N(pct) + '%',
+            UI.num(part) + tr(' হলো ', " is ") + UI.num(total) + tr(' এর ', " of ") + N(pct) + '%',
+            '(' + UI.num(part) + ' ÷ ' + UI.num(total) + ') × 100 = ' + N(pct) + '%'
+          ));
+        }
+
+        partIn.addEventListener('input', calc); totalIn.addEventListener('input', calc);
+        bodyBox.appendChild(UI.el('div', { class: 'stack' },
+          UI.el('div', { class: 'row' },
+            UI.field(tr('প্রাপ্ত মান / যেকোনো সংখ্যা (Part)', "Obtained / Part"), partIn),
+            UI.field(tr('মোট মান / পূর্ণমান (Total)', "Total Value"), totalIn)
+          ),
+          out
+        ));
+        calc();
+      } else if (mode === 'change') {
+        var oldIn = numIn('যেমন: 800'); oldIn.value = '800';
+        var newIn = numIn('যেমন: 1000'); newIn.value = '1000';
+        var out = UI.el('div');
+
+        function calc() {
+          var oldV = UI.parseNum(oldIn.value), newV = UI.parseNum(newIn.value);
+          UI.clear(out);
+          if (isNaN(oldV) || isNaN(newV)) { out.appendChild(UI.notice('info', tr('পূর্বের এবং বর্তমান মান লিখুন।', "Enter previous and current value."))); return; }
+          if (oldV === 0) { out.appendChild(UI.notice('err', tr('পূর্বের মান শূন্য হতে পারে না।', "Previous value cannot be 0."))); return; }
+          var diff = newV - oldV;
+          var rate = (diff / Math.abs(oldV)) * 100;
+          var isInc = rate >= 0;
+          out.appendChild(resCard(
+            (isInc ? '▲ +' : '▼ ') + N(Math.abs(rate)) + '% ' + (isInc ? tr('বৃদ্ধি (Increase)', "Increase") : tr('হ্রাস (Decrease)', "Decrease")),
+            tr('মূল পার্থক্য: ', "Net difference: ") + (isInc ? '+' : '') + N(diff) + ' (' + UI.num(oldV) + ' → ' + UI.num(newV) + ')',
+            '((' + UI.num(newV) + ' - ' + UI.num(oldV) + ') ÷ ' + UI.num(Math.abs(oldV)) + ') × 100 = ' + (isInc ? '+' : '') + N(rate) + '%'
+          ));
+        }
+
+        oldIn.addEventListener('input', calc); newIn.addEventListener('input', calc);
+        bodyBox.appendChild(UI.el('div', { class: 'stack' },
+          UI.el('div', { class: 'row' },
+            UI.field(tr('আগের মান (Initial / Old Value)', "Old Value"), oldIn),
+            UI.field(tr('পরের মান (New / Current Value)', "New Value"), newIn)
+          ),
+          out
+        ));
+        calc();
+      } else if (mode === 'tax') {
+        var amtIn = numIn('যেমন: 2500'); amtIn.value = '2500';
+        var taxIn = numIn('যেমন: 7.5'); taxIn.value = '7.5';
+        var out = UI.el('div');
+
+        function calc() {
+          var amt = UI.parseNum(amtIn.value), tax = UI.parseNum(taxIn.value);
+          UI.clear(out);
+          if (isNaN(amt) || isNaN(tax)) { out.appendChild(UI.notice('info', tr('টাকার পরিমাণ ও শতকরা লিখুন।', "Enter base amount and percentage."))); return; }
+          var taxAmt = (amt * tax) / 100;
+          var added = amt + taxAmt;
+          var subtracted = Math.max(0, amt - taxAmt);
+          out.appendChild(resCard(
+            tr('যোগ করলে: ', "If added: ") + N(added) + tr(' | বাদ দিলে: ', " | Subtracted: ") + N(subtracted),
+            tr('শতকরা অংশ: ', "Percentage Amount: ") + N(taxAmt) + ' (' + UI.num(tax) + '%)',
+            UI.num(amt) + ' ± (' + UI.num(amt) + ' × ' + UI.num(tax) + '%)'
+          ));
+        }
+
+        var chips = chipRow([3, 5, 7.5, 10, 15], function (p) { taxIn.value = p; calc(); });
+        amtIn.addEventListener('input', calc); taxIn.addEventListener('input', calc);
+        bodyBox.appendChild(UI.el('div', { class: 'stack' },
+          UI.el('div', { class: 'row' },
+            UI.field(tr('টাকার পরিমাণ (Amount)', "Amount"), amtIn),
+            UI.field(tr('ভ্যাট / ট্যাক্স / শতকরা (%)', "Tax / VAT (%)"), taxIn)
+          ),
+          UI.el('div', {}, UI.el('small', { class: 'lbl' }, tr('সাধারণ ট্যাক্স/ভ্যাট হার:', "Common Tax/VAT Rates:")), chips),
+          out
+        ));
+        calc();
+      }
+    }
+
+    renderModeSelector();
+    renderBody();
+    root.appendChild(UI.el('div', { class: 'stack' }, modeBox, bodyBox));
   };
 
   /* ================= বয়স ================= */
@@ -274,15 +459,107 @@
   };
 
   /* ================= টাইম জোন ================= */
+  /* ================= টাইম জোন (World Countries & BD Time Converter) ================= */
   var ZONES = [
-    ['Asia/Dhaka', tr('ঢাকা (বাংলাদেশ)', "Dhaka (Bangladesh)")], ['Asia/Riyadh', tr('রিয়াদ (সৌদি আরব)', "Riyadh (Saudi Arabia)")], ['Asia/Dubai', tr('দুবাই (UAE)', "Dubai (UAE)")], ['Asia/Qatar', tr('দোহা (কাতার)', "Doha (Qatar)")], ['Asia/Kuwait', tr('কুয়েত', "Kuwait")], ['Asia/Muscat', tr('মাস্কাট (ওমান)', "Muscat (Oman)")], ['Asia/Bahrain', tr('বাহরাইন', "Bahrain")],
-    ['Asia/Kuala_Lumpur', tr('কুয়ালালামপুর (মালয়েশিয়া)', "Kuala Lumpur (Malaysia)")], ['Asia/Singapore', tr('সিঙ্গাপুর', "Singapore")], ['Asia/Kolkata', tr('কলকাতা/দিল্লি (ভারত)', "Kolkata/Delhi (India)")], ['Asia/Karachi', tr('করাচি (পাকিস্তান)', "Karachi (Pakistan)")], ['Asia/Colombo', tr('কলম্বো (শ্রীলঙ্কা)', "Colombo (Sri Lanka)")], ['Asia/Kathmandu', tr('কাঠমান্ডু (নেপাল)', "Kathmandu (Nepal)")],
-    ['Asia/Tokyo', tr('টোকিও (জাপান)', "Tokyo (Japan)")], ['Asia/Seoul', tr('সিউল (দক্ষিণ কোরিয়া)', "Seoul (South Korea)")], ['Asia/Shanghai', tr('বেইজিং (চীন)', "Beijing (China)")], ['Asia/Hong_Kong', tr('হংকং', "Hong Kong")],
-    ['Europe/London', tr('লন্ডন (যুক্তরাজ্য)', "London (UK)")], ['Europe/Paris', tr('প্যারিস (ফ্রান্স)', "Paris (France)")], ['Europe/Berlin', tr('বার্লিন (জার্মানি)', "Berlin (Germany)")], ['Europe/Rome', tr('রোম (ইতালি)', "Rome (Italy)")], ['Europe/Istanbul', tr('ইস্তানবুল (তুরস্ক)', "Istanbul (Turkey)")], ['Africa/Cairo', tr('কায়রো (মিশর)', "Cairo (Egypt)")],
-    ['America/New_York', tr('নিউইয়র্ক (ইস্টার্ন)', "New York (Eastern)")], ['America/Chicago', tr('শিকাগো (সেন্ট্রাল)', "Chicago (Central)")], ['America/Los_Angeles', tr('লস অ্যাঞ্জেলেস (প্যাসিফিক)', "Los Angeles (Pacific)")], ['America/Toronto', tr('টরন্টো (কানাডা)', "Toronto (Canada)")],
-    ['Australia/Sydney', tr('সিডনি (অস্ট্রেলিয়া)', "Sydney (Australia)")], ['Pacific/Auckland', tr('অকল্যান্ড (নিউজিল্যান্ড)', "Auckland (New Zealand)")], ['UTC', 'UTC']
+    // বাংলাদেশ ও প্রতিবেশী
+    ['Asia/Dhaka', '🇧🇩 ' + tr('ঢাকা (বাংলাদেশ)', "Dhaka (Bangladesh)"), 'asia', 'bangladesh bd dhaka'],
+    ['Asia/Kolkata', '🇮🇳 ' + tr('কলকাতা / দিল্লি / মুম্বাই (ভারত)', "Kolkata / Delhi / Mumbai (India)"), 'asia', 'india bharat kolkata delhi'],
+    ['Asia/Karachi', '🇵🇰 ' + tr('করাচি / ইসলামাবাদ (পাকিস্তান)', "Karachi / Islamabad (Pakistan)"), 'asia', 'pakistan karachi islamabad'],
+    ['Asia/Colombo', '🇱🇰 ' + tr('কলম্বো (শ্রীলঙ্কা)', "Colombo (Sri Lanka)"), 'asia', 'sri lanka colombo'],
+    ['Asia/Kathmandu', '🇳🇵 ' + tr('কাঠমান্ডু (নেপাল)', "Kathmandu (Nepal)"), 'asia', 'nepal kathmandu'],
+    ['Asia/Thimphu', '🇧🇹 ' + tr('থিম্পু (ভুটান)', "Thimphu (Bhutan)"), 'asia', 'bhutan thimphu'],
+    ['Asia/Maldives', '🇲🇻 ' + tr('মালে (মালদ্বীপ)', "Male (Maldives)"), 'asia', 'maldives male'],
+    ['Asia/Yangon', '🇲🇲 ' + tr('ইয়াঙ্গুন (মিয়ানমার)', "Yangon (Myanmar)"), 'asia', 'myanmar burma yangon'],
+
+    // মধ্যপ্রাচ্য ও গালফ (প্রবাসী বাংলাদেশিদের প্রধান গন্তব্য)
+    ['Asia/Riyadh', '🇸🇦 ' + tr('রিয়াদ / মক্কা / মদিনা (সৌদি আরব)', "Riyadh / Mecca / Medina (Saudi Arabia)"), 'me', 'saudi arabia riyadh ksa jeddah mecca medina'],
+    ['Asia/Dubai', '🇦🇪 ' + tr('দুবাই / আবুধাবি (সংযুক্ত আরব আমিরাত)', "Dubai / Abu Dhabi (UAE)"), 'me', 'uae united arab emirates dubai abu dhabi'],
+    ['Asia/Qatar', '🇶🇦 ' + tr('দোহা (কাতার)', "Doha (Qatar)"), 'me', 'qatar doha'],
+    ['Asia/Kuwait', '🇰🇼 ' + tr('কুয়েত সিটি (কুয়েত)', "Kuwait City (Kuwait)"), 'me', 'kuwait city'],
+    ['Asia/Muscat', '🇴🇲 ' + tr('মাস্কাট (ওমান)', "Muscat (Oman)"), 'me', 'oman muscat'],
+    ['Asia/Bahrain', '🇧🇭 ' + tr('মানামা (বাহরাইন)', "Manama (Bahrain)"), 'me', 'bahrain manama'],
+    ['Asia/Baghdad', '🇮🇶 ' + tr('বাগদাদ (ইরাক)', "Baghdad (Iraq)"), 'me', 'iraq baghdad'],
+    ['Asia/Amman', '🇯🇴 ' + tr('আম্মান (জর্ডান)', "Amman (Jordan)"), 'me', 'jordan amman'],
+    ['Asia/Beirut', '🇱🇧 ' + tr('বৈরুত (লেবানন)', "Beirut (Lebanon)"), 'me', 'lebanon beirut'],
+    ['Asia/Tehran', '🇮🇷 ' + tr('তেহরান (ইরান)', "Tehran (Iran)"), 'me', 'iran tehran'],
+
+    // দক্ষিণ-পূর্ব ও পূর্ব এশিয়া
+    ['Asia/Kuala_Lumpur', '🇲🇾 ' + tr('কুয়ালালামপুর (মালয়েশিয়া)', "Kuala Lumpur (Malaysia)"), 'asia', 'malaysia kuala lumpur kl'],
+    ['Asia/Singapore', '🇸🇬 ' + tr('সিঙ্গাপুর (সিঙ্গাপুর)', "Singapore (Singapore)"), 'asia', 'singapore'],
+    ['Asia/Bangkok', '🇹🇭 ' + tr('ব্যাংকক (থাইল্যান্ড)', "Bangkok (Thailand)"), 'asia', 'thailand bangkok'],
+    ['Asia/Jakarta', '🇮🇩 ' + tr('জাকার্তা (ইন্দোনেশিয়া)', "Jakarta (Indonesia)"), 'asia', 'indonesia jakarta'],
+    ['Asia/Manila', '🇵🇭 ' + tr('ম্যানিলা (ফিলিপাইন)', "Manila (Philippines)"), 'asia', 'philippines manila'],
+    ['Asia/Ho_Chi_Minh', '🇻🇳 ' + tr('হ্যানয় / হো চি মিন (ভিয়েতনাম)', "Hanoi / Ho Chi Minh (Vietnam)"), 'asia', 'vietnam hanoi'],
+    ['Asia/Tokyo', '🇯🇵 ' + tr('টোকিও (জাপান)', "Tokyo (Japan)"), 'asia', 'japan tokyo'],
+    ['Asia/Seoul', '🇰🇷 ' + tr('সিউল (দক্ষিণ কোরিয়া)', "Seoul (South Korea)"), 'asia', 'south korea seoul'],
+    ['Asia/Shanghai', '🇨🇳 ' + tr('বেইজিং / সাংহাই (চীন)', "Beijing / Shanghai (China)"), 'asia', 'china beijing shanghai'],
+    ['Asia/Hong_Kong', '🇭🇰 ' + tr('হংকং (হংকং)', "Hong Kong (Hong Kong)"), 'asia', 'hong kong hk'],
+    ['Asia/Taipei', '🇹🇼 ' + tr('তাইপেই (তাইওয়ান)', "Taipei (Taiwan)"), 'asia', 'taiwan taipei'],
+    ['Asia/Almaty', '🇰🇿 ' + tr('আলমাটি / আস্তানা (কাজাখস্তান)', "Almaty / Astana (Kazakhstan)"), 'asia', 'kazakhstan almaty'],
+    ['Asia/Tashkent', '🇺🇿 ' + tr('তাশখন্দ (উজবেকিস্তান)', "Tashkent (Uzbekistan)"), 'asia', 'uzbekistan tashkent'],
+    ['Asia/Baku', '🇦🇿 ' + tr('বাকু (আজারবাইজান)', "Baku (Azerbaijan)"), 'asia', 'azerbaijan baku'],
+
+    // ইউরোপ
+    ['Europe/London', '🇬🇧 ' + tr('লন্ডন (যুক্তরাজ্য / ইংল্যান্ড)', "London (UK / England)"), 'europe', 'united kingdom uk england britain london'],
+    ['Europe/Dublin', '🇮🇪 ' + tr('ডাবলিন (আয়ারল্যান্ড)', "Dublin (Ireland)"), 'europe', 'ireland dublin'],
+    ['Europe/Rome', '🇮🇹 ' + tr('রোম / মিলান (ইতালি)', "Rome / Milan (Italy)"), 'europe', 'italy rome milan italia'],
+    ['Europe/Paris', '🇫🇷 ' + tr('প্যারিস (ফ্রান্স)', "Paris (France)"), 'europe', 'france paris'],
+    ['Europe/Berlin', '🇩🇪 ' + tr('বার্লিন / ফ্রাঙ্কফুর্ট (জার্মানি)', "Berlin / Frankfurt (Germany)"), 'europe', 'germany berlin frankfurt deutschland'],
+    ['Europe/Madrid', '🇪🇸 ' + tr('মাদ্রিদ / বার্সেলোনা (স্পেন)', "Madrid / Barcelona (Spain)"), 'europe', 'spain madrid barcelona'],
+    ['Europe/Lisbon', '🇵🇹 ' + tr('লিসবন (পর্তুগাল)', "Lisbon (Portugal)"), 'europe', 'portugal lisbon'],
+    ['Europe/Zurich', '🇨🇭 ' + tr('জুরিখ / জেনেভা (সুইজারল্যান্ড)', "Zurich / Geneva (Switzerland)"), 'europe', 'switzerland zurich geneva'],
+    ['Europe/Amsterdam', '🇳🇱 ' + tr('আমস্টারডাম (নেদারল্যান্ডস)', "Amsterdam (Netherlands)"), 'europe', 'netherlands holland amsterdam'],
+    ['Europe/Brussels', '🇧🇪 ' + tr('ব্রাসেলস (বেলজিয়াম)', "Brussels (Belgium)"), 'europe', 'belgium brussels'],
+    ['Europe/Vienna', '🇦🇹 ' + tr('ভিয়েনা (অস্ট্রিয়া)', "Vienna (Austria)"), 'europe', 'austria vienna'],
+    ['Europe/Stockholm', '🇸🇪 ' + tr('স্টকহোম (সুইডেন)', "Stockholm (Sweden)"), 'europe', 'sweden stockholm'],
+    ['Europe/Oslo', '🇳🇴 ' + tr('অসলো (নরওয়ে)', "Oslo (Norway)"), 'europe', 'norway oslo'],
+    ['Europe/Helsinki', '🇫🇮 ' + tr('হেলসিঙ্কি (ফিনল্যান্ড)', "Helsinki (Finland)"), 'europe', 'finland helsinki'],
+    ['Europe/Copenhagen', '🇩🇰 ' + tr('কোপেনহেগেন (ডেনমার্ক)', "Copenhagen (Denmark)"), 'europe', 'denmark copenhagen'],
+    ['Europe/Warsaw', '🇵🇱 ' + tr('ওয়ারশ (পোল্যান্ড)', "Warsaw (Poland)"), 'europe', 'poland warsaw'],
+    ['Europe/Athens', '🇬🇷 ' + tr('অ্যাথেন্স (গ্রিস)', "Athens (Greece)"), 'europe', 'greece athens'],
+    ['Europe/Istanbul', '🇹🇷 ' + tr('ইস্তাম্বুল / আঙ্কারা (তুরস্ক)', "Istanbul / Ankara (Turkey)"), 'europe', 'turkey turkiye istanbul ankara'],
+    ['Europe/Moscow', '🇷🇺 ' + tr('মস্কো (রাশিয়া)', "Moscow (Russia)"), 'europe', 'russia moscow'],
+    ['Europe/Kyiv', '🇺🇦 ' + tr('কিয়েভ (ইউক্রেন)', "Kyiv (Ukraine)"), 'europe', 'ukraine kyiv'],
+    ['Europe/Bucharest', '🇷🇴 ' + tr('বুখারেস্ট (রোমানিয়া)', "Bucharest (Romania)"), 'europe', 'romania bucharest'],
+    ['Europe/Budapest', '🇭🇺 ' + tr('বুদাপেস্ট (হাঙ্গেরি)', "Budapest (Hungary)"), 'europe', 'hungary budapest'],
+    ['Europe/Prague', '🇨🇿 ' + tr('প্রাগ (চেক প্রজাতন্ত্র)', "Prague (Czech Republic)"), 'europe', 'czech republic prague'],
+
+    // উত্তর ও দক্ষিণ আমেরিকা
+    ['America/New_York', '🇺🇸 ' + tr('নিউইয়র্ক / ওয়াশিংটন (যুক্তরাষ্ট্র - ইস্টার্ন)', "New York / Washington (USA - Eastern)"), 'americas', 'usa united states america new york nyc washington est'],
+    ['America/Chicago', '🇺🇸 ' + tr('শিকাগো / হিউস্টন (যুক্তরাষ্ট্র - সেন্ট্রাল)', "Chicago / Houston (USA - Central)"), 'americas', 'usa chicago houston texas cst'],
+    ['America/Denver', '🇺🇸 ' + tr('ডেনভার / ফিনিক্স (যুক্তরাষ্ট্র - মাউন্টেন)', "Denver / Phoenix (USA - Mountain)"), 'americas', 'usa denver colorado mst'],
+    ['America/Los_Angeles', '🇺🇸 ' + tr('লস অ্যাঞ্জেলেস / সান ফ্রান্সিসকো (যুক্তরাষ্ট্র - প্যাসিফিক)', "Los Angeles / San Francisco (USA - Pacific)"), 'americas', 'usa california los angeles la san francisco pst'],
+    ['America/Toronto', '🇨🇦 ' + tr('টরন্টো / অটোয়া (কানাডা - ইস্টার্ন)', "Toronto / Ottawa (Canada - Eastern)"), 'americas', 'canada toronto ottawa ontario'],
+    ['America/Vancouver', '🇨🇦 ' + tr('ভ্যাঙ্কুভার (কানাডা - প্যাসিফিক)', "Vancouver (Canada - Pacific)"), 'americas', 'canada vancouver bc'],
+    ['America/Mexico_City', '🇲🇽 ' + tr('মেক্সিকো সিটি (মেক্সিকো)', "Mexico City (Mexico)"), 'americas', 'mexico mexico city'],
+    ['America/Sao_Paulo', '🇧🇷 ' + tr('সাঁও পাওলো / রিও (ব্রাজিল)', "Sao Paulo / Rio (Brazil)"), 'americas', 'brazil brasil sao paulo rio'],
+    ['America/Buenos_Aires', '🇦🇷 ' + tr('বুয়েনস আইরেস (আর্জেন্টিনা)', "Buenos Aires (Argentina)"), 'americas', 'argentina buenos aires'],
+    ['America/Santiago', '🇨🇱 ' + tr('সান্তিয়াগো (চিলি)', "Santiago (Chile)"), 'americas', 'chile santiago'],
+    ['America/Bogota', '🇨🇴 ' + tr('বোগোটা (কলম্বিয়া)', "Bogota (Colombia)"), 'americas', 'colombia bogota'],
+
+    // ওশেনিয়া ও অস্ট্রেলিয়া
+    ['Australia/Sydney', '🇦🇺 ' + tr('সিডনি / ক্যানবেরা (অস্ট্রেলিয়া - ইস্টার্ন)', "Sydney / Canberra (Australia - Eastern)"), 'oceania', 'australia sydney canberra nsw'],
+    ['Australia/Melbourne', '🇦🇺 ' + tr('মেলবোর্ন (অস্ট্রেলিয়া - ভিক্টোরিয়া)', "Melbourne (Australia - Victoria)"), 'oceania', 'australia melbourne victoria'],
+    ['Australia/Perth', '🇦🇺 ' + tr('পার্থ (অস্ট্রেলিয়া - ওয়েস্টার্ন)', "Perth (Australia - Western)"), 'oceania', 'australia perth'],
+    ['Pacific/Auckland', '🇳🇿 ' + tr('অকল্যান্ড / ওয়েলিংটন (নিউজিল্যান্ড)', "Auckland / Wellington (New Zealand)"), 'oceania', 'new zealand auckland wellington'],
+    ['Pacific/Fiji', '🇫🇯 ' + tr('সুভা (ফিজি)', "Suva (Fiji)"), 'oceania', 'fiji suva'],
+
+    // আফ্রিকা
+    ['Africa/Cairo', '🇪🇬 ' + tr('কায়রো (মিশর)', "Cairo (Egypt)"), 'africa', 'egypt cairo'],
+    ['Africa/Johannesburg', '🇿🇦 ' + tr('জোহানেসবার্গ (দক্ষিণ আফ্রিকা)', "Johannesburg (South Africa)"), 'africa', 'south africa johannesburg'],
+    ['Africa/Nairobi', '🇰🇪 ' + tr('নাইরোবি (কেনিয়া)', "Nairobi (Kenya)"), 'africa', 'kenya nairobi'],
+    ['Africa/Lagos', '🇳🇬 ' + tr('লাগোস (নাইজেরিয়া)', "Lagos (Nigeria)"), 'africa', 'nigeria lagos'],
+    ['Africa/Casablanca', '🇲🇦 ' + tr('কাসাব্লাঙ্কা (মরক্কো)', "Casablanca (Morocco)"), 'africa', 'morocco casablanca'],
+
+    // গ্লোবাল স্ট্যান্ডার্ড
+    ['UTC', '🌐 ' + tr('UTC / GMT (আন্তর্জাতিক সমন্বিত সময়)', "UTC / GMT (Coordinated Universal Time)"), 'global', 'utc gmt london universal time']
   ];
-  function zlabel(id) { var z = ZONES.filter(function (x) { return x[0] === id; })[0]; return z ? z[1] : id; }
+
+  function zlabel(id) {
+    var z = ZONES.filter(function (x) { return x[0] === id; })[0];
+    return z ? z[1] : id.replace('_', ' ');
+  }
+
   function parts(ts, zone) {
     var f = new Intl.DateTimeFormat('en-US', { timeZone: zone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
     var o = {}; f.formatToParts(new Date(ts)).forEach(function (p) { o[p.type] = p.value; });
@@ -294,54 +571,216 @@
     if (o2 !== o1) t = guess - o2 * 60000; return t;
   }
   function nowLocalStr(zone) { var p = parts(Date.now(), zone); function z(n) { return ('0' + n).slice(-2); } return p.y + '-' + z(p.mo) + '-' + z(p.d) + 'T' + z(p.h) + ':' + z(p.mi); }
-  function offLabel(m) { var s = m < 0 ? '−' : '+', a = Math.abs(m); return 'UTC' + s + UI.n(Math.floor(a / 60)) + (a % 60 ? ':' + UI.n(('0' + (a % 60)).slice(-2)) : ''); }
+  function offLabel(m) { var s = m < 0 ? '−' : '+', a = Math.abs(m); return 'UTC' + s + UI.num(Math.floor(a / 60), 0) + (a % 60 ? ':' + UI.num(('0' + (a % 60)).slice(-2), 0) : ''); }
 
   T['time-zone-converter'] = function (root) {
     var src = 'Asia/Dhaka', targets;
-    try { targets = JSON.parse(localStorage.getItem('tz-targets') || 'null'); } catch (e) { targets = null; }
-    if (!Array.isArray(targets) || !targets.length) targets = ['Asia/Riyadh', 'Asia/Dubai', 'Europe/London', 'America/New_York', 'Asia/Kuala_Lumpur'];
-    var dt = UI.el('input', { type: 'datetime-local', value: nowLocalStr(src) });
-    var srcSel = UI.select(ZONES.map(function (z) { return { value: z[0], label: z[1] }; }), src, function () { src = srcSel.value; render(); });
-    var grid = UI.el('div', { class: 'zone-grid' }), addBox = UI.el('div');
-    function save() { try { localStorage.setItem('tz-targets', JSON.stringify(targets)); } catch (e) { } }
-    function drawAdd() {
-      UI.clear(addBox);
-      var rest = ZONES.filter(function (z) { return targets.indexOf(z[0]) < 0; });
-      if (!rest.length) return;
-      var s = UI.select([{ value: '', label: tr('+ আরেকটি শহর যোগ করুন…', "+ Add another city…") }].concat(rest.map(function (z) { return { value: z[0], label: z[1] }; })), '', function () { if (s.value) { targets.push(s.value); save(); render(); } });
-      addBox.appendChild(s);
+    try { targets = JSON.parse(localStorage.getItem('tz-targets-v2') || 'null'); } catch (e) { targets = null; }
+    if (!Array.isArray(targets) || !targets.length) {
+      // Default curated popular destinations for Bangladesh users
+      targets = ['Asia/Riyadh', 'Asia/Dubai', 'Asia/Qatar', 'Asia/Kuala_Lumpur', 'Asia/Singapore', 'Europe/London', 'Europe/Rome', 'America/New_York', 'America/Toronto'];
     }
+
+    var dt = UI.el('input', { type: 'datetime-local', value: nowLocalStr(src), style: { fontWeight: '600', fontSize: '15px' } });
+    var srcSel = UI.select(ZONES.map(function (z) { return { value: z[0], label: z[1] }; }), src, function () { src = srcSel.value; render(); });
+
+    var grid = UI.el('div', { class: 'zone-grid' });
+    var searchBox = UI.el('div', { class: 'stack', style: { marginTop: '16px', background: 'var(--card, rgba(255,255,255,0.03))', padding: '16px', borderRadius: '12px', border: '1px solid var(--line)' } });
+
+    function save() { try { localStorage.setItem('tz-targets-v2', JSON.stringify(targets)); } catch (e) { } }
+
+    var filterQuery = '';
+    var activeCategory = 'all';
+
+    function drawAdd() {
+      UI.clear(searchBox);
+      var header = UI.el('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' } },
+        UI.el('h3', { style: { margin: '0', fontSize: '16px' } }, tr('🌍 যেকোনো দেশ বা শহরের সময় যোগ করুন', "🌍 Add Any Country or City")),
+        UI.el('span', { class: 'muted sm' }, tr('তালিকায় আছে ' + ZONES.length + '+ টি প্রধান দেশ/শহর', ZONES.length + '+ Countries & Major Cities'))
+      );
+
+      // Search input
+      var searchIn = UI.el('input', {
+        type: 'text',
+        placeholder: tr('দেশ বা শহরের নাম লিখে খুঁজুন (যেমন: সৌদি, দুবাই, লন্ডন, ইতালি, কানাডা...)', "Search country or city (e.g., Saudi, Dubai, London, Italy, Canada...)"),
+        value: filterQuery,
+        style: { width: '100%', marginTop: '8px', padding: '10px 14px', borderRadius: '8px' }
+      });
+      searchIn.addEventListener('input', function () {
+        filterQuery = searchIn.value.trim().toLowerCase();
+        renderFilteredList();
+      });
+
+      // Category filter buttons
+      var catRow = UI.el('div', { class: 'seg', style: { flexWrap: 'wrap', marginTop: '8px', gap: '4px' } });
+      var CATS = [
+        { id: 'all', label: tr('সব দেশ', "All Countries") },
+        { id: 'me', label: tr('🇸🇦 মধ্যপ্রাচ্য', "🇸🇦 Middle East") },
+        { id: 'asia', label: tr('🌏 এশিয়া', "🌏 Asia") },
+        { id: 'europe', label: tr('🇪🇺 ইউরোপ', "🇪🇺 Europe") },
+        { id: 'americas', label: tr('🌎 আমেরিকা', "🌎 Americas") },
+        { id: 'oceania', label: tr('🇦🇺 ওশেনিয়া', "🇦🇺 Oceania") },
+        { id: 'africa', label: tr('🌍 আফ্রিকা', "🌍 Africa") }
+      ];
+
+      CATS.forEach(function (c) {
+        var b = UI.el('button', {
+          type: 'button',
+          'aria-pressed': String(activeCategory === c.id),
+          style: { padding: '4px 10px', fontSize: '12px' },
+          onclick: function () {
+            activeCategory = c.id;
+            drawAdd();
+          }
+        }, c.label);
+        catRow.appendChild(b);
+      });
+
+      var resultsWrap = UI.el('div', { style: { maxHeight: '220px', overflowY: 'auto', marginTop: '10px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '8px' } });
+
+      function renderFilteredList() {
+        UI.clear(resultsWrap);
+        var filtered = ZONES.filter(function (z) {
+          if (activeCategory !== 'all' && z[2] !== activeCategory) return false;
+          if (!filterQuery) return true;
+          var hay = (z[0] + ' ' + z[1] + ' ' + (z[3] || '')).toLowerCase();
+          return hay.indexOf(filterQuery) >= 0;
+        });
+
+        if (!filtered.length) {
+          resultsWrap.appendChild(UI.el('div', { class: 'muted', style: { padding: '12px', gridColumn: '1/-1' } }, tr('কোনো দেশ বা শহর মেলেনি।', "No matching countries or cities found.")));
+          return;
+        }
+
+        filtered.forEach(function (z) {
+          var isAdded = targets.indexOf(z[0]) >= 0;
+          var item = UI.el('button', {
+            type: 'button',
+            class: 'btn ' + (isAdded ? 'alt' : ''),
+            style: { justifyContent: 'space-between', textAlign: 'left', padding: '8px 12px', fontSize: '13px', borderRadius: '8px', opacity: isAdded ? '0.7' : '1' },
+            onclick: function () {
+              if (isAdded) {
+                targets = targets.filter(function (t) { return t !== z[0]; });
+              } else {
+                targets.push(z[0]);
+              }
+              save();
+              render();
+            }
+          },
+            UI.el('span', { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, z[1]),
+            UI.el('span', { style: { fontWeight: 'bold', marginLeft: '6px' } }, isAdded ? '✓' : '+')
+          );
+          resultsWrap.appendChild(item);
+        });
+      }
+
+      renderFilteredList();
+
+      searchBox.appendChild(header);
+      searchBox.appendChild(searchIn);
+      searchBox.appendChild(catRow);
+      searchBox.appendChild(resultsWrap);
+    }
+
     function render() {
       UI.clear(grid);
       var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(dt.value);
       if (!m) { grid.appendChild(UI.notice('info', tr('তারিখ ও সময় দিন।', "Enter a date and time."))); drawAdd(); return; }
-      var ts = zonedToUtc(+m[1], +m[2], +m[3], +m[4], +m[5], src), sp = parts(ts, src);
+      var ts = zonedToUtc(+m[1], +m[2], +m[3], +m[4], +m[5], src);
+      var sp = parts(ts, src);
+      var srcOff = offMin(ts, src);
+
       targets.forEach(function (z) {
-        var p = parts(ts, z), diff = Math.round((Date.UTC(p.y, p.mo - 1, p.d) - Date.UTC(sp.y, sp.mo - 1, sp.d)) / 86400000);
+        var p = parts(ts, z);
+        var targetOff = offMin(ts, z);
+        var diffMin = targetOff - srcOff;
+        var diffHours = Math.round((diffMin / 60) * 10) / 10;
+        var diffDays = Math.round((Date.UTC(p.y, p.mo - 1, p.d) - Date.UTC(sp.y, sp.mo - 1, sp.d)) / 86400000);
+
         var time = new Intl.DateTimeFormat(UI.locale, { timeZone: z, hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(ts));
         var date = new Intl.DateTimeFormat(UI.locale, { timeZone: z, weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(ts));
-        grid.appendChild(UI.el('div', { class: 'zone-card' },
-          UI.el('div', { class: 'z' }, zlabel(z)), UI.el('div', { class: 't' }, time), UI.el('small', {}, date + (diff === 0 ? '' : diff > 0 ? tr(' · পরের দিন', " · next day") : tr(' · আগের দিন', " · previous day"))),
-          UI.el('small', {}, offLabel(offMin(ts, z))),
-          UI.el('button', { type: 'button', class: 'ib del', 'aria-label': tr('বাদ দিন', "Remove"), onclick: function () { targets = targets.filter(function (x) { return x !== z; }); save(); render(); } }, UI.icon('x', 16))));
+
+        var isDay = p.h >= 6 && p.h < 18;
+        var isOffice = p.h >= 9 && p.h < 17;
+
+        var bdDiffText = '';
+        if (diffHours === 0) {
+          bdDiffText = tr('বাংলাদেশ সময়ের সমান', "Same time as BD");
+        } else if (diffHours > 0) {
+          bdDiffText = UI.num(Math.abs(diffHours)) + tr(' ঘণ্টা এগিয়ে (+BD)', " hrs ahead of BD");
+        } else {
+          bdDiffText = UI.num(Math.abs(diffHours)) + tr(' ঘণ্টা পেছনে (-BD)', " hrs behind BD");
+        }
+
+        var dayTag = diffDays === 0
+          ? tr('আজ (Today)', "Today")
+          : (diffDays > 0 ? tr('পরের দিন (+১ দিন)', "Next day") : tr('আগের দিন (-১ দিন)', "Previous day"));
+
+        var card = UI.el('div', { class: 'zone-card', style: { position: 'relative', border: '1px solid var(--line)', borderRadius: '12px', padding: '16px', background: 'var(--card, rgba(255,255,255,0.02))' } },
+          UI.el('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' } },
+            UI.el('div', { class: 'z', style: { fontWeight: '700', fontSize: '15px' } }, zlabel(z)),
+            UI.el('button', {
+              type: 'button',
+              class: 'ib del',
+              'aria-label': tr('বাদ দিন', "Remove"),
+              title: tr('তালিকায় থেকে সরান', "Remove from list"),
+              onclick: function () {
+                targets = targets.filter(function (x) { return x !== z; });
+                save();
+                render();
+              }
+            }, UI.icon('x', 16))
+          ),
+          UI.el('div', { class: 't', style: { fontSize: '2rem', fontWeight: '800', color: 'var(--accent, #10b981)', margin: '8px 0 4px 0' } }, time),
+          UI.el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '4px 0' } },
+            UI.el('span', { class: 'badge sm', style: { background: isDay ? 'rgba(234,179,8,0.15)' : 'rgba(99,102,241,0.15)', color: isDay ? '#eab308' : '#818cf8' } }, isDay ? '☀️ ' + tr('দিন', "Day") : '🌙 ' + tr('রাত', "Night")),
+            UI.el('span', { class: 'badge sm', style: { background: 'rgba(16,185,129,0.12)', color: '#10b981' } }, bdDiffText),
+            UI.el('span', { class: 'badge sm', style: { background: 'rgba(255,255,255,0.06)' } }, dayTag)
+          ),
+          UI.el('div', { class: 'muted sm', style: { marginTop: '6px' } }, date),
+          UI.el('div', { class: 'muted sm', style: { fontSize: '11px', opacity: '0.8' } }, offLabel(targetOff))
+        );
+        grid.appendChild(card);
       });
+
       drawAdd();
     }
+
     dt.addEventListener('input', render);
-    var nowBtn = UI.btn(tr('এখনকার সময়', "Current time"), function () { dt.value = nowLocalStr(src); render(); }, { cls: 'sm alt', icon: 'refresh-cw', iconSize: 16 });
+    var nowBtn = UI.btn(tr('এখনকার বাংলাদেশ সময়', "Current BD Time"), function () {
+      dt.value = nowLocalStr(src);
+      render();
+    }, { cls: 'sm alt', icon: 'refresh-cw', iconSize: 16 });
+
+    var topControls = UI.el('div', { class: 'stack', style: { background: 'var(--card, rgba(255,255,255,0.02))', padding: '16px', borderRadius: '12px', border: '1px solid var(--line)' } },
+      UI.el('div', { class: 'row' },
+        UI.field(tr('বেস শহর (ডিফল্ট: বাংলাদেশ সময়)', "Base City (Default: BD Time)"), srcSel),
+        UI.field(tr('বাংলাদেশ তারিখ ও সময়', "BD Date and Time"), dt),
+        UI.el('div', { style: { alignSelf: 'flex-end', marginBottom: '4px' } }, nowBtn)
+      )
+    );
+
     root.appendChild(UI.el('div', { class: 'stack' },
-      UI.el('div', { class: 'row' }, UI.field(tr('কোন শহরের সময় দিচ্ছেন?', "Which city's time are you entering?"), srcSel), UI.field(tr('তারিখ ও সময়', "Date and time"), dt), nowBtn),
-      grid, addBox));
+      topControls,
+      UI.el('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' } },
+        UI.el('h3', { style: { margin: '0' } }, tr('নির্বাচিত দেশগুলোর লাইভ সময় (BD Time অনুযায়ী):', "Live Times Relative to BD Time:")),
+        UI.el('span', { class: 'muted sm' }, targets.length + tr(' টি দেশ যুক্ত আছে', ' countries added'))
+      ),
+      grid,
+      searchBox
+    ));
+
     // AI Global Meeting & Call Planner Card
     var tzAiBox = UI.renderAiBox({
       title: tr('এআই গ্লোবাল কলিং ও মিটিং শিডিউলার', 'AI Meeting & Call Window Optimizer'),
-      subtitle: tr('নির্বাচিত শহরগুলোর সাথে সেরা কমন মিটিং বা কথা বলার সময় স্বয়ংক্রিয়ভাবে বের করুন', 'Automatically find ideal overlapping awake and business hours across selected cities'),
+      subtitle: tr('নির্বাচিত দেশগুলোর সাথে সেরা কথা বলার সময় ও অফিস মিটিং শিডিউল এআই দিয়ে বের করুন', 'Automatically find ideal overlapping awake and business hours across selected countries'),
       btnText: tr('✨ এআই শিডিউল ও কলিং টাইম বের করুন', '✨ Find Best Calling & Meeting Hours'),
       onGenerate: async function () {
         var baseCity = zlabel(src);
         var otherCities = targets.map(function (z) { return zlabel(z); }).join(', ');
         var prompt = (UI.lang === 'bn')
-          ? ('বেস শহর: ' + baseCity + '। অন্য শহরগুলো: ' + otherCities + '।\nঅনুগ্রহ করে:\n1. উভয় পক্ষের অফিসিয়াল মিটিংয়ের জন্য সবচেয়ে সুবিধাজনক সময় (গোল্ডেন আওয়ার) বের করুন\n2. প্রবাসী স্বজনদের সাথে কথা বলার জন্য সেরা পারিবারিক কলিং সময় উল্লেখ করুন\n3. সময় সমন্বয়ের একটি পেশাদার সংক্ষিপ্ত মেসেজ টেমপ্লেট দিন।\nপয়েন্ট আকারে বাংলায় লিখুন।')
+          ? ('বেস শহর: ' + baseCity + '। অন্য দেশগুলো: ' + otherCities + '।\nঅনুগ্রহ করে:\n1. উভয় পক্ষের অফিসিয়াল মিটিংয়ের জন্য সবচেয়ে সুবিধাজনক সময় (গোল্ডেন আওয়ার) বের করুন\n2. প্রবাসী স্বজনদের সাথে কথা বলার জন্য সেরা পারিবারিক কলিং সময় উল্লেখ করুন\n3. সময় সমন্বয়ের একটি পেশাদার সংক্ষিপ্ত মেসেজ টেমপ্লেট দিন।\nপয়েন্ট আকারে বাংলায় লিখুন।')
           : ('Base City: ' + baseCity + '. Target Cities: ' + otherCities + '.\nPlease identify:\n1. Optimal overlapping business meeting windows (Golden overlap hours)\n2. Best casual/family calling hours taking sleep cycles into account\n3. A polite email/WhatsApp invite snippet specifying the times.\nFormat with clean bullet points.');
 
         var res = await UI.callAI(prompt, {
@@ -356,19 +795,19 @@
 
         // Offline fallback
         if (UI.lang === 'bn') {
-          return '### 🌐 ' + baseCity + ' ও অন্যান্য শহরের জন্য সেরা যোগাযোগ সময়\n\n' +
+          return '### 🌐 ' + baseCity + ' ও অন্যান্য দেশের জন্য সেরা যোগাযোগ সময়\n\n' +
             '**১. ব্যবসায়িক ও অফিস মিটিংয়ের সেরা সময়:**\n' +
             '- বাংলাদেশ ও মধ্যপ্রাচ্য (সৌদি/দুবাই/কাতার): **দুপুর ২:০০ – সন্ধ্যা ৬:০০ (বাংলাদেশ সময়)**। এ সময় উভয় দেশে নিয়মিত অফিস আওয়ার চলমান থাকে।\n' +
-            '- বাংলাদেশ ও যুক্তরাজ্য/ইউরোপ (লন্ডন/বার্লিন): **বিকাল ৩:০০ – রাত ৭:০০ (বাংলাদেশ সময়)**।\n' +
+            '- বাংলাদেশ ও যুক্তরাজ্য/ইউরোপ (লন্ডন/রোম): **বিকাল ৩:০০ – রাত ৭:০০ (বাংলাদেশ সময়)**।\n' +
             '- বাংলাদেশ ও উত্তর আমেরিকা (নিউইয়র্ক/টরন্টো): **সন্ধ্যা ৭:০০ – রাত ৯:০০ (বাংলাদেশ সময়)** / সকাল ৯:০০ – বেলা ১১:০০ (নিউইয়র্ক)।\n\n' +
             '**২. প্রবাসী স্বজনদের সাথে কথা বলার সেরা সময়:**\n' +
-            '- কাজের শেষে ও আরামদায়ক সময়: **বাংলাদেশ সময় রাত ৮:৩০ – ১০:৩০** (মধ্যপ্রাচ্যে বিকাল ৫:৩০ – ৭:৩০)।\n\n' +
+            '- কাজের শেষে ও আরামদায়ক সময়: **বাংলাদেশ সময় রাত ৮:৩০ – ১০:৩০** (সৌদি আরবে বিকাল ৫:৩০ – ৭:৩০)।\n\n' +
             '> 💡 *টিপস:* আপনার Google Gemini বা OpenAI API Key কানেক্ট করলে নির্দিষ্ট এজেন্ডা অনুযায়ী রেডিমেড ক্যালেন্ডার ইনভাইটেশন তৈরি করা যাবে।';
         } else {
           return '### 🌐 Optimal Cross-Timezone Windows (' + baseCity + ' & Targets)\n\n' +
             '**1. Golden Business Overlap Hours:**\n' +
             '- Middle East (Riyadh/Dubai): **2:00 PM – 6:00 PM (Dhaka time)** (11:00 AM – 3:00 PM Gulf time).\n' +
-            '- UK & Europe (London/Berlin): **3:30 PM – 7:30 PM (Dhaka time)** (9:30 AM – 1:30 PM UK time).\n' +
+            '- UK & Europe (London/Rome): **3:30 PM – 7:30 PM (Dhaka time)** (9:30 AM – 1:30 PM UK time).\n' +
             '- North America (Eastern Time): **7:00 PM – 9:30 PM (Dhaka time)** (9:00 AM – 11:30 AM EST).\n\n' +
             '**2. Best Personal / Family Call Windows:**\n' +
             '- Evenings between **8:30 PM – 10:30 PM local time** ensure both sides are relaxed after work.\n\n' +
