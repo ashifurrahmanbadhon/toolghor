@@ -117,7 +117,7 @@ export async function sendOtpEmail(toEmail: string, otpCode: string): Promise<Se
       secure: isSecure,
       auth: {
         user,
-        pass,
+        pass: pass.replace(/\s+/g, ''),
       },
       connectionTimeout: 10000,
       greetingTimeout: 10000,
