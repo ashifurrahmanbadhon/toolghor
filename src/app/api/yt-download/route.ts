@@ -28,52 +28,58 @@ export async function GET(req: NextRequest) {
     format = '720';
   }
 
+  const ytdownUrl = `https://app.ytdown.to/en38?url=${encodeURIComponent(rawUrl)}`;
+
   try {
     const initUrl = `https://loader.to/ajax/download.php?button=1&start=1&end=1&format=${encodeURIComponent(format)}&url=${encodeURIComponent(rawUrl)}`;
     const initRes = await fetch(initUrl, {
       headers: {
         'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         Accept: 'application/json',
       },
+      signal: AbortSignal.timeout(8000),
     });
 
     if (!initRes.ok) {
-      throw new Error(`Upstream server returned HTTP ${initRes.status}`);
+      throw new Error(`Upstream returned HTTP ${initRes.status}`);
     }
 
     const initJson = await initRes.json();
     if (!initJson.success) {
-      throw new Error(initJson.text || 'Failed to initialize download stream.');
+      throw new Error(initJson.text || 'Failed to initialize stream.');
     }
 
     let downloadUrl = initJson.download_url || initJson.url || null;
     const progressUrl = initJson.progress_url || null;
     const videoTitle = initJson.title || 'YouTube_Download';
 
-    const ytdownUrl = `https://app.ytdown.to/en38?url=${encodeURIComponent(rawUrl)}`;
-
-    // Poll progress if download_url is not ready yet (limit to fast 4 retries)
+    // Poll progress if download_url is not ready yet (poll up to 8 times with 1.2s intervals)
     if (!downloadUrl && progressUrl) {
-      const maxRetries = 4;
+      const maxRetries = 8;
       for (let i = 0; i < maxRetries; i++) {
-        await new Promise((r) => setTimeout(r, 1500));
-        const progRes = await fetch(progressUrl, {
-          headers: {
-            'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            Accept: 'application/json',
-          },
-        });
-        if (progRes.ok) {
-          const progJson = await progRes.json();
-          if (progJson.download_url) {
-            downloadUrl = progJson.download_url;
-            break;
+        await new Promise((r) => setTimeout(r, 1200));
+        try {
+          const progRes = await fetch(progressUrl, {
+            headers: {
+              'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              Accept: 'application/json',
+            },
+            signal: AbortSignal.timeout(4000),
+          });
+          if (progRes.ok) {
+            const progJson = await progRes.json();
+            if (progJson.download_url) {
+              downloadUrl = progJson.download_url;
+              break;
+            }
+            if (progJson.text && progJson.text.toLowerCase().includes('error')) {
+              break;
+            }
           }
-          if (progJson.text && progJson.text.toLowerCase().includes('error')) {
-            break;
-          }
+        } catch {
+          // ignore individual poll network hiccup
         }
       }
     }
@@ -81,21 +87,23 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       title: videoTitle,
-      download_url: downloadUrl || ytdownUrl,
+      download_url: downloadUrl || null,
       ytdown_url: ytdownUrl,
       format,
+      is_direct: !!downloadUrl,
     });
   } catch (error: any) {
-    const fallbackYtDown = `https://app.ytdown.to/en38?url=${encodeURIComponent(rawUrl)}`;
     return NextResponse.json(
       {
         success: true,
-        download_url: fallbackYtDown,
-        ytdown_url: fallbackYtDown,
+        download_url: null,
+        ytdown_url: ytdownUrl,
         format,
-        note: error.message || 'Stream resolved via YTDown portal.',
+        note: error.message || 'YTDown fallback available.',
+        is_direct: false,
       },
       { status: 200 }
     );
   }
 }
+
