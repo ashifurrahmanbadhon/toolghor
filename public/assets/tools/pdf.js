@@ -5,16 +5,27 @@
   function pdfjs() {
     var l = window.pdfjsLib || window['pdfjs-dist/build/pdf'];
     if (!l) throw new Error(tr('পিডিএফ ইঞ্জিন লোড হয়নি। পেজ রিফ্রেশ করুন।', "The PDF engine did not load. Please refresh the page."));
-    l.GlobalWorkerOptions.workerSrc = UI.ROOT + 'assets/vendor/pdf.worker.min.js';
+    var origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
+    l.GlobalWorkerOptions.workerSrc = origin + '/assets/vendor/pdf.worker.min.js';
     return l;
   }
   async function openPdfJs(file) {
     var buf = await file.arrayBuffer();
-    try { return await pdfjs().getDocument({ data: new Uint8Array(buf) }).promise; }
-    catch (e) {
-      if (e && e.name === 'PasswordException') throw new Error(tr('এই পিডিএফে পাসওয়ার্ড দেওয়া আছে, তাই খোলা যায়নি।', "This PDF is password-protected, so it could not be opened."));
-      if (window.console) console.warn('pdf.js error:', e);
-      throw new Error(tr('পিডিএফটি পড়া যায়নি। ফাইলটি নষ্ট হতে পারে।', "Could not read the PDF. The file may be damaged."));
+    try {
+      return await pdfjs().getDocument({ data: new Uint8Array(buf) }).promise;
+    } catch (e) {
+      if (e && e.name === 'PasswordException') {
+        throw new Error(tr('এই পিডিএফে পাসওয়ার্ড দেওয়া আছে, তাই খোলা যায়নি।', "This PDF is password-protected, so it could not be opened."));
+      }
+      if (window.console) console.warn('pdf.js worker load error, trying safe inline worker fallback:', e);
+      try {
+        var l = pdfjs();
+        // Inline fake worker fallback if worker was blocked or failed
+        return await l.getDocument({ data: new Uint8Array(buf), isEvalSupported: false, disableFontFace: true }).promise;
+      } catch (fallbackErr) {
+        if (window.console) console.warn('pdf.js fallback error:', fallbackErr);
+        throw new Error(tr('পিডিএফটি পড়া যায়নি। ফাইলটি নষ্ট হতে পারে।', "Could not read the PDF. The file may be damaged."));
+      }
     }
   }
   /* "1-3, 5, 8-" → [{label, idx:[0,1,2]}, ...] */
@@ -44,7 +55,10 @@
     if (!k && typeof window !== 'undefined' && window.SITE_CONFIG && window.SITE_CONFIG.apis && window.SITE_CONFIG.apis.ilovepdfPublicKey) {
       k = window.SITE_CONFIG.apis.ilovepdfPublicKey.trim();
     }
-    return k || '';
+    if (k.startsWith('project_public_d3a21718') || k.startsWith('your_') || !k) {
+      return '';
+    }
+    return k;
   }
 
   /* ---------------- Secure Backend ConvertAPI PDF->DOCX Connector ---------------- */
@@ -79,6 +93,9 @@
     }
 
     if (!res.ok) {
+      if (res.status === 503) {
+        throw new Error('BACKEND_NOT_CONFIGURED');
+      }
       var errJson = await res.json().catch(function () { return {}; });
       var errMsg = (errJson && errJson.error) || tr(
         'এই মুহূর্তে আপনার পিডিএফটি রূপান্তর করা সম্ভব হয়নি। অনুগ্রহ করে অন্য একটি পিডিএফ দিয়ে চেষ্টা করুন।',
@@ -1125,7 +1142,221 @@
   };
   T['pdf-to-docx'] = T['pdf-to-doc'];
 
-  /* ---------------- Word (DOCX, DOC) → PDF ---------------- */
+  /* ---------------- Word (DOCX, DOC) → PDF Converter ---------------- */
+  async function convertDocxToPdf(file, onProgress) {
+    if (!onProgress) onProgress = function () {};
+    onProgress(15, tr('Word ফাইল বিশ্লেষণ করা হচ্ছে…', 'Reading Word document structure…'));
+    await UI.yield();
+
+    if (typeof JSZip === 'undefined') {
+      await UI.loadScript(UI.getRoot ? UI.getRoot() + 'assets/vendor/jszip.min.js' : '/assets/vendor/jszip.min.js');
+    }
+    if (typeof PDFLib === 'undefined') {
+      await UI.loadScript(UI.getRoot ? UI.getRoot() + 'assets/vendor/pdf-lib.min.js' : '/assets/vendor/pdf-lib.min.js');
+    }
+
+    var buf = await file.arrayBuffer();
+    var zip;
+    try {
+      zip = await JSZip.loadAsync(buf);
+    } catch (zipErr) {
+      throw new Error(tr(
+        'ফাইলটি ওপেন করা যায়নি। অনুগ্রহ করে একটি সঠিক .docx ফাইল ব্যবহার করুন।',
+        'Could not open file as DOCX. Please ensure this is a valid .docx document.'
+      ));
+    }
+
+    var docXmlFile = zip.file('word/document.xml');
+    if (!docXmlFile) {
+      throw new Error(tr('ওয়ার্ড ফাইলের ভেতরের তথ্য পাওয়া যায়নি (.docx ফরম্যাট প্রয়োজন)।', 'Could not parse Word document content (.docx format required).'));
+    }
+
+    onProgress(35, tr('টেক্সট ও ফরম্যাটিং এক্সট্র্যাক্ট করা হচ্ছে…', 'Extracting content and layout…'));
+    await UI.yield();
+
+    var docXmlStr = await docXmlFile.async('string');
+    var parser = new DOMParser();
+    var xmlDoc = parser.parseFromString(docXmlStr, 'application/xml');
+
+    var pNodes = xmlDoc.getElementsByTagName('w:p');
+    var paragraphs = [];
+
+    for (var i = 0; i < pNodes.length; i++) {
+      var pNode = pNodes[i];
+      var pPr = pNode.getElementsByTagName('w:pPr')[0];
+      var isHeading = false;
+      var headingLevel = 2;
+      var isCenter = false;
+      var isRight = false;
+
+      if (pPr) {
+        var pStyle = pPr.getElementsByTagName('w:pStyle')[0];
+        if (pStyle) {
+          var val = (pStyle.getAttribute('w:val') || '').toLowerCase();
+          if (val.includes('heading1') || val.includes('title')) {
+            isHeading = true;
+            headingLevel = 1;
+          } else if (val.includes('heading')) {
+            isHeading = true;
+            headingLevel = 2;
+          }
+        }
+        var jc = pPr.getElementsByTagName('w:jc')[0];
+        if (jc) {
+          var jcVal = jc.getAttribute('w:val');
+          if (jcVal === 'center') isCenter = true;
+          else if (jcVal === 'right') isRight = true;
+        }
+      }
+
+      var textRuns = [];
+      var rNodes = pNode.getElementsByTagName('w:r');
+      for (var r = 0; r < rNodes.length; r++) {
+        var rNode = rNodes[r];
+        var isBold = rNode.getElementsByTagName('w:b').length > 0;
+        var isItalic = rNode.getElementsByTagName('w:i').length > 0;
+        var tNodes = rNode.getElementsByTagName('w:t');
+        var runText = '';
+        for (var t = 0; t < tNodes.length; t++) {
+          runText += tNodes[t].textContent || '';
+        }
+        if (runText) {
+          textRuns.push({ text: runText, isBold: isBold, isItalic: isItalic });
+        }
+      }
+
+      var fullPText = textRuns.map(function (it) { return it.text; }).join('');
+      if (fullPText.trim().length > 0) {
+        paragraphs.push({
+          runs: textRuns,
+          fullText: fullPText,
+          isHeading: isHeading,
+          headingLevel: headingLevel,
+          isCenter: isCenter,
+          isRight: isRight
+        });
+      }
+    }
+
+    onProgress(65, tr('পিডিএফ পেজ তৈরি করা হচ্ছে…', 'Composing PDF pages…'));
+    await UI.yield();
+
+    var pdfDoc = await PDFLib.PDFDocument.create();
+    var fontRegular = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+    var fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+
+    var pageWidth = 595.28;
+    var pageHeight = 841.89; // Standard A4 points
+    var marginX = 48;
+    var marginY = 48;
+    var contentWidth = pageWidth - (marginX * 2);
+
+    var currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+    var cursorY = pageHeight - marginY;
+
+    function addPageIfNeeded(neededHeight) {
+      if (cursorY - neededHeight < marginY) {
+        currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+        cursorY = pageHeight - marginY;
+      }
+    }
+
+    if (paragraphs.length === 0) {
+      paragraphs.push({
+        runs: [{ text: file.name, isBold: false }],
+        fullText: file.name,
+        isHeading: false
+      });
+    }
+
+    for (var pIdx = 0; pIdx < paragraphs.length; pIdx++) {
+      var p = paragraphs[pIdx];
+      var fontSize = p.isHeading ? (p.headingLevel === 1 ? 16 : 13) : 10.5;
+      var lineHeight = fontSize * 1.38;
+      var activeFont = p.isHeading ? fontBold : (p.runs[0] && p.runs[0].isBold ? fontBold : fontRegular);
+
+      var words = p.fullText.split(/\s+/).filter(Boolean);
+      if (words.length === 0) {
+        cursorY -= lineHeight * 0.5;
+        continue;
+      }
+
+      var lines = [];
+      var curLine = words[0];
+
+      for (var wIdx = 1; wIdx < words.length; wIdx++) {
+        var testLine = curLine + ' ' + words[wIdx];
+        var testWidth = 0;
+        try {
+          testWidth = activeFont.widthOfTextAtSize(testLine, fontSize);
+        } catch (e) {
+          testWidth = testLine.length * fontSize * 0.52;
+        }
+
+        if (testWidth <= contentWidth) {
+          curLine = testLine;
+        } else {
+          lines.push(curLine);
+          curLine = words[wIdx];
+        }
+      }
+      lines.push(curLine);
+
+      if (p.isHeading) {
+        addPageIfNeeded(lineHeight * 2);
+        cursorY -= 8;
+      }
+
+      for (var lIdx = 0; lIdx < lines.length; lIdx++) {
+        var lineText = lines[lIdx];
+        addPageIfNeeded(lineHeight);
+
+        var drawX = marginX;
+        var textWidth = 0;
+        try {
+          textWidth = activeFont.widthOfTextAtSize(lineText, fontSize);
+        } catch (e) {
+          textWidth = lineText.length * fontSize * 0.52;
+        }
+
+        if (p.isCenter) {
+          drawX = marginX + Math.max(0, (contentWidth - textWidth) / 2);
+        } else if (p.isRight) {
+          drawX = marginX + Math.max(0, contentWidth - textWidth);
+        }
+
+        try {
+          currentPage.drawText(lineText, {
+            x: drawX,
+            y: cursorY - fontSize,
+            size: fontSize,
+            font: activeFont,
+            color: PDFLib.rgb(0.12, 0.12, 0.12)
+          });
+        } catch (drawErr) {
+          var safeAscii = lineText.replace(/[^\x20-\x7E]/g, ' ');
+          currentPage.drawText(safeAscii, {
+            x: drawX,
+            y: cursorY - fontSize,
+            size: fontSize,
+            font: activeFont,
+            color: PDFLib.rgb(0.12, 0.12, 0.12)
+          });
+        }
+
+        cursorY -= lineHeight;
+      }
+
+      cursorY -= (p.isHeading ? 6 : 4);
+    }
+
+    onProgress(92, tr('পিডিএফ প্রস্তুত হচ্ছে…', 'Finalizing PDF output…'));
+    await UI.yield();
+
+    var pdfBytes = await pdfDoc.save();
+    return pdfBlob(pdfBytes);
+  }
+
   T['word-to-pdf'] = function (root) {
     var file = null, out = UI.el('div'), info = UI.el('div');
     var go = UI.btn(tr('পিডিএফে রূপান্তর করুন', 'Convert to PDF'), run, { icon: 'file-text', disabled: true });
@@ -1149,16 +1380,36 @@
       go.disabled = true;
 
       try {
-        var apiKey = getILovePdfKey();
-        if (!apiKey) {
-          throw new Error(tr('ব্যাকএন্ড কনফিগারেশন পাওয়া যায়নি।', 'Backend conversion configuration not found.'));
-        }
-        var pdfBlob = await callILovePdf('officepdf', file, {}, function (pct, txt) {
-          prog.set(pct, txt);
-        });
         var base = UI.baseName(file.name);
         var outName = 'ToolGhor(' + base + ').pdf';
-        UI.done(out, pdfBlob, outName, tr('✓ সফলভাবে পিডিএফে রূপান্তর সম্পন্ন হয়েছে!', '✓ Converted to PDF successfully!'));
+        var resultPdfBlob = null;
+
+        // 1. If backend API is online & configured, try high-fidelity server conversion
+        try {
+          var fd = new FormData();
+          fd.append('file', file);
+          prog.set(15, tr('সার্ভারে রূপান্তর যাচাই করা হচ্ছে…', 'Connecting to conversion engine…'));
+          var res = await fetch('/api/convert-word-to-pdf', {
+            method: 'POST',
+            body: fd
+          });
+          if (res.ok) {
+            resultPdfBlob = await res.blob();
+          }
+        } catch (netErr) {
+          console.warn('[ConvertAPI Word->PDF unavailable, using local browser engine]:', netErr);
+        }
+
+        // 2. High-speed local in-browser DOCX engine fallback
+        if (!resultPdfBlob) {
+          resultPdfBlob = await convertDocxToPdf(file, function (pct, txt) {
+            prog.set(pct, txt);
+          });
+        }
+
+        prog.set(100, tr('✓ সফলভাবে পিডিএফে রূপান্তর সম্পন্ন হয়েছে!', '✓ Converted to PDF successfully!'));
+        await UI.yield();
+        UI.done(out, resultPdfBlob, outName, tr('✓ সফলভাবে পিডিএফে রূপান্তর সম্পন্ন হয়েছে!', '✓ Converted to PDF successfully!'));
       } catch (err) {
         UI.clear(out);
         out.appendChild(UI.notice('err', tr('রূপান্তর ব্যর্থ হয়েছে: ', 'Conversion failed: ') + UI.err(err)));

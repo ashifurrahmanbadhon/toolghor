@@ -16,9 +16,9 @@ export async function POST(req: NextRequest) {
   if (!token || token === 'your_token_here' || token === 'your_convertapi_token_here') {
     return NextResponse.json(
       {
-        error: 'Your PDF could not be converted at the moment. Please try again with another PDF.',
+        error: 'ConvertAPI token is not configured on server.',
       },
-      { status: 500 }
+      { status: 503 }
     );
   }
 

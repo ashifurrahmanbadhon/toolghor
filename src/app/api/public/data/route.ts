@@ -7,7 +7,11 @@ export async function GET(req: NextRequest) {
     if (!data) {
       return NextResponse.json({ success: false, error: 'Failed to fetch site data' }, { status: 500 });
     }
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+      },
+    });
   } catch (error: any) {
     console.error('[Error in /api/public/data]:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
