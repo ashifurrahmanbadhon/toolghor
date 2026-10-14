@@ -317,38 +317,56 @@ body {
   background: transparent !important;
 }
 
-/* Top Header */
+/* Top Header - Completely Transparent so animated background flows uninterrupted */
 .top {
-  background: color-mix(in srgb, var(--paper) 82%, transparent) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
+  background: transparent !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 35%, transparent) !important;
 }
 
 .top.scrolled {
-  background: color-mix(in srgb, var(--paper) 88%, transparent) !important;
+  background: color-mix(in srgb, var(--paper) 60%, transparent) !important;
   backdrop-filter: blur(18px) !important;
   -webkit-backdrop-filter: blur(18px) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Hero Section */
+/* Header Action Pills */
+.top .pill {
+  background: color-mix(in srgb, var(--paper) 35%, transparent) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid color-mix(in srgb, var(--line) 45%, transparent) !important;
+}
+
+.top .pill:hover {
+  background: color-mix(in srgb, var(--paper) 55%, transparent) !important;
+}
+
+/* Hero Section - 100% Transparent (Seamlessly merges with bottom animated canvas) */
 .hero {
-  background: color-mix(in srgb, var(--paper) 78%, transparent) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--paddy) 30%, transparent) !important;
 }
 
 /* Search Box & Category Pills */
-.search-box {
-  background: color-mix(in srgb, var(--paper) 92%, transparent) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
+.hero .search-box, .search-box {
+  background: color-mix(in srgb, var(--paper) 40%, transparent) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1.5px solid color-mix(in srgb, var(--paddy) 50%, var(--line)) !important;
+  box-shadow: 0 8px 30px -8px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(16, 185, 129, 0.15) !important;
 }
 
-.chips .chip, .pill {
-  background: color-mix(in srgb, var(--paper) 84%, transparent) !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
+.hero .chip, .chips .chip, .pill {
+  background: color-mix(in srgb, var(--paper) 35%, transparent) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid color-mix(in srgb, var(--line) 45%, transparent) !important;
 }
 
 /* Category Headers & Expand Bars */
