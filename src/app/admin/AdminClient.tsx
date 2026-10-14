@@ -27,6 +27,7 @@ import {
   ExternalLink,
   LogOut,
   X,
+  Menu,
   Filter,
   Lock,
   Mail,
@@ -172,6 +173,7 @@ export default function AdminConsole() {
 
   // Active Menu Tab (Sidebar Navigation)
   const [activeTab, setActiveTab] = useState<MenuTab>('overview');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Loading & Database Status
   const [dbConnected, setDbConnected] = useState<boolean | null>(null);
@@ -1188,31 +1190,28 @@ export default function AdminConsole() {
   return (
     <div style={{ minHeight: '100vh', background: 'transparent', color: '#e2e8f0', display: 'flex', flexDirection: 'column' }}>
       {/* Top Bar */}
-      <header
-        style={{
-          height: '64px',
-          background: 'rgba(17, 24, 39, 0.82)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          borderBottom: '1px solid rgba(31, 41, 55, 0.85)',
-          padding: '0 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          position: 'sticky',
-          top: 0,
-          zIndex: 50,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+      {/* Top Bar */}
+      <header className="admin-header-bar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Mobile Hamburger Drawer Button */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="admin-hamburger-btn"
+            aria-label="Toggle navigation menu"
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+
           <Link href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
             <picture>
               <source type="image/webp" data-cfg="logoDarkWebp" srcSet="/assets/logo-dark.webp" media="(prefers-color-scheme: dark)" />
               <source data-cfg="logoDark" srcSet="/assets/logo-dark.png" media="(prefers-color-scheme: dark)" />
-              <img src="/assets/logo.png" alt="ToolGhor" style={{ height: '32px', width: 'auto' }} />
+              <img src="/assets/logo.png" alt="ToolGhor" style={{ height: '30px', width: 'auto' }} />
             </picture>
           </Link>
           <span
+            className="admin-header-logo-text"
             style={{
               fontSize: '11px',
               fontWeight: 800,
@@ -1223,11 +1222,11 @@ export default function AdminConsole() {
               color: '#ffffff',
             }}
           >
-            ADMIN CONSOLE
+            ADMIN
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {/* Cloud Database Live Badge */}
           <div
             style={{
@@ -1236,7 +1235,7 @@ export default function AdminConsole() {
               gap: '6px',
               fontSize: '12px',
               fontWeight: 600,
-              padding: '5px 12px',
+              padding: '5px 10px',
               borderRadius: '999px',
               background: dbConnected ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
               color: dbConnected ? '#34d399' : '#f87171',
@@ -1249,9 +1248,11 @@ export default function AdminConsole() {
                 height: '8px',
                 borderRadius: '50%',
                 background: dbConnected ? '#10b981' : '#ef4444',
+                flexShrink: 0,
               }}
             />
-            <span>{dbConnected ? 'Neon Cloud DB Connected' : 'Database Disconnected'}</span>
+            <span className="admin-hide-mobile">{dbConnected ? 'Neon Cloud DB Connected' : 'DB Disconnected'}</span>
+            <span className="admin-show-mobile" style={{ fontSize: '11px' }}>{dbConnected ? 'Live' : 'Off'}</span>
           </div>
 
           {/* Refresh Button */}
@@ -1259,6 +1260,7 @@ export default function AdminConsole() {
             type="button"
             onClick={fetchAllSections}
             disabled={loadingData}
+            title="Sync live data from database"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -1266,7 +1268,7 @@ export default function AdminConsole() {
               background: '#1f2937',
               color: '#e2e8f0',
               border: '1px solid #374151',
-              padding: '6px 14px',
+              padding: '6px 10px',
               borderRadius: '8px',
               fontSize: '13px',
               fontWeight: 600,
@@ -1274,13 +1276,14 @@ export default function AdminConsole() {
             }}
           >
             <RefreshCw size={14} className={loadingData ? 'animate-spin' : ''} />
-            <span>{loadingData ? 'Syncing...' : 'Sync Data'}</span>
+            <span className="admin-hide-mobile">{loadingData ? 'Syncing...' : 'Sync'}</span>
           </button>
 
           {/* View Website Link */}
           <Link
             href="/"
             target="_blank"
+            title="Open live website in new tab"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -1288,7 +1291,7 @@ export default function AdminConsole() {
               background: 'rgba(59, 130, 246, 0.15)',
               color: '#60a5fa',
               border: '1px solid rgba(59, 130, 246, 0.3)',
-              padding: '6px 14px',
+              padding: '6px 10px',
               borderRadius: '8px',
               fontSize: '13px',
               fontWeight: 600,
@@ -1296,7 +1299,7 @@ export default function AdminConsole() {
             }}
           >
             <ExternalLink size={14} />
-            <span>Live Site</span>
+            <span className="admin-hide-mobile">Live Site</span>
           </Link>
 
           {/* Sign Out Button */}
@@ -1310,7 +1313,7 @@ export default function AdminConsole() {
               background: 'transparent',
               color: '#94a3b8',
               border: 'none',
-              padding: '6px 10px',
+              padding: '6px 8px',
               borderRadius: '8px',
               fontSize: '13px',
               cursor: 'pointer',
@@ -1348,27 +1351,31 @@ export default function AdminConsole() {
       )}
 
       {/* Main Workspace: Left Sidebar + Large Right Screen */}
-      <div style={{ display: 'flex', flex: 1, minHeight: 'calc(100vh - 64px)' }}>
+      <div className="admin-workspace-wrap">
+        {/* Mobile Backdrop */}
+        {mobileMenuOpen && (
+          <div
+            className="admin-sidebar-backdrop"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+        )}
+
         {/* ================= LEFT SIDEBAR ================= */}
-        <aside
-          style={{
-            width: '270px',
-            minWidth: '270px',
-            background: 'rgba(17, 24, 39, 0.82)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            borderRight: '1px solid rgba(31, 41, 55, 0.85)',
-            padding: '20px 14px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-          }}
-        >
+        <aside className={`admin-sidebar ${mobileMenuOpen ? 'open' : ''}`}>
           <div>
-            <div style={{ padding: '0 10px 14px', borderBottom: '1px solid #1f2937', marginBottom: '14px' }}>
+            <div style={{ padding: '0 10px 14px', borderBottom: '1px solid #1f2937', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748b', fontWeight: 700 }}>
                 Navigation Menu
               </span>
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="admin-sidebar-close-btn"
+                aria-label="Close menu"
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={18} />
+              </button>
             </div>
 
             <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1390,7 +1397,10 @@ export default function AdminConsole() {
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setActiveTab(item.id as MenuTab)}
+                    onClick={() => {
+                      setActiveTab(item.id as MenuTab);
+                      setMobileMenuOpen(false);
+                    }}
                     style={{
                       width: '100%',
                       display: 'flex',
@@ -1440,6 +1450,7 @@ export default function AdminConsole() {
               borderRadius: '12px',
               padding: '14px',
               fontSize: '12px',
+              marginTop: '16px',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
@@ -1460,7 +1471,31 @@ export default function AdminConsole() {
         </aside>
 
         {/* ================= RIGHT MAIN SCREEN ================= */}
-        <main style={{ flex: 1, padding: '32px 40px', overflowY: 'auto' }}>
+        <main className="admin-main-viewport">
+          {/* Quick Mobile Horizontal Category / Tab Scroller */}
+          <div className="admin-mobile-tab-scroller">
+            {[
+              { id: 'overview', label: 'Overview' },
+              { id: 'hero', label: 'Hero' },
+              { id: 'announcement', label: 'Banner' },
+              { id: 'categories', label: `Categories (${categories.length})` },
+              { id: 'tools', label: `Tools (${tools.length})` },
+              { id: 'footer', label: 'Footer & WhatsApp' },
+              { id: 'creator', label: 'Creator' },
+              { id: 'apis', label: 'APIs' },
+              { id: 'analytics', label: 'Analytics' },
+              { id: 'profile', label: 'Security' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id as MenuTab)}
+                className={`admin-mobile-pill ${activeTab === tab.id ? 'active' : ''}`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
           {/* TAB 1: OVERVIEW */}
           {activeTab === 'overview' && (
             <div>
@@ -2087,8 +2122,8 @@ export default function AdminConsole() {
               </div>
 
               {/* Categories Table */}
-              <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
+              <div className="admin-table-wrap" style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table style={{ width: '100%', minWidth: '650px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
                   <thead>
                     <tr style={{ background: '#1f2937', borderBottom: '1px solid #374151', color: '#94a3b8' }}>
                       <th style={{ padding: '14px 18px', fontWeight: 700 }}>Symbol</th>
@@ -2319,8 +2354,8 @@ export default function AdminConsole() {
               </div>
 
               {/* Tools Table */}
-              <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
+              <div className="admin-table-wrap" style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table style={{ width: '100%', minWidth: '780px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
                   <thead>
                     <tr style={{ background: '#1f2937', borderBottom: '1px solid #374151', color: '#94a3b8' }}>
                       <th style={{ padding: '14px 18px', fontWeight: 700 }}>Tool Name</th>
@@ -3412,8 +3447,8 @@ export default function AdminConsole() {
                     </div>
 
                     {/* Table View with Progress Bars */}
-                    <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', overflow: 'hidden' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
+                    <div className="admin-table-wrap" style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                      <table style={{ width: '100%', minWidth: '680px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
                         <thead>
                           <tr style={{ background: '#1f2937', borderBottom: '1px solid #374151', color: '#94a3b8' }}>
                             <th style={{ padding: '14px 18px', fontWeight: 700, width: '70px' }}>Rank</th>
