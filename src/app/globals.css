@@ -10,6 +10,237 @@
   --color-foreground: var(--foreground);
 }
 
+/* ================= ZERO-LAG HARDWARE-ACCELERATED BACKGROUND SYSTEM ================= */
+
+/* Base Canvas: Fixed, full viewport, composited on dedicated GPU layer */
+.bg-ambient-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+  contain: strict;
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
+}
+
+/* Public Website Base Tone */
+.bg-site-base {
+  background: #f4f7f5;
+  transition: background-color 0.4s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  .bg-site-base {
+    background: #0d1914;
+  }
+}
+
+/* Admin Console Base Tone */
+.bg-admin-base {
+  background: #090c13;
+}
+
+/* Subtle High-Tech Dot Matrix Pattern for Website */
+.bg-grid-pattern {
+  position: absolute;
+  inset: 0;
+  background-size: 30px 30px;
+  background-image: radial-gradient(circle at 1.5px 1.5px, rgba(14, 122, 90, 0.12) 1.5px, transparent 0);
+  mask-image: radial-gradient(ellipse 85% 85% at 50% 50%, #000 60%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 85% 85% at 50% 50%, #000 60%, transparent 100%);
+  opacity: 0.8;
+}
+
+@media (prefers-color-scheme: dark) {
+  .bg-grid-pattern {
+    background-image: radial-gradient(circle at 1.5px 1.5px, rgba(47, 182, 139, 0.16) 1.5px, transparent 0);
+    opacity: 0.6;
+  }
+}
+
+/* Cyber Matrix Grid for Admin Console */
+.bg-grid-pattern-admin {
+  position: absolute;
+  inset: 0;
+  background-size: 36px 36px;
+  background-image: 
+    linear-gradient(to right, rgba(16, 185, 129, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(16, 185, 129, 0.04) 1px, transparent 1px);
+  mask-image: radial-gradient(ellipse 90% 90% at 50% 50%, #000 65%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 90% at 50% 50%, #000 65%, transparent 100%);
+  opacity: 0.9;
+}
+
+/* Floating GPU Aurora Orbs */
+.bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(75px);
+  -webkit-filter: blur(75px);
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Website Aurora Orbs (Smooth emerald, teal, sky) */
+.bg-orb-emerald {
+  width: min(650px, 60vw);
+  height: min(650px, 60vw);
+  top: -12%;
+  left: 8%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.22) 0%, rgba(16, 185, 129, 0.03) 65%, transparent 75%);
+  animation: floatOrbSlow1 28s ease-in-out infinite alternate;
+}
+
+.bg-orb-teal {
+  width: min(580px, 55vw);
+  height: min(580px, 55vw);
+  top: 35%;
+  right: -8%;
+  background: radial-gradient(circle, rgba(20, 184, 166, 0.18) 0%, rgba(20, 184, 166, 0.02) 65%, transparent 75%);
+  animation: floatOrbSlow2 32s ease-in-out infinite alternate;
+}
+
+.bg-orb-cyan {
+  width: min(520px, 50vw);
+  height: min(520px, 50vw);
+  bottom: -10%;
+  left: 22%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, rgba(56, 189, 248, 0.02) 65%, transparent 75%);
+  animation: floatOrbSlow3 30s ease-in-out infinite alternate;
+}
+
+@media (prefers-color-scheme: dark) {
+  .bg-orb-emerald {
+    background: radial-gradient(circle, rgba(47, 182, 139, 0.3) 0%, rgba(47, 182, 139, 0.05) 65%, transparent 75%);
+  }
+  .bg-orb-teal {
+    background: radial-gradient(circle, rgba(20, 184, 166, 0.25) 0%, rgba(20, 184, 166, 0.04) 65%, transparent 75%);
+  }
+  .bg-orb-cyan {
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.2) 0%, rgba(56, 189, 248, 0.03) 65%, transparent 75%);
+  }
+}
+
+/* Admin Console Cyber Orbs */
+.bg-orb-admin-green {
+  width: min(640px, 58vw);
+  height: min(640px, 58vw);
+  top: -12%;
+  left: 12%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.32) 0%, rgba(5, 150, 105, 0.06) 60%, transparent 75%);
+  animation: floatOrbSlow1 24s ease-in-out infinite alternate;
+}
+
+.bg-orb-admin-cyan {
+  width: min(580px, 52vw);
+  height: min(580px, 52vw);
+  top: 38%;
+  right: -6%;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.24) 0%, rgba(6, 182, 212, 0.04) 60%, transparent 75%);
+  animation: floatOrbSlow2 28s ease-in-out infinite alternate;
+}
+
+.bg-orb-admin-indigo {
+  width: min(680px, 62vw);
+  height: min(680px, 62vw);
+  bottom: -15%;
+  left: 28%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, rgba(99, 102, 241, 0.03) 60%, transparent 75%);
+  animation: floatOrbSlow3 32s ease-in-out infinite alternate;
+}
+
+/* Vignette & Soft Ambient Horizon Depth */
+.bg-vignette-admin {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, transparent 40%, rgba(5, 8, 14, 0.7) 100%);
+  pointer-events: none;
+}
+
+.bg-horizon-glow {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 220px;
+  background: linear-gradient(to top, rgba(16, 185, 129, 0.04), transparent);
+  pointer-events: none;
+}
+
+/* GPU Keyframe Animations: Pure Translate3D & Scale (Zero Layout / Paint Overhead) */
+@keyframes floatOrbSlow1 {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(55px, 40px, 0) scale(1.1) rotate(8deg);
+  }
+  100% {
+    transform: translate3d(-35px, 70px, 0) scale(0.96) rotate(-6deg);
+  }
+}
+
+@keyframes floatOrbSlow2 {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(-60px, -45px, 0) scale(1.08) rotate(-10deg);
+  }
+  100% {
+    transform: translate3d(40px, -25px, 0) scale(0.94) rotate(6deg);
+  }
+}
+
+@keyframes floatOrbSlow3 {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(45px, -50px, 0) scale(1.12);
+  }
+  100% {
+    transform: translate3d(-45px, 30px, 0) scale(0.98);
+  }
+}
+
+/* Subtle Layer Transparency for Glassmorphism Depth */
+body {
+  background: transparent !important;
+}
+
+.hero {
+  background: color-mix(in srgb, var(--paper) 86%, transparent) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+.top.scrolled {
+  background: color-mix(in srgb, var(--paper) 88%, transparent) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+}
+
+.all-expand-bar {
+  background: color-mix(in srgb, var(--paper) 92%, transparent) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+}
+
+/* Accessibility: Respect Reduced Motion Preferences */
+@media (prefers-reduced-motion: reduce) {
+  .bg-orb {
+    animation: none !important;
+  }
+}
+
 /* ================= ENERGETIC & FAST MICRO-ANIMATIONS ================= */
 
 /* 1. Tool Cards: Smooth 3D Elevation & Aura on Hover */
@@ -115,4 +346,3 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.5);
 }
-

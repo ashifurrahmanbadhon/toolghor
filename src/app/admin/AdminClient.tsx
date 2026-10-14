@@ -654,17 +654,21 @@ export default function AdminConsole() {
   // ================= LOGIN SCREEN (100% ENGLISH) =================
   if (!isAuthenticated) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0a0d14', display: 'grid', placeItems: 'center', padding: '16px', color: '#f1f5f9' }}>
+      <div style={{ minHeight: '100vh', background: 'transparent', display: 'grid', placeItems: 'center', padding: '16px', color: '#f1f5f9', position: 'relative' }}>
         <div
           style={{
-            background: '#131824',
-            border: '1px solid #1e293b',
+            background: 'rgba(19, 24, 36, 0.78)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
             borderRadius: '20px',
             padding: '40px 32px',
             width: '100%',
             maxWidth: '420px',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+            boxShadow: '0 25px 60px -12px rgba(0,0,0,0.7), 0 0 0 1px rgba(16, 185, 129, 0.15)',
             textAlign: 'center',
+            position: 'relative',
+            zIndex: 10,
           }}
         >
           <div
@@ -792,13 +796,15 @@ export default function AdminConsole() {
           >
             <div
               style={{
-                background: '#131824',
-                border: '1px solid #1e293b',
+                background: 'rgba(19, 24, 36, 0.88)',
+                backdropFilter: 'blur(24px)',
+                WebkitBackdropFilter: 'blur(24px)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
                 borderRadius: '20px',
                 padding: '32px 28px',
                 width: '100%',
                 maxWidth: '440px',
-                boxShadow: '0 25px 50px rgba(0,0,0,0.6)',
+                boxShadow: '0 25px 60px rgba(0,0,0,0.75), 0 0 0 1px rgba(16, 185, 129, 0.2)',
                 position: 'relative',
               }}
             >
@@ -1221,13 +1227,15 @@ export default function AdminConsole() {
 
   // ================= MAIN ADMIN CONSOLE (SIDEBAR + WIDE RIGHT PANEL) =================
   return (
-    <div style={{ minHeight: '100vh', background: '#0b0f19', color: '#e2e8f0', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: 'transparent', color: '#e2e8f0', display: 'flex', flexDirection: 'column' }}>
       {/* Top Bar */}
       <header
         style={{
           height: '64px',
-          background: '#111827',
-          borderBottom: '1px solid #1f2937',
+          background: 'rgba(17, 24, 39, 0.82)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          borderBottom: '1px solid rgba(31, 41, 55, 0.85)',
           padding: '0 24px',
           display: 'flex',
           alignItems: 'center',
@@ -1387,8 +1395,10 @@ export default function AdminConsole() {
           style={{
             width: '270px',
             minWidth: '270px',
-            background: '#111827',
-            borderRight: '1px solid #1f2937',
+            background: 'rgba(17, 24, 39, 0.82)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            borderRight: '1px solid rgba(31, 41, 55, 0.85)',
             padding: '20px 14px',
             display: 'flex',
             flexDirection: 'column',
