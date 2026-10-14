@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { AppProvider } from '@/context/AppContext';
 import { siteConfig } from '@/data/config';
+import BackgroundAnimation from '@/components/BackgroundAnimation';
 
 export const metadata: Metadata = {
   title: `${siteConfig.name} – ${siteConfig.tagline}`,
@@ -34,6 +35,7 @@ export default function RootLayout({
         <script src="/assets/ui.js" defer></script>
       </head>
       <body suppressHydrationWarning>
+        <BackgroundAnimation />
         <AppProvider>{children}</AppProvider>
       </body>
     </html>
