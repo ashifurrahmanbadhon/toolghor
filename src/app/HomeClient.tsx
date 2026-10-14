@@ -257,24 +257,28 @@ export default function HomeClient({ initialData }: HomeClientProps) {
     switch (type) {
       case 'danger':
         return {
-          bg: 'linear-gradient(90deg, #dc2626, #991b1b)',
+          bg: 'linear-gradient(90deg, rgba(220, 38, 38, 0.32), rgba(153, 27, 27, 0.32))',
+          border: 'rgba(239, 68, 68, 0.4)',
           badgeText: '🚨 Alert',
         };
       case 'warning':
       case 'warn':
         return {
-          bg: 'linear-gradient(90deg, #d97706, #b45309)',
+          bg: 'linear-gradient(90deg, rgba(217, 119, 6, 0.32), rgba(180, 83, 9, 0.32))',
+          border: 'rgba(245, 158, 11, 0.4)',
           badgeText: '⚠️ Notice',
         };
       case 'success':
         return {
-          bg: 'linear-gradient(90deg, #059669, #047857)',
+          bg: 'linear-gradient(90deg, rgba(5, 150, 105, 0.32), rgba(4, 120, 87, 0.32))',
+          border: 'rgba(16, 185, 129, 0.4)',
           badgeText: '✨ Update',
         };
       case 'info':
       default:
         return {
-          bg: 'linear-gradient(90deg, #2563eb, #1d4ed8)',
+          bg: 'linear-gradient(90deg, rgba(37, 99, 235, 0.32), rgba(29, 78, 216, 0.32))',
+          border: 'rgba(59, 130, 246, 0.4)',
           badgeText: 'ℹ️ Info',
         };
     }
@@ -312,7 +316,9 @@ export default function HomeClient({ initialData }: HomeClientProps) {
           style={{
             background: bannerStyle.bg,
             color: '#ffffff',
-            borderBottom: '1px solid rgba(255,255,255,0.15)',
+            borderBottom: `1px solid ${bannerStyle.border}`,
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
             padding: '10px 16px',
             fontSize: '13.5px',
             fontWeight: 600,
