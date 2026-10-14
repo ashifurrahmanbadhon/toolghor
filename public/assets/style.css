@@ -3146,6 +3146,28 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
   color: var(--ink-3);
   line-height: 1.3;
 }
+.yt-card-dl-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: color-mix(in srgb, #ff0000 12%, var(--paper));
+  color: #d90000;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin-top: 6px;
+  width: fit-content;
+  border: 1px solid color-mix(in srgb, #ff0000 25%, transparent);
+  transition: all .15s ease;
+}
+.yt-q-card:hover .yt-card-dl-tag,
+.yt-q-card.sel .yt-card-dl-tag {
+  background: #ff0000;
+  color: #fff;
+  border-color: #ff0000;
+}
 .yt-action-wrap {
   display: flex;
   justify-content: center;

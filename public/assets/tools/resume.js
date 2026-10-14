@@ -395,10 +395,22 @@
       var backdrop = UI.el('div', { class: 'ai-modal-backdrop' });
       var modal = UI.el('div', { class: 'ai-modal-box ai-resume-modal', style: { maxWidth: '640px', width: '94%' } });
 
+      function closeModal() {
+        backdrop.classList.remove('show');
+        window.removeEventListener('keydown', onEsc);
+        setTimeout(function () {
+          if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+        }, 220);
+      }
+      function onEsc(e) {
+        if (e.key === 'Escape') closeModal();
+      }
+      window.addEventListener('keydown', onEsc);
+
       // Modal Head
       var closeBtn = UI.el('button', { class: 'ai-modal-close', 'aria-label': 'Close' }, '✕');
-      closeBtn.addEventListener('click', function () { document.body.removeChild(backdrop); });
-      backdrop.addEventListener('click', function (e) { if (e.target === backdrop) document.body.removeChild(backdrop); });
+      closeBtn.addEventListener('click', closeModal);
+      backdrop.addEventListener('click', function (e) { if (e.target === backdrop) closeModal(); });
 
       var head = UI.el('div', { class: 'ai-modal-head' },
         UI.el('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } },
@@ -487,7 +499,7 @@
                     d.summary = optText;
                     buildForm();
                     refresh();
-                    document.body.removeChild(backdrop);
+                    closeModal();
                     UI.toast(tr('✓ ক্যারিয়ার অবজেক্টিভ সিভিতে যুক্ত হয়েছে!', "✓ Career objective applied to CV!"));
                   }, { cls: 'alt sm' })
                 ),
@@ -558,7 +570,7 @@
                   });
                   buildForm();
                   refresh();
-                  document.body.removeChild(backdrop);
+                  closeModal();
                   UI.toast(tr('✓ নতুন কাজের অভিজ্ঞতা সিভিতে যুক্ত হয়েছে!', "✓ Experience added to CV!"));
                 }, { cls: 'alt sm' })
               ),
@@ -701,7 +713,7 @@
           UI.el('span', {}, tr('Google Gemini & OpenAI AI সাপোর্ট সংযুক্ত', "Powered by Google Gemini & OpenAI"))
         ),
         UI.el('div', { class: 'ai-modal-foot-actions' },
-          UI.btn(tr('বন্ধ করুন', "Close"), function () { document.body.removeChild(backdrop); }, { variant: 'ghost' })
+          UI.btn(tr('বন্ধ করুন', "Close"), closeModal, { variant: 'ghost' })
         )
       );
 
@@ -711,6 +723,9 @@
       modal.appendChild(foot);
       backdrop.appendChild(modal);
       document.body.appendChild(backdrop);
+      requestAnimationFrame(function () {
+        backdrop.classList.add('show');
+      });
 
       renderTabNav();
       renderTabContent();

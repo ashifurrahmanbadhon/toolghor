@@ -463,10 +463,12 @@
         var card = UI.el('button', {
           type: 'button',
           class: 'yt-q-card' + (selVideoQuality === q.id ? ' sel' : '') + (q.rec ? ' rec' : ''),
+          title: tr('ক্লিক করলেই ডাউনলোড শুরু হবে', 'Click to start download immediately'),
           onclick: function () {
             selVideoQuality = q.id;
             qGrid.querySelectorAll('.yt-q-card').forEach(function (c) { c.classList.remove('sel'); });
             card.classList.add('sel');
+            triggerDownload('video', data, q.id, mainBtn, statusTarget);
           }
         });
         if (q.rec) {
@@ -474,6 +476,7 @@
         }
         card.appendChild(UI.el('b', { class: 'yt-q-title' }, q.label));
         card.appendChild(UI.el('small', { class: 'yt-q-sub' }, q.sub));
+        card.appendChild(UI.el('span', { class: 'yt-card-dl-tag' }, '📥 ' + tr('ডাউনলোড শুরু করুন', 'Download Now')));
         qGrid.appendChild(card);
       });
 
@@ -486,15 +489,18 @@
       actionWrap.appendChild(statusTarget);
 
       var altNote = UI.el('div', { class: 'yt-server-note' },
-        UI.el('p', { class: 'yt-note-text' }, tr('💡 কোনো কারণে নেটওয়ার্কে একটি সার্ভার ব্লক থাকলে বা ধীরগতির হলে নিচের যেকোনো সার্ভার ব্যবহার করুন:', '💡 If one server is blocked or slow on your network, use any alternative server below:')),
+        UI.el('p', { class: 'yt-note-text' }, tr('💡 দ্রুত ডাউনলোডের বিকল্প সার্ভার গেটওয়ে:', '💡 Alternative download server gateways:')),
         UI.el('div', { class: 'yt-server-buttons' },
-          UI.btn('⚡ ' + tr('সার্ভার ১ (Cobalt - বিজ্ঞাপনমুক্ত)', 'Server 1 (Cobalt - Ad-Free)'), function () {
+          UI.btn('⚡ ' + tr('সার্ভার ১ (YTDown - ফাস্ট ডাউনলোড)', 'Server 1 (YTDown - Fast Direct)'), function () {
+            openResolver('ytdown', data.url);
+          }, { cls: 'btn-sub' }),
+          UI.btn('🚀 ' + tr('সার্ভার ২ (Cobalt - বিজ্ঞাপনমুক্ত)', 'Server 2 (Cobalt - Ad-Free)'), function () {
             openResolver('cobalt', data.url);
           }, { cls: 'btn-sub' }),
-          UI.btn('🚀 ' + tr('সার্ভার ২ (SaveFrom ডিরেক্ট)', 'Server 2 (SaveFrom Direct)'), function () {
+          UI.btn('🔥 ' + tr('সার্ভার ৩ (SaveFrom ডিরেক্ট)', 'Server 3 (SaveFrom Direct)'), function () {
             openResolver('savefrom', data.url);
           }, { cls: 'btn-sub' }),
-          UI.btn('🔥 ' + tr('সার্ভার ৩ (Y2Mate ফাস্ট গেটওয়ে)', 'Server 3 (Y2Mate Fast Gateway)'), function () {
+          UI.btn('✨ ' + tr('সার্ভার ৪ (Y2Mate গেটওয়ে)', 'Server 4 (Y2Mate Gateway)'), function () {
             openResolver('y2mate', data.url);
           }, { cls: 'btn-sub' })
         )
@@ -525,10 +531,12 @@
         var card = UI.el('button', {
           type: 'button',
           class: 'yt-q-card' + (selAudioQuality === q.id ? ' sel' : '') + (q.rec ? ' rec' : ''),
+          title: tr('ক্লিক করলেই অডিও ডাউনলোড শুরু হবে', 'Click to start audio download immediately'),
           onclick: function () {
             selAudioQuality = q.id;
             qGrid.querySelectorAll('.yt-q-card').forEach(function (c) { c.classList.remove('sel'); });
             card.classList.add('sel');
+            triggerDownload('audio', data, q.id, mainBtn, statusTarget);
           }
         });
         if (q.rec) {
@@ -536,6 +544,7 @@
         }
         card.appendChild(UI.el('b', { class: 'yt-q-title' }, q.label));
         card.appendChild(UI.el('small', { class: 'yt-q-sub' }, q.sub));
+        card.appendChild(UI.el('span', { class: 'yt-card-dl-tag' }, '📥 ' + tr('ডাউনলোড শুরু করুন', 'Download Now')));
         qGrid.appendChild(card);
       });
 
@@ -550,13 +559,16 @@
       var altNote = UI.el('div', { class: 'yt-server-note' },
         UI.el('p', { class: 'yt-note-text' }, tr('💡 অডিও ডাউনলোডের বিকল্প গেটওয়ে:', '💡 Alternative Audio Download Gateways:')),
         UI.el('div', { class: 'yt-server-buttons' },
-          UI.btn('⚡ ' + tr('অডিও সার্ভার ১ (Cobalt অডিও)', 'Audio Server 1 (Cobalt Audio)'), function () {
+          UI.btn('⚡ ' + tr('অডিও সার্ভার ১ (YTDown MP3)', 'Audio Server 1 (YTDown MP3)'), function () {
+            openResolver('ytdown-audio', data.url);
+          }, { cls: 'btn-sub' }),
+          UI.btn('🚀 ' + tr('অডিও সার্ভার ২ (Cobalt অডিও)', 'Audio Server 2 (Cobalt Audio)'), function () {
             openResolver('cobalt-audio', data.url);
           }, { cls: 'btn-sub' }),
-          UI.btn('🚀 ' + tr('অডিও সার্ভার ২ (Y2Mate MP3)', 'Audio Server 2 (Y2Mate MP3)'), function () {
+          UI.btn('🔥 ' + tr('অডিও সার্ভার ৩ (Y2Mate MP3)', 'Audio Server 3 (Y2Mate MP3)'), function () {
             openResolver('y2mate-audio', data.url);
           }, { cls: 'btn-sub' }),
-          UI.btn('🔥 ' + tr('অডিও সার্ভার ৩ (YT1s MP3)', 'Audio Server 3 (YT1s MP3)'), function () {
+          UI.btn('✨ ' + tr('অডিও সার্ভার ৪ (YT1s MP3)', 'Audio Server 4 (YT1s MP3)'), function () {
             openResolver('yt1s-audio', data.url);
           }, { cls: 'btn-sub' })
         )
@@ -628,11 +640,6 @@
         btn.innerHTML = '⏳ ' + tr('ফাইল প্রস্তুত হচ্ছে…', 'Preparing file…');
       }
 
-      if (statusTarget) {
-        UI.clear(statusTarget);
-        statusTarget.appendChild(UI.notice('info', tr('⚡ সরাসরি মিডিয়া স্ট্রিম প্রস্তুত হচ্ছে (২-৫ সেকেন্ড লাগতে পারে)… প্রস্তুত হওয়া মাত্রই ফাইলটি স্বয়ংক্রিয়ভাবে ডাউনলোড শুরু হবে!', '⚡ Resolving direct media stream (takes 2-5 sec)… The file will download automatically once ready!')));
-      }
-
       var fmt = '720';
       if (mode === 'audio') {
         fmt = (quality === 'm4a') ? 'm4a' : 'mp3';
@@ -640,47 +647,61 @@
         fmt = quality || '720';
       }
 
+      // Auto-copy link to clipboard for convenience
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(data.url).catch(function () {});
+      }
+
+      var ytdownUrl = 'https://app.ytdown.to/en38?url=' + encodeURIComponent(data.url);
+
+      if (statusTarget) {
+        UI.clear(statusTarget);
+        var statusCard = UI.el('div', { class: 'stack yt-success-box', style: 'margin-top:12px; padding:16px; background:color-mix(in srgb, #ff0000 6%, var(--paper)); border-radius:14px; border:1.5px solid color-mix(in srgb, #ff0000 30%, var(--line));' });
+        statusCard.appendChild(UI.notice('info', '⚡ ' + tr('YTDown (app.ytdown.to) ইঞ্জিনের মাধ্যমে আপনার ' + (mode === 'audio' ? 'অডিও' : 'ভিডিও') + ' (' + quality + ') ডাউনলোড প্রস্তুত হচ্ছে…', 'Preparing ' + (mode === 'audio' ? 'audio' : 'video') + ' (' + quality + ') download via YTDown (app.ytdown.to)…')));
+
+        var actionRow = UI.el('div', { style: 'display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:center;' });
+        var directYtDownBtn = UI.btn('🚀 ' + tr('YTDown দিয়ে সরাসরি সেভ করুন (app.ytdown.to)', 'Open YTDown Direct Download'), function () {
+          window.open(ytdownUrl, '_blank', 'noopener,noreferrer');
+        }, { cls: 'btn-pri sm' });
+        actionRow.appendChild(directYtDownBtn);
+        statusCard.appendChild(actionRow);
+        statusTarget.appendChild(statusCard);
+      }
+
+      // Automatically launch YTDown download window
+      window.open(ytdownUrl, '_blank', 'noopener,noreferrer');
+
+      UI.toast(tr('✓ আপনার ' + (mode === 'audio' ? 'অডিও' : 'ভিডিও') + ' ডাউনলোডটি প্রস্তুত হচ্ছে!', '✓ Preparing your download!'));
+
+      // Also attempt server stream in parallel
       try {
         var endpoint = '/api/yt-download?url=' + encodeURIComponent(data.url) + '&format=' + encodeURIComponent(fmt);
         var res = await fetch(endpoint);
-        if (!res.ok) {
-          throw new Error('Server returned HTTP ' + res.status);
+        if (res.ok) {
+          var json = await res.json();
+          if (json && json.download_url && !json.download_url.includes('app.ytdown.to')) {
+            var dlAnchor = document.createElement('a');
+            dlAnchor.href = json.download_url;
+            dlAnchor.setAttribute('download', '');
+            dlAnchor.setAttribute('rel', 'noopener noreferrer');
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            setTimeout(function () { dlAnchor.remove(); }, 1500);
+
+            if (statusTarget) {
+              UI.clear(statusTarget);
+              var successWrap = UI.el('div', { class: 'stack yt-success-box', style: 'margin-top:10px;' });
+              successWrap.appendChild(UI.notice('ok', tr('✓ আপনার ফাইলটির ডাউনলোড স্বয়ংক্রিয়ভাবে শুরু হয়েছে! ব্রাউজারের ডাউনলোড হিস্ট্রি চেক করুন।', '✓ Your file download has started automatically! Please check your browser downloads.')));
+              var manualDl = UI.btn('📥 ' + tr('অটো ডাউনলোড না হলে সরাসরি এখানে চাপুন', 'Click here if download did not start'), function () {
+                window.location.href = json.download_url;
+              }, { cls: 'btn-pri sm' });
+              successWrap.appendChild(manualDl);
+              statusTarget.appendChild(successWrap);
+            }
+          }
         }
-        var json = await res.json();
-        if (!json.success || !json.download_url) {
-          throw new Error((json && json.error) || 'Could not retrieve direct download link');
-        }
-
-        var dlUrl = json.download_url;
-
-        // Auto-download file directly
-        var dlAnchor = document.createElement('a');
-        dlAnchor.href = dlUrl;
-        dlAnchor.setAttribute('download', '');
-        dlAnchor.setAttribute('rel', 'noopener noreferrer');
-        document.body.appendChild(dlAnchor);
-        dlAnchor.click();
-        setTimeout(function () { dlAnchor.remove(); }, 1500);
-
-        if (statusTarget) {
-          UI.clear(statusTarget);
-          var successWrap = UI.el('div', { class: 'stack yt-success-box', style: 'margin-top:10px;' });
-          successWrap.appendChild(UI.notice('ok', tr('✓ আপনার ফাইলটির ডাউনলোড স্বয়ংক্রিয়ভাবে শুরু হয়েছে! ব্রাউজারের ডাউনলোড হিস্ট্রি চেক করুন।', '✓ Your file download has started automatically! Please check your browser downloads.')));
-          var manualDl = UI.btn('📥 ' + tr('অটো ডাউনলোড না হলে সরাসরি এখানে চাপুন', 'Click here if download did not start'), function () {
-            window.location.href = dlUrl;
-          }, { cls: 'btn-pri sm' });
-          successWrap.appendChild(manualDl);
-          statusTarget.appendChild(successWrap);
-        }
-
-        UI.toast(tr('✓ ফাইল ডাউনলোড শুরু হয়েছে!', '✓ Download started!'));
       } catch (err) {
-        console.warn('[Direct auto-download error]:', err);
-        if (statusTarget) {
-          UI.clear(statusTarget);
-          statusTarget.appendChild(UI.notice('warn', tr('সরাসরি স্ট্রিম পেতে কিছুটা দেরি হচ্ছে। বিকল্প সার্ভার দিয়ে অবিলম্বে ডাউনলোড করতে পারেন:', 'Direct stream taking longer. You can use alternative servers below:')));
-        }
-        openResolver(mode === 'audio' ? 'cobalt-audio' : 'cobalt', data.url);
+        console.warn('[Direct auto-download stream]', err);
       } finally {
         if (btn) {
           btn.disabled = false;
@@ -692,9 +713,9 @@
     function openResolver(service, url) {
       var id = parseYtId(url);
       var targetUrl = '';
-      if (service === 'cobalt') {
-        targetUrl = 'https://cobalt.tools/#url=' + encodeURIComponent(url);
-      } else if (service === 'cobalt-audio') {
+      if (service === 'ytdown' || service === 'ytdown-audio') {
+        targetUrl = 'https://app.ytdown.to/en38?url=' + encodeURIComponent(url);
+      } else if (service === 'cobalt' || service === 'cobalt-audio') {
         targetUrl = 'https://cobalt.tools/#url=' + encodeURIComponent(url);
       } else if (service === 'savefrom') {
         targetUrl = 'https://ssyoutube.com/watch?v=' + id;
@@ -705,7 +726,7 @@
       } else if (service === 'yt1s-audio') {
         targetUrl = 'https://yt1s.com/en/youtube-to-mp3?q=' + encodeURIComponent(url);
       } else {
-        targetUrl = 'https://cobalt.tools/#url=' + encodeURIComponent(url);
+        targetUrl = 'https://app.ytdown.to/en38?url=' + encodeURIComponent(url);
       }
 
       var win = window.open(targetUrl, '_blank', 'noopener,noreferrer');
