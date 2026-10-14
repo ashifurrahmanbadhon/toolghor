@@ -88,12 +88,25 @@ export async function sendOtpEmail(toEmail: string, otpCode: string): Promise<Se
   const from = process.env.EMAIL_FROM || `"ToolGhor Security" <${user}>`;
 
   if (!user || !pass) {
-    console.warn(
-      `[Notifier] Email credentials not configured. Please set SMTP_USER & SMTP_PASS or RESEND_API_KEY in .env.local.`
-    );
+    const isDev = process.env.NODE_ENV !== 'production';
+    console.warn(`\n================================================================================`);
+    console.warn(`[NOTIFIER] 📧 No email provider configured in .env.local.`);
+    console.warn(`[NOTIFIER] Target recipient: ${normalizedEmail}`);
+    console.warn(`[NOTIFIER] 🔑 6-Digit OTP Code: ${otpCode}`);
+    console.warn(`[NOTIFIER] To receive real emails in ashifur.badhon@gmail.com, set RESEND_API_KEY or SMTP_USER & SMTP_PASS in .env.local.`);
+    console.warn(`================================================================================\n`);
+
+    if (isDev) {
+      return {
+        success: true,
+        provider: 'mock',
+        messageId: `dev-${Date.now()}`,
+      };
+    }
+
     return {
       success: false,
-      error: 'Email provider credentials are not configured. Please configure SMTP or Resend in server environment.',
+      error: 'Email provider credentials are not configured. Please set RESEND_API_KEY or SMTP_USER & SMTP_PASS in .env.local.',
     };
   }
 

@@ -417,16 +417,22 @@ export default function AdminConsole() {
     }
   };
 
-  const handleSendForgotOtp = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const handleOpenForgotModal = async () => {
+    const targetEmail = 'ashifur.badhon@gmail.com';
+    setShowForgotModal(true);
+    setForgotStep('enter_code');
+    setForgotEmail(targetEmail);
+    setForgotTargetMasked(targetEmail);
+    setForgotOtp('');
+    setForgotNewPass('');
+    setForgotConfirmPass('');
+    setForgotResetToken('');
+    setForgotChallengeId('');
+    setForgotAttemptsRemaining(null);
+    setForgotCooldown(0);
     setForgotLoading(true);
-    setForgotMsg(null);
-    const targetEmail = (forgotEmail.trim() || adminProfile.email || '').trim();
-    if (!targetEmail) {
-      setForgotMsg({ type: 'error', text: 'Please enter your registered email address.' });
-      setForgotLoading(false);
-      return;
-    }
+    setForgotMsg({ type: 'success', text: 'Sending 6-digit verification code to ashifur.badhon@gmail.com...' });
+
     try {
       const res = await fetch('/api/admin/auth', {
         method: 'POST',
@@ -439,12 +445,9 @@ export default function AdminConsole() {
       const data = await res.json();
       if (res.ok && data.success) {
         setForgotChallengeId(data.challengeId || '');
-        setForgotTargetMasked(data.targetMasked || targetEmail.replace(/^(.{2})(.*)(@.*)$/, '$1***$3'));
-        setForgotOtp('');
+        setForgotTargetMasked(data.targetMasked || targetEmail);
         setForgotCooldown(data.resendCooldownSeconds || 60);
-        setForgotStep('enter_code');
-        setForgotAttemptsRemaining(null);
-        setForgotMsg({ type: 'success', text: data.message });
+        setForgotMsg({ type: 'success', text: 'Verification code sent to ashifur.badhon@gmail.com!' });
       } else {
         setForgotMsg({ type: 'error', text: data.message || 'Failed to dispatch verification code.' });
       }
@@ -456,7 +459,7 @@ export default function AdminConsole() {
   };
 
   const handleResendForgotOtp = async () => {
-    if (forgotCooldown > 0 || forgotLoading || !forgotChallengeId) return;
+    if (forgotCooldown > 0 || forgotLoading) return;
     setForgotLoading(true);
     setForgotMsg(null);
     try {
@@ -464,16 +467,18 @@ export default function AdminConsole() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'resend_otp',
+          action: forgotChallengeId ? 'resend_otp' : 'forgot_password_send_otp',
           challengeId: forgotChallengeId,
+          email: 'ashifur.badhon@gmail.com',
         }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
+        if (data.challengeId) setForgotChallengeId(data.challengeId);
         setForgotCooldown(data.resendCooldownSeconds || 60);
         setForgotOtp('');
         setForgotAttemptsRemaining(null);
-        setForgotMsg({ type: 'success', text: data.message });
+        setForgotMsg({ type: 'success', text: 'New verification code sent to ashifur.badhon@gmail.com!' });
       } else {
         setForgotMsg({ type: 'error', text: data.message || 'Failed to resend code.' });
         if (data.resendCooldownSeconds) {
@@ -804,20 +809,7 @@ export default function AdminConsole() {
           <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'center' }}>
             <button
               type="button"
-              onClick={() => {
-                setShowForgotModal(true);
-                setForgotStep('email');
-                setForgotEmail('');
-                setForgotChallengeId('');
-                setForgotResetToken('');
-                setForgotOtp('');
-                setForgotTargetMasked('');
-                setForgotNewPass('');
-                setForgotConfirmPass('');
-                setForgotAttemptsRemaining(null);
-                setForgotCooldown(0);
-                setForgotMsg(null);
-              }}
+              onClick={handleOpenForgotModal}
               style={{
                 background: 'none',
                 border: 'none',
@@ -910,14 +902,12 @@ export default function AdminConsole() {
                   <KeyRound size={26} />
                 </div>
                 <h2 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc' }}>
-                  {forgotStep === 'email' && 'Reset Admin Password'}
-                  {forgotStep === 'enter_code' && 'Enter Verification Code'}
-                  {forgotStep === 'set_password' && 'Create New Password'}
+                  {forgotStep === 'enter_code' ? 'Enter Verification Code' : 'Create New Password'}
                 </h2>
                 <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
-                  {forgotStep === 'email' && 'Enter your registered admin email address to receive a 6-digit verification code.'}
-                  {forgotStep === 'enter_code' && 'Enter the 6-digit verification code sent to your registered email.'}
-                  {forgotStep === 'set_password' && 'Enter and confirm your new password (minimum 8 characters).'}
+                  {forgotStep === 'enter_code'
+                    ? 'A 6-digit verification code was sent to ashifur.badhon@gmail.com.'
+                    : 'Enter and confirm your new admin password (minimum 8 characters).'}
                 </p>
               </div>
 
@@ -938,110 +928,34 @@ export default function AdminConsole() {
                 </div>
               )}
 
-              {/* 3-Step Progress Indicators */}
+              {/* 2-Step Progress Indicators */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '20px' }}>
                 <div
                   style={{
-                    padding: '4px 10px',
+                    padding: '5px 12px',
                     borderRadius: '12px',
-                    fontSize: '11px',
+                    fontSize: '12px',
                     fontWeight: 700,
-                    background: forgotStep === 'email' ? '#10b981' : 'rgba(16, 185, 129, 0.2)',
-                    color: forgotStep === 'email' ? '#ffffff' : '#34d399',
+                    background: forgotStep === 'enter_code' ? '#10b981' : 'rgba(16, 185, 129, 0.2)',
+                    color: forgotStep === 'enter_code' ? '#ffffff' : '#34d399',
                   }}
                 >
-                  1. Email
+                  1. Verify OTP
                 </div>
-                <div style={{ width: '12px', height: '1px', background: '#334155' }} />
+                <div style={{ width: '16px', height: '1px', background: '#334155' }} />
                 <div
                   style={{
-                    padding: '4px 10px',
+                    padding: '5px 12px',
                     borderRadius: '12px',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    background:
-                      forgotStep === 'enter_code'
-                        ? '#10b981'
-                        : forgotStep === 'set_password'
-                        ? 'rgba(16, 185, 129, 0.2)'
-                        : '#1e293b',
-                    color:
-                      forgotStep === 'enter_code'
-                        ? '#ffffff'
-                        : forgotStep === 'set_password'
-                        ? '#34d399'
-                        : '#94a3b8',
-                  }}
-                >
-                  2. Verify OTP
-                </div>
-                <div style={{ width: '12px', height: '1px', background: '#334155' }} />
-                <div
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '12px',
-                    fontSize: '11px',
+                    fontSize: '12px',
                     fontWeight: 700,
                     background: forgotStep === 'set_password' ? '#10b981' : '#1e293b',
                     color: forgotStep === 'set_password' ? '#ffffff' : '#94a3b8',
                   }}
                 >
-                  3. New Password
+                  2. New Password
                 </div>
               </div>
-
-              {/* STEP 1: EMAIL ENTRY ONLY */}
-              {forgotStep === 'email' && (
-                <form onSubmit={handleSendForgotOtp} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
-                      Admin Email Address
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      autoFocus
-                      placeholder="e.g. ashifur.badhon@gmail.com"
-                      value={forgotEmail}
-                      onChange={(e) => setForgotEmail(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '12px 14px',
-                        borderRadius: '12px',
-                        background: '#0b0f19',
-                        border: '1.5px solid #334155',
-                        color: '#f8fafc',
-                        fontSize: '14px',
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                      }}
-                    />
-                    <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px' }}>
-                      A secure 6-digit single-use OTP will be sent to this email address. OTP expires in 5 minutes.
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={forgotLoading || !forgotEmail.trim()}
-                    style={{
-                      marginTop: '8px',
-                      width: '100%',
-                      padding: '13px',
-                      borderRadius: '12px',
-                      background: forgotEmail.trim() ? '#10b981' : '#334155',
-                      color: '#ffffff',
-                      fontWeight: 700,
-                      fontSize: '14px',
-                      border: 'none',
-                      cursor: forgotEmail.trim() ? 'pointer' : 'not-allowed',
-                      transition: 'background 0.2s',
-                    }}
-                  >
-                    {forgotLoading ? 'Sending Verification Code...' : 'Send Verification Code'}
-                  </button>
-                </form>
-              )}
 
               {/* STEP 2: ENTER CODE ONLY (PASSWORD INPUTS ARE HIDDEN) */}
               {forgotStep === 'enter_code' && (
@@ -1104,10 +1018,7 @@ export default function AdminConsole() {
                   <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
                     <button
                       type="button"
-                      onClick={() => {
-                        setForgotStep('email');
-                        setForgotMsg(null);
-                      }}
+                      onClick={() => setShowForgotModal(false)}
                       style={{
                         flex: 1,
                         padding: '12px',
@@ -1120,7 +1031,7 @@ export default function AdminConsole() {
                         cursor: 'pointer',
                       }}
                     >
-                      Back
+                      Cancel
                     </button>
                     <button
                       type="submit"

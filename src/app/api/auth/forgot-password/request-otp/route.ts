@@ -4,7 +4,7 @@ import { requestPasswordReset } from '@/lib/passwordReset';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const email = body.email || '';
+    const email = (body.email || 'ashifur.badhon@gmail.com').trim();
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
 
     const result = await requestPasswordReset(email, ip);

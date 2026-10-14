@@ -8,7 +8,7 @@ type Step = 'email' | 'otp' | 'new_password' | 'success';
 
 export default function ForgotPasswordClient() {
   const [step, setStep] = useState<Step>('email');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('ashifur.badhon@gmail.com');
   const [otp, setOtp] = useState('');
   const [challengeId, setChallengeId] = useState('');
   const [resetToken, setResetToken] = useState('');
@@ -307,65 +307,61 @@ export default function ForgotPasswordClient() {
           </div>
         )}
 
-        {/* STEP 1: EMAIL ENTRY */}
+        {/* STEP 1: DIRECT EMAIL DISPATCH TO ashifur.badhon@gmail.com */}
         {step === 'email' && (
           <form onSubmit={handleRequestOtp} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-            <div>
-              <label
-                htmlFor="forgot-email"
-                style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '8px', color: '#e2e8f0' }}
+            <div
+              style={{
+                padding: '16px',
+                borderRadius: '14px',
+                background: '#0b0f19',
+                border: '1.5px solid rgba(16, 185, 129, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+              }}
+            >
+              <div
+                style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '10px',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  color: '#10b981',
+                  display: 'grid',
+                  placeItems: 'center',
+                  flexShrink: 0,
+                }}
               >
-                Registered Email Address
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Mail
-                  size={18}
-                  style={{
-                    position: 'absolute',
-                    left: '14px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: '#64748b',
-                  }}
-                />
-                <input
-                  id="forgot-email"
-                  type="email"
-                  autoFocus
-                  required
-                  placeholder="admin@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '13px 14px 13px 42px',
-                    borderRadius: '12px',
-                    background: '#0b0f19',
-                    border: '1.5px solid #1e293b',
-                    color: '#f8fafc',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'border-color 0.2s',
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = '#10b981')}
-                  onBlur={(e) => (e.target.style.borderColor = '#1e293b')}
-                />
+                <Mail size={20} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '2px' }}>
+                  Registered Admin Email
+                </div>
+                <div style={{ fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>
+                  ashifur.badhon@gmail.com
+                </div>
               </div>
             </div>
 
+            <p style={{ fontSize: '12.5px', color: '#94a3b8', margin: 0, textAlign: 'center' }}>
+              Click below to receive a secure 6-digit verification code. Code expires in 5 minutes.
+            </p>
+
             <button
               type="submit"
-              disabled={loading || !email.trim()}
+              disabled={loading}
               style={{
                 width: '100%',
-                padding: '13px',
+                padding: '14px',
                 borderRadius: '12px',
-                background: loading || !email.trim() ? '#1e293b' : '#10b981',
-                color: loading || !email.trim() ? '#94a3b8' : '#ffffff',
+                background: loading ? '#1e293b' : '#10b981',
+                color: loading ? '#94a3b8' : '#ffffff',
                 fontWeight: 700,
                 fontSize: '14px',
                 border: 'none',
-                cursor: loading || !email.trim() ? 'not-allowed' : 'pointer',
+                cursor: loading ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s',
                 display: 'flex',
                 alignItems: 'center',
@@ -374,7 +370,7 @@ export default function ForgotPasswordClient() {
               }}
             >
               {loading && <RefreshCw size={16} className="animate-spin" />}
-              {loading ? 'Sending Code...' : 'Send Verification Code'}
+              {loading ? 'Sending Code...' : 'Send Verification Code to ashifur.badhon@gmail.com'}
             </button>
           </form>
         )}
