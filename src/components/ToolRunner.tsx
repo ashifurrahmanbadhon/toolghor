@@ -18,88 +18,124 @@ export default function ToolRunner({ tool }: ToolRunnerProps) {
   useEffect(() => {
     let isCancelled = false;
 
+    // Fast script loader that resolves immediately if script is already present or loaded
     async function loadScript(src: string): Promise<void> {
-      return new Promise((resolve, reject) => {
-        // check if script already exists
+      return new Promise((resolve) => {
         const existing = document.querySelector(`script[src="${src}"]`) as HTMLScriptElement;
         if (existing) {
-          if (existing.getAttribute('data-loaded') === 'true') {
+          if (
+            existing.getAttribute('data-loaded') === 'true' ||
+            (existing as any).readyState === 'complete' ||
+            (existing as any).readyState === 'loaded'
+          ) {
             return resolve();
           }
-          existing.addEventListener('load', () => resolve());
-          existing.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)));
+          // Attach listener with fast timeout fallback so it never hangs
+          let done = false;
+          const finish = () => {
+            if (!done) {
+              done = true;
+              existing.setAttribute('data-loaded', 'true');
+              resolve();
+            }
+          };
+          existing.addEventListener('load', finish, { once: true });
+          existing.addEventListener('error', finish, { once: true });
+          setTimeout(finish, 80);
           return;
         }
 
         const s = document.createElement('script');
         s.src = src;
-        s.async = false;
+        s.async = true;
         s.onload = () => {
           s.setAttribute('data-loaded', 'true');
           resolve();
         };
-        s.onerror = () => reject(new Error(`Failed to load ${src}`));
+        s.onerror = () => {
+          s.setAttribute('data-loaded', 'true');
+          resolve();
+        };
         document.body.appendChild(s);
       });
     }
 
     async function initTool() {
       try {
-        setLoading(true);
-        setError(null);
+        const w = window as any;
 
-        // Ensure root element is set up
+        // Ensure root element setup
         if (!document.body.getAttribute('data-root')) {
           document.body.setAttribute('data-root', '/');
         }
         document.body.setAttribute('data-tool', tool.slug);
         document.documentElement.lang = lang;
 
-        // Track tool usage in analytics database
-        try {
-          fetch('/api/analytics/track', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ slug: tool.slug }),
-          }).catch(() => {});
-        } catch {}
+        // Analytics (non-blocking in background)
+        fetch('/api/analytics/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug: tool.slug }),
+        }).catch(() => {});
 
-        // 1. Load config, registry, icons, UI core
-        await loadScript('/assets/config.js');
-        await loadScript('/assets/registry.js');
-        await loadScript('/assets/icons.js');
-        await loadScript('/assets/ui.js');
-
-        // 2. Load vendor libraries based on tool needs or group
-        if (tool.group === 'pdf' || tool.slug.includes('pdf')) {
-          await loadScript('/assets/vendor/pdf-lib.min.js').catch(() => {});
-          await loadScript('/assets/vendor/jszip.min.js').catch(() => {});
-          await loadScript('/assets/vendor/pdf.min.js').catch(() => {});
-        } else if (tool.group === 'image') {
-          await loadScript('/assets/vendor/jszip.min.js').catch(() => {});
-        } else if (tool.group === 'qr') {
-          await loadScript('/assets/vendor/qrcode.js').catch(() => {});
+        // Instant mounting if tool handler is ALREADY defined
+        if (w.Tools && typeof w.Tools[tool.slug] === 'function' && rootRef.current) {
+          if (w.UI) {
+            w.UI.lang = lang;
+            w.UI.digits = lang === 'bn' ? 'bn' : 'en';
+          }
+          rootRef.current.innerHTML = '';
+          w.Tools[tool.slug](rootRef.current);
+          setLoading(false);
+          return;
         }
 
-        // 3. Load tool group script
+        setLoading(true);
+        setError(null);
+
+        // 1. Parallel load core scripts if not yet ready
+        const corePromises: Promise<void>[] = [];
+        if (!w.SITE_CONFIG) corePromises.push(loadScript('/assets/config.js'));
+        if (!w.CATEGORIES) corePromises.push(loadScript('/assets/registry.js'));
+        if (!w.ICONS) corePromises.push(loadScript('/assets/icons.js'));
+        if (!w.UI) corePromises.push(loadScript('/assets/ui.js'));
+        if (corePromises.length > 0) {
+          await Promise.all(corePromises);
+        }
+
+        // 2. Parallel load vendor scripts based on tool group
+        const vendorPromises: Promise<void>[] = [];
+        if (tool.group === 'pdf' || tool.slug.includes('pdf')) {
+          if (!w.PDFLib) vendorPromises.push(loadScript('/assets/vendor/pdf-lib.min.js'));
+          if (!w.JSZip) vendorPromises.push(loadScript('/assets/vendor/jszip.min.js'));
+          if (!w.pdfjsLib) vendorPromises.push(loadScript('/assets/vendor/pdf.min.js'));
+        } else if (tool.group === 'image') {
+          if (!w.JSZip) vendorPromises.push(loadScript('/assets/vendor/jszip.min.js'));
+        } else if (tool.group === 'qr') {
+          if (!w.QRCode) vendorPromises.push(loadScript('/assets/vendor/qrcode.js'));
+        }
+        if (vendorPromises.length > 0) {
+          await Promise.all(vendorPromises);
+        }
+
+        // 3. Load tool group script if handler not ready
         const groupScriptMap: Record<string, string> = {
           pdf: '/assets/tools/pdf.js',
           image: '/assets/tools/image.js',
           calc: '/assets/tools/calc.js',
           qr: '/assets/tools/qr.js',
           media: '/assets/tools/media.js',
-          resume: '/assets/tools/resume.js'
+          resume: '/assets/tools/resume.js',
         };
 
         const scriptUrl = groupScriptMap[tool.group];
-        if (scriptUrl) {
+        if (scriptUrl && (!w.Tools || typeof w.Tools[tool.slug] !== 'function')) {
           await loadScript(scriptUrl);
         }
 
         if (isCancelled) return;
 
         // Sync UI lang
-        const w = window as any;
         if (w.UI) {
           w.UI.lang = lang;
           w.UI.digits = lang === 'bn' ? 'bn' : 'en';
@@ -111,7 +147,7 @@ export default function ToolRunner({ tool }: ToolRunnerProps) {
           w.Tools[tool.slug](rootRef.current);
           setLoading(false);
         } else {
-          // If tool function is not found, check if it's still defining or custom
+          // Fast check retry
           setTimeout(() => {
             if (isCancelled) return;
             if (rootRef.current && w.Tools && typeof w.Tools[tool.slug] === 'function') {
@@ -121,7 +157,7 @@ export default function ToolRunner({ tool }: ToolRunnerProps) {
             } else {
               setLoading(false);
             }
-          }, 300);
+          }, 80);
         }
       } catch (err: any) {
         if (!isCancelled) {
@@ -143,10 +179,10 @@ export default function ToolRunner({ tool }: ToolRunnerProps) {
     <div className="w-full">
       {/* Loading indicator */}
       {loading && (
-        <div className="flex flex-col items-center justify-center py-16 text-zinc-500">
+        <div className="flex flex-col items-center justify-center py-12 text-zinc-500">
           <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mb-3" />
-          <p className="text-sm font-medium">
-            {lang === 'bn' ? 'টুলটি লোড হচ্ছে...' : 'Loading tool components...'}
+          <p className="text-sm font-semibold tracking-wide">
+            {lang === 'bn' ? 'টুলটি প্রস্তুত হচ্ছে…' : 'Preparing tool workspace…'}
           </p>
         </div>
       )}

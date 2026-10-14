@@ -63,6 +63,7 @@ export default function ToolCard({ tool, category }: ToolCardProps) {
       className={`tool cat-${cat}`}
       data-slug={tool.slug}
       href={`/tools/${tool.slug}`}
+      prefetch={true}
       onClick={handleToolClick}
     >
       <span className="ico">
