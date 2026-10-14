@@ -451,6 +451,7 @@ export default function HomeClient({ initialData }: HomeClientProps) {
                       <li key={tool.slug}>
                         <Link
                           href={`/tools/${tool.slug}`}
+                          prefetch={true}
                           className={`c-${tool.cats[0]}`}
                           onClick={() => setShowSuggestions(false)}
                         >

@@ -11,8 +11,11 @@ import ToolCard from '@/components/ToolCard';
 import { ShieldCheck, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { getPublicSiteData } from '@/lib/siteData';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 60;
+
+export function generateStaticParams() {
+  return TOOLS.map((t) => ({ slug: t.slug }));
+}
 
 interface Props {
   params: Promise<{ slug: string }>;
