@@ -14,21 +14,32 @@ interface ToolPageClientProps {
   relatedTools: ToolItem[];
 }
 
+const CAT_NAMES: Record<string, { bn: string; en: string }> = {
+  documents: { bn: 'ডকুমেন্ট', en: 'Documents' },
+  images: { bn: 'ছবি ও ইমেজ', en: 'Images' },
+  calculators: { bn: 'ক্যালকুলেটর', en: 'Calculators' },
+  qr: { bn: 'কিউআর কোড', en: 'QR Codes' },
+  media: { bn: 'মিডিয়া ও ভিডিও', en: 'Media' },
+  resume: { bn: 'রেজুমি ও সিভি', en: 'Resume' },
+};
+
 export default function ToolPageClient({ tool, relatedTools }: ToolPageClientProps) {
   const { lang } = useApp();
 
+  const title = lang === 'bn' ? tool.bn : tool.en;
+  const leadText = lang === 'bn' ? tool.intro : tool.introEn;
+  const primaryCat = tool.cats[0] || 'documents';
+  const catLabel = CAT_NAMES[primaryCat]
+    ? lang === 'bn'
+      ? CAT_NAMES[primaryCat].bn
+      : CAT_NAMES[primaryCat].en
+    : primaryCat;
+
   React.useEffect(() => {
     if (typeof document !== 'undefined') {
-      document.title =
-        lang === 'bn'
-          ? `${tool.bn} (${tool.en}) | ToolGhor`
-          : `${tool.en} (${tool.bn}) | ToolGhor`;
+      document.title = `${title} | ToolGhor`;
     }
-  }, [lang, tool]);
-
-  const title = lang === 'bn' ? tool.bn : tool.en;
-  const subTitle = lang === 'bn' ? tool.en : tool.bn;
-  const leadText = lang === 'bn' ? tool.intro : tool.introEn;
+  }, [lang, title]);
 
   const trustText =
     lang === 'bn'
@@ -43,20 +54,18 @@ export default function ToolPageClient({ tool, relatedTools }: ToolPageClientPro
     <>
       <Header />
 
-      <main className={`wrap tool-page cat-${tool.cats[0]}`}>
+      <main className={`wrap tool-page cat-${primaryCat}`}>
         {/* Breadcrumb */}
         <div className="crumb">
           <Link href="/">{lang === 'bn' ? 'হোম' : 'Home'}</Link> /{' '}
-          <Link href={`/#cat-${tool.cats[0]}`} className="capitalize">
-            {tool.cats[0]}
+          <Link href={`/#cat-${primaryCat}`}>
+            {catLabel}
           </Link>{' '}
           / {title}
         </div>
 
         {/* Heading */}
-        <h1>
-          {title} <small>{subTitle}</small>
-        </h1>
+        <h1>{title}</h1>
 
         <p className="lead">{leadText}</p>
 
