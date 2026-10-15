@@ -90,54 +90,17 @@ export default function HomeClient({ initialData }: HomeClientProps) {
 
     if (publicData) {
       syncGlobals(publicData);
-    }
-
-    // Background fetch to ensure real-time consistency without disturbing UI
-    fetch('/api/public/data')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setPublicData(data);
-          syncGlobals(data);
-        }
-      })
-      .catch(() => {});
-
-    // In-memory pre-warming: pre-load all tool engines during browser idle time so clicking any tool opens in <0.1s
-    const prewarmToolEngines = () => {
-      const coreAndVendor = [
-        '/assets/config.js',
-        '/assets/registry.js',
-        '/assets/icons.js',
-        '/assets/ui.js',
-        '/assets/vendor/pdf.min.js',
-        '/assets/vendor/pdf-lib.min.js',
-        '/assets/vendor/jszip.min.js',
-        '/assets/tools/pdf.js',
-        '/assets/tools/image.js',
-        '/assets/tools/calc.js',
-        '/assets/tools/qr.js',
-        '/assets/tools/media.js',
-        '/assets/tools/resume.js',
-      ];
-
-      coreAndVendor.forEach((src) => {
-        if (!document.querySelector(`script[src="${src}"]`)) {
-          const s = document.createElement('script');
-          s.src = src;
-          s.async = true;
-          s.setAttribute('data-preloaded', 'true');
-          document.head.appendChild(s);
-        }
-      });
-    };
-
-    if (typeof window !== 'undefined') {
-      if ('requestIdleCallback' in window) {
-        (window as any).requestIdleCallback(prewarmToolEngines, { timeout: 1200 });
-      } else {
-        setTimeout(prewarmToolEngines, 400);
-      }
+    } else {
+      // Fetch only if not provided by server hydration
+      fetch('/api/public/data')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            setPublicData(data);
+            syncGlobals(data);
+          }
+        })
+        .catch(() => {});
     }
   }, []);
 
