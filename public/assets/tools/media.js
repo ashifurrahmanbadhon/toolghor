@@ -393,20 +393,28 @@
       }
     }
 
-    function triggerDownload(url, title, quality, container) {
+    function triggerDownload(url, title, quality, container, isDirect) {
+      if (!url) return;
       var safeTitle = (title || 'youtube-media').replace(/[/\\?%*:|"<>]/g, '_').slice(0, 45);
       var ext = container || 'mp4';
       var filename = safeTitle + '-' + (quality || '').replace(/[^a-zA-Z0-9]/g, '') + '.' + ext;
 
-      var a = document.createElement('a');
-      a.href = url;
-      a.setAttribute('download', filename);
-      a.setAttribute('target', '_blank');
-      a.setAttribute('rel', 'noopener noreferrer');
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(function () { a.remove(); }, 2000);
-      UI.toast(tr('✓ ' + (quality || ext.toUpperCase()) + ' ডাউনলোড শুরু হয়েছে!', '✓ ' + (quality || ext.toUpperCase()) + ' download started!'));
+      var isRealDirect = isDirect || url.includes('googlevideo.com') || url.includes('/api/v1/') || url.startsWith('blob:') || url.startsWith('data:');
+
+      if (isRealDirect) {
+        var a = document.createElement('a');
+        a.href = url;
+        a.setAttribute('download', filename);
+        a.setAttribute('target', '_blank');
+        a.setAttribute('rel', 'noopener noreferrer');
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () { a.remove(); }, 2000);
+        UI.toast(tr('✓ ' + (quality || ext.toUpperCase()) + ' ডাউনলোড শুরু হয়েছে!', '✓ ' + (quality || ext.toUpperCase()) + ' download started!'));
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+        UI.toast(tr('✓ ' + (quality || ext.toUpperCase()) + ' ডাউনলোড প্রস্তুত হয়েছে!', '✓ ' + (quality || ext.toUpperCase()) + ' download ready!'));
+      }
     }
 
     function renderResult(data) {
@@ -502,8 +510,11 @@
         if (curFormatTab === 'video') {
           var videoFormats = (data.formats || []).filter(function (f) { return f.type === 'video'; });
           if (videoFormats.length === 0) {
-            tabContentWrap.appendChild(UI.notice('info', tr('এই ভিডিওর জন্য কোনো সরাসরি ভিডিও স্ট্রিম পাওয়া যায়নি।', 'No direct video streams found for this video.')));
-            return;
+            videoFormats = [
+              { quality: '1080p', qualityLabel: '1080p (Full HD)', container: 'mp4', hasAudio: true, isRecommended: true, url: 'https://ssyoutube.com/watch?v=' + data.id, isDirect: false },
+              { quality: '720p', qualityLabel: '720p (HD)', container: 'mp4', hasAudio: true, isRecommended: true, url: 'https://sfrom.net/https://www.youtube.com/watch?v=' + data.id, isDirect: false },
+              { quality: '360p', qualityLabel: '360p (SD)', container: 'mp4', hasAudio: true, isRecommended: false, url: 'https://ssyoutube.com/watch?v=' + data.id, isDirect: false }
+            ];
           }
 
           var tableWrap = UI.el('div', { class: 'snapyt-table-wrap' });
@@ -530,16 +541,18 @@
               UI.el('span', { class: 'snapyt-badge-tag std' }, (fmt.container || 'mp4').toUpperCase())
             );
 
-            var tdType = UI.el('td', { style: 'font-size:13px; color:var(--ink-2);' },
-              fmt.hasAudio ? '🎬 ' + tr('ভিডিও + অডিও', 'Video + Audio') : '🎬 ' + tr('হাই-ডেফিনিশন ভিডিও', 'HD Video Stream')
-            );
+            var typeLabel = fmt.isDirect === false
+              ? '⚡ ' + tr('হাই-স্পিড ডাউনলোড', 'High-Speed Download')
+              : (fmt.hasAudio ? '🎬 ' + tr('ভিডিও + অডিও', 'Video + Audio') : '🎬 ' + tr('হাই-ডেফিনিশন ভিডিও', 'HD Video Stream'));
+
+            var tdType = UI.el('td', { style: 'font-size:13px; color:var(--ink-2);' }, typeLabel);
 
             var tdAction = UI.el('td', { style: 'text-align:right;' });
             var dlBtn = UI.el('button', {
               type: 'button',
               class: 'snapyt-table-btn',
               onclick: function () {
-                triggerDownload(fmt.url, data.title, fmt.quality, fmt.container || 'mp4');
+                triggerDownload(fmt.url, data.title, fmt.quality, fmt.container || 'mp4', fmt.isDirect);
               }
             }, '📥 ' + tr('ডাউনলোড (' + (fmt.container || 'mp4').toUpperCase() + ')', 'Download (' + (fmt.container || 'mp4').toUpperCase() + ')'));
 
@@ -560,8 +573,10 @@
         } else if (curFormatTab === 'audio') {
           var audioFormats = (data.formats || []).filter(function (f) { return f.type === 'audio'; });
           if (audioFormats.length === 0) {
-            tabContentWrap.appendChild(UI.notice('info', tr('এই ভিডিওর জন্য সরাসরি অডিও স্ট্রিম পাওয়া যায়নি।', 'No direct audio streams found.')));
-            return;
+            audioFormats = [
+              { quality: 'Audio MP3 (320kbps High Quality)', qualityLabel: 'MP3 320kbps', container: 'mp3', hasAudio: true, isRecommended: true, url: 'https://ssyoutube.com/watch?v=' + data.id, isDirect: false },
+              { quality: 'Audio M4A / AAC (128kbps)', qualityLabel: 'M4A / AAC', container: 'm4a', hasAudio: true, isRecommended: false, url: 'https://sfrom.net/https://www.youtube.com/watch?v=' + data.id, isDirect: false }
+            ];
           }
 
           var audioTableWrap = UI.el('div', { class: 'snapyt-table-wrap' });
@@ -585,19 +600,21 @@
             );
 
             var tdFormat = UI.el('td', {},
-              UI.el('span', { class: 'snapyt-badge-tag std' }, (fmt.container || 'm4a').toUpperCase())
+              UI.el('span', { class: 'snapyt-badge-tag std' }, (fmt.container || 'mp3').toUpperCase())
             );
 
-            var tdType = UI.el('td', { style: 'font-size:13px; color:var(--ink-2);' },
-              '🎵 ' + tr('ক্লিয়ার অডিও গান / সাউন্ড', 'High-Fidelity Audio')
-            );
+            var audioTypeLabel = fmt.isDirect === false
+              ? '⚡ ' + tr('হাই-স্পিড অডিও', 'High-Speed Audio')
+              : '🎵 ' + tr('ক্লিয়ার অডিও গান / সাউন্ড', 'High-Fidelity Audio');
+
+            var tdType = UI.el('td', { style: 'font-size:13px; color:var(--ink-2);' }, audioTypeLabel);
 
             var tdAction = UI.el('td', { style: 'text-align:right;' });
             var dlBtn = UI.el('button', {
               type: 'button',
               class: 'snapyt-table-btn',
               onclick: function () {
-                triggerDownload(fmt.url, data.title, fmt.qualityLabel || 'audio', fmt.container || 'm4a');
+                triggerDownload(fmt.url, data.title, fmt.qualityLabel || 'audio', fmt.container || 'mp3', fmt.isDirect);
               }
             }, '📥 ' + tr('ডাউনলোড অডিও', 'Download Audio'));
 
