@@ -286,31 +286,6 @@
       urlInput.focus();
     }
 
-    // Sample links
-    var samplesWrap = UI.el('div', { class: 'snapyt-samples' },
-      UI.el('span', { style: 'font-size:12px; color:var(--ink-3); font-weight:600;' }, tr('স্যাম্পল টেস্ট:', 'Try sample:')),
-      UI.el('button', {
-        type: 'button',
-        class: 'snapyt-sample-chip',
-        onclick: function () {
-          switchMode('video');
-          urlInput.value = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-          clearBtn.hidden = false;
-          doFetch(urlInput.value);
-        }
-      }, '🎵 Rick Astley (Video)'),
-      UI.el('button', {
-        type: 'button',
-        class: 'snapyt-sample-chip',
-        onclick: function () {
-          switchMode('shorts');
-          urlInput.value = 'https://www.youtube.com/shorts/M7FIvfx5J10';
-          clearBtn.hidden = false;
-          doFetch(urlInput.value);
-        }
-      }, '⚡ Shorts Sample')
-    );
-
     var statusBox = UI.el('div', { class: 'snapyt-status-box' });
     var resultCard = UI.el('div', { class: 'snapyt-result-card' });
     resultCard.hidden = true;
@@ -721,7 +696,6 @@
     container.appendChild(modeTabs);
     container.appendChild(inputShell);
     container.appendChild(tipLine);
-    container.appendChild(samplesWrap);
     container.appendChild(statusBox);
     container.appendChild(resultCard);
 

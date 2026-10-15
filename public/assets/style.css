@@ -2901,18 +2901,18 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
   .pdf-file-thumb canvas { width: auto; height: 100%; margin: 0 auto; }
 }
 
-/* ============ SnapYT YouTube Downloader (https://www.snapyt.app) ============ */
+/* ============ YouTube Downloader ============ */
 .snapyt-box {
   width: 100%;
-  max-width: 860px;
+  max-width: 800px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 10px;
 }
 .snapyt-hero {
   text-align: center;
-  padding: 8px 4px 14px;
+  padding: 2px 4px 4px;
 }
 .snapyt-badge {
   display: inline-flex;
@@ -2922,42 +2922,42 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
   color: #ff0033;
   border: 1px solid color-mix(in srgb, #ff0033 30%, transparent);
   border-radius: 999px;
-  padding: 4px 14px;
-  font-size: 13px;
+  padding: 3px 12px;
+  font-size: 12px;
   font-weight: 700;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
   letter-spacing: 0.3px;
 }
 .snapyt-hero h2 {
-  font-size: clamp(22px, 3.4vw, 32px);
+  font-size: clamp(20px, 2.5vw, 26px);
   font-weight: 800;
   color: var(--ink);
-  margin: 0 0 8px;
+  margin: 0 0 4px;
   letter-spacing: -0.4px;
 }
 .snapyt-hero p {
   color: var(--ink-2);
-  font-size: 15px;
+  font-size: 13.5px;
   margin: 0 auto;
-  max-width: 620px;
-  line-height: 1.5;
+  max-width: 600px;
+  line-height: 1.4;
 }
 .snapyt-mode-tabs {
   display: flex;
   justify-content: center;
-  gap: 12px;
-  margin-bottom: 4px;
+  gap: 8px;
+  margin-bottom: 2px;
 }
 .snapyt-mode-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 22px;
+  gap: 6px;
+  padding: 6px 18px;
   border-radius: 999px;
   border: 1.5px solid var(--line);
   background: var(--paper);
   color: var(--ink-2);
-  font-size: 14.5px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -2971,22 +2971,22 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
   background: #ff0033;
   color: #ffffff !important;
   border-color: #ff0033;
-  box-shadow: 0 4px 14px rgba(255, 0, 51, 0.35);
+  box-shadow: 0 3px 10px rgba(255, 0, 51, 0.35);
 }
 .snapyt-input-shell {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: var(--paper);
   border: 2px solid var(--line);
-  border-radius: 16px;
-  padding: 6px 8px 6px 16px;
-  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  padding: 4px 6px 4px 14px;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.05);
   transition: border-color .2s ease, box-shadow .2s ease;
 }
 .snapyt-input-shell:focus-within {
   border-color: #ff0033;
-  box-shadow: 0 0 0 3.5px rgba(255, 0, 51, 0.16), 0 10px 30px -4px rgba(255, 0, 51, 0.15);
+  box-shadow: 0 0 0 3px rgba(255, 0, 51, 0.14), 0 6px 20px -2px rgba(255, 0, 51, 0.12);
 }
 .snapyt-input-icon {
   color: #ff0033;
@@ -2999,8 +2999,8 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
   min-width: 0;
   border: 0;
   background: transparent;
-  font-size: 16px;
-  padding: 10px 4px;
+  font-size: 14.5px;
+  padding: 8px 4px;
   outline: none;
   color: var(--ink);
 }
@@ -3012,9 +3012,9 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
   background: transparent;
   border: none;
   color: var(--ink-3);
-  font-size: 16px;
-  padding: 6px 10px;
-  border-radius: 8px;
+  font-size: 15px;
+  padding: 4px 8px;
+  border-radius: 6px;
   cursor: pointer;
   transition: all .15s ease;
 }
@@ -3025,14 +3025,14 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
 .snapyt-paste-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   background: var(--mist);
   border: 1px solid var(--line);
   color: var(--ink);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
-  padding: 8px 14px;
-  border-radius: 10px;
+  padding: 7px 12px;
+  border-radius: 9px;
   cursor: pointer;
   flex-shrink: 0;
   transition: all .2s ease;
@@ -3044,98 +3044,58 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
 .snapyt-submit-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: linear-gradient(135deg, #ff0033 0%, #cc0029 100%);
   color: #ffffff !important;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
-  padding: 10px 20px;
-  border-radius: 12px;
+  padding: 8px 18px;
+  border-radius: 10px;
   border: none;
   cursor: pointer;
   flex-shrink: 0;
-  box-shadow: 0 4px 14px rgba(255, 0, 51, 0.35);
+  box-shadow: 0 3px 10px rgba(255, 0, 51, 0.3);
   transition: all .2s ease;
 }
 .snapyt-submit-btn:hover:not(:disabled) {
-  transform: translateY(-1.5px);
-  box-shadow: 0 6px 18px rgba(255, 0, 51, 0.45);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(255, 0, 51, 0.4);
 }
 .snapyt-submit-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
 }
 .snapyt-tip {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--ink-3);
   text-align: center;
-  margin: -6px 0 4px;
-}
-.snapyt-features {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 4px;
-}
-.snapyt-feat-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 5px 12px;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--ink-2);
-}
-.snapyt-samples {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.snapyt-sample-chip {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 12px;
-  color: var(--ink-2);
-  cursor: pointer;
-  transition: all .2s ease;
-}
-.snapyt-sample-chip:hover {
-  border-color: #ff0033;
-  color: #ff0033;
-  background: color-mix(in srgb, #ff0033 6%, var(--paper));
+  margin: 1px 0 2px;
 }
 .snapyt-result-card {
   background: var(--paper);
   border: 1.5px solid var(--line);
-  border-radius: 18px;
-  padding: 22px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
-  animation: spaFadeIn .25s ease-out;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+  animation: spaFadeIn .2s ease-out;
+  margin-top: 2px;
 }
 .snapyt-preview-row {
   display: flex;
-  gap: 20px;
-  align-items: flex-start;
-  padding-bottom: 20px;
+  gap: 14px;
+  align-items: center;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--line);
 }
 .snapyt-thumb-wrap {
   position: relative;
-  width: 240px;
+  width: 170px;
   aspect-ratio: 16 / 9;
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
   background: #000;
   flex-shrink: 0;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
 }
 .snapyt-thumb-img {
   width: 100%;
@@ -3145,14 +3105,14 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
 }
 .snapyt-thumb-badge {
   position: absolute;
-  bottom: 8px;
-  right: 8px;
+  bottom: 6px;
+  right: 6px;
   background: rgba(0, 0, 0, 0.85);
   color: #fff;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 6px;
+  padding: 2px 6px;
+  border-radius: 4px;
   backdrop-filter: blur(4px);
 }
 .snapyt-meta {
@@ -3160,10 +3120,10 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .snapyt-title {
-  font-size: 18px;
+  font-size: 15.5px;
   font-weight: 800;
   line-height: 1.35;
   color: var(--ink);
@@ -3178,14 +3138,14 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
   align-items: center;
   gap: 6px;
   color: var(--ink-2);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
 }
 .snapyt-watch-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 5px;
+  font-size: 12.5px;
   color: #ff0033;
   font-weight: 700;
   text-decoration: none;
@@ -3196,21 +3156,21 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
 }
 .snapyt-tabs-nav {
   display: flex;
-  gap: 8px;
-  margin-top: 18px;
+  gap: 6px;
+  margin-top: 12px;
   background: var(--mist);
-  padding: 6px;
-  border-radius: 14px;
+  padding: 4px;
+  border-radius: 10px;
 }
 .snapyt-tab-btn {
   flex: 1;
-  padding: 10px 14px;
+  padding: 7px 12px;
   border: 0;
   background: transparent;
   color: var(--ink-2);
-  font-size: 14.5px;
+  font-size: 13px;
   font-weight: 700;
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all .2s ease;
   text-align: center;
@@ -3221,15 +3181,15 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
 .snapyt-tab-btn.active {
   background: var(--paper);
   color: #ff0033;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 .snapyt-tab-content {
-  margin-top: 18px;
+  margin-top: 10px;
 }
 .snapyt-table-wrap {
   width: 100%;
   overflow-x: auto;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid var(--line);
 }
 .snapyt-table {
@@ -3239,16 +3199,16 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
 }
 .snapyt-table th {
   background: var(--mist);
-  padding: 12px 16px;
-  font-size: 13px;
+  padding: 8px 12px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--ink-2);
   border-bottom: 1px solid var(--line);
 }
 .snapyt-table td {
-  padding: 14px 16px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--line);
-  font-size: 14.5px;
+  font-size: 13px;
   vertical-align: middle;
 }
 .snapyt-table tr:last-child td {
@@ -3259,9 +3219,9 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
 }
 .snapyt-badge-tag {
   display: inline-block;
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-size: 11.5px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 11px;
   font-weight: 700;
 }
 .snapyt-badge-tag.rec {
@@ -3276,13 +3236,13 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
   background: #ff0033;
   color: #ffffff !important;
-  font-size: 13.5px;
+  font-size: 12.5px;
   font-weight: 700;
-  padding: 8px 18px;
-  border-radius: 9px;
+  padding: 6px 14px;
+  border-radius: 8px;
   border: none;
   cursor: pointer;
   transition: all .2s ease;
@@ -3291,11 +3251,53 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
 .snapyt-table-btn:hover:not(:disabled) {
   background: #cc0029;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 0, 51, 0.35);
+  box-shadow: 0 3px 10px rgba(255, 0, 51, 0.3);
 }
 .snapyt-table-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+@media (max-width: 640px) {
+  .snapyt-box {
+    gap: 8px;
+  }
+  .snapyt-preview-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .snapyt-thumb-wrap {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+  }
+  .snapyt-input-shell {
+    flex-wrap: wrap;
+    padding: 8px;
+    gap: 6px;
+  }
+  .snapyt-url-input {
+    width: 100%;
+    order: 1;
+    font-size: 14px;
+  }
+  .snapyt-clear-btn {
+    order: 2;
+  }
+  .snapyt-paste-btn {
+    order: 3;
+    flex: 1;
+    justify-content: center;
+  }
+  .snapyt-submit-btn {
+    order: 4;
+    flex: 1;
+    justify-content: center;
+  }
+  .snapyt-table th,
+  .snapyt-table td {
+    padding: 7px 9px;
+    font-size: 12px;
+  }
 }
 .snapyt-dl-alert {
   margin-top: 14px;
