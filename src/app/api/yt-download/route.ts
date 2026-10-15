@@ -106,7 +106,8 @@ export async function GET(req: NextRequest) {
 
     const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`;
     const validFormats = ['4k', '1440', '1080', '720', '480', '360', 'mp3', 'm4a'];
-    const fmt = validFormats.includes(format) ? format : '720';
+    let fmt = validFormats.includes(format) ? format : '720';
+    if (fmt === '480') fmt = '720'; // loader.to does not provide 480p progressive streams
 
     try {
       const initUrl = `https://loader.to/ajax/download.php?button=1&start=1&end=1&format=${fmt}&url=${encodeURIComponent(
@@ -236,18 +237,6 @@ export async function GET(req: NextRequest) {
       hasAudio: true,
       label: '720p HD MP4',
       isRecommended: true,
-      isDirect: true,
-    },
-    {
-      formatKey: '480',
-      quality: '480p (SD)',
-      qualityLabel: '480p (SD)',
-      type: 'video',
-      container: 'mp4',
-      hasVideo: true,
-      hasAudio: true,
-      label: '480p SD MP4',
-      isRecommended: false,
       isDirect: true,
     },
     {
