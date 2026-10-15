@@ -393,28 +393,78 @@
       }
     }
 
-    function triggerDownload(url, title, quality, container, isDirect) {
+    var downloadFeedbackBox = UI.el('div', { class: 'snapyt-feedback-box', style: 'margin-top:16px;' });
+
+    function renderDownloadStatus(quality, container, title, url) {
+      UI.clear(downloadFeedbackBox);
+      downloadFeedbackBox.hidden = false;
+
+      var box = UI.el('div', {
+        style: 'padding:16px 18px; background:color-mix(in srgb, #10b981 12%, var(--paper)); border-radius:12px; border:1.5px solid #10b981; animation: spaFadeIn .2s ease-out;'
+      });
+
+      var head = UI.el('div', { style: 'display:flex; align-items:center; gap:8px; margin-bottom:8px;' },
+        UI.el('span', { style: 'font-size:20px;' }, '🚀'),
+        UI.el('strong', { style: 'color:var(--ink-1); font-size:15px;' }, tr('ডাউনলোড প্রস্তুত হয়েছে!', 'Download Ready!'))
+      );
+
+      var desc = UI.el('p', { style: 'margin:0 0 12px; font-size:13px; color:var(--ink-2); line-height:1.4;' },
+        tr('ভিডিও: ', 'Video: ') + UI.el('b', {}, (title || 'YouTube Media').slice(0, 60)) + ' (' + quality + ' ' + (container || 'mp4').toUpperCase() + ')'
+      );
+
+      var btnRow = UI.el('div', { style: 'display:flex; gap:10px; flex-wrap:wrap; align-items:center;' });
+
+      var mainSaveBtn = UI.el('button', {
+        type: 'button',
+        class: 'btn-pri sm',
+        style: 'background:#10b981; border-color:#10b981; font-weight:700; color:#fff;',
+        onclick: function () {
+          window.open(url, '_blank', 'noopener,noreferrer');
+        }
+      }, '📥 ' + tr('ফাইল সরাসরি সেভ করুন (Save File)', 'Save File Now'));
+
+      var altBtn1 = UI.el('button', {
+        type: 'button',
+        class: 'btn-sec sm',
+        onclick: function () {
+          window.open('https://www.y2mate.com/youtube/' + (curData ? curData.id : ''), '_blank', 'noopener,noreferrer');
+        }
+      }, '⚡ ' + tr('বিকল্প সার্ভার (Y2Mate)', 'Mirror Server (Y2Mate)'));
+
+      var altBtn2 = UI.el('button', {
+        type: 'button',
+        class: 'btn-sec sm',
+        onclick: function () {
+          window.open('https://ssyoutube.com/watch?v=' + (curData ? curData.id : ''), '_blank', 'noopener,noreferrer');
+        }
+      }, '⚡ ' + tr('বিকল্প সার্ভার (SaveFrom)', 'Mirror Server (SaveFrom)'));
+
+      btnRow.appendChild(mainSaveBtn);
+      btnRow.appendChild(altBtn1);
+      btnRow.appendChild(altBtn2);
+
+      var hint = UI.el('small', { style: 'display:block; margin-top:10px; color:var(--ink-3); font-size:12px;' },
+        tr('💡 পরামর্শ: ব্রাউজারে পপ-আপ ব্লক থাকলে উপরের সবুজ বাটনে চাপ দিন, সাথে সাথে ফাইল সেভ শুরু হবে।', '💡 Tip: If popups were blocked, click the green button above to start your download.')
+      );
+
+      box.appendChild(head);
+      box.appendChild(desc);
+      box.appendChild(btnRow);
+      box.appendChild(hint);
+      downloadFeedbackBox.appendChild(box);
+    }
+
+    function triggerDownload(url, title, quality, container) {
       if (!url) return;
-      var safeTitle = (title || 'youtube-media').replace(/[/\\?%*:|"<>]/g, '_').slice(0, 45);
-      var ext = container || 'mp4';
-      var filename = safeTitle + '-' + (quality || '').replace(/[^a-zA-Z0-9]/g, '') + '.' + ext;
 
-      var isRealDirect = isDirect || url.includes('googlevideo.com') || url.includes('/api/v1/') || url.startsWith('blob:') || url.startsWith('data:');
-
-      if (isRealDirect) {
-        var a = document.createElement('a');
-        a.href = url;
-        a.setAttribute('download', filename);
-        a.setAttribute('target', '_blank');
-        a.setAttribute('rel', 'noopener noreferrer');
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(function () { a.remove(); }, 2000);
-        UI.toast(tr('✓ ' + (quality || ext.toUpperCase()) + ' ডাউনলোড শুরু হয়েছে!', '✓ ' + (quality || ext.toUpperCase()) + ' download started!'));
-      } else {
-        window.open(url, '_blank', 'noopener,noreferrer');
-        UI.toast(tr('✓ ' + (quality || ext.toUpperCase()) + ' ডাউনলোড প্রস্তুত হয়েছে!', '✓ ' + (quality || ext.toUpperCase()) + ' download ready!'));
+      // Open download page in new window directly from user click
+      var win = window.open(url, '_blank', 'noopener,noreferrer');
+      if (!win) {
+        window.location.href = url;
       }
+
+      renderDownloadStatus(quality, container, title, url);
+      UI.toast(tr('✓ ' + (quality || (container || 'MP4').toUpperCase()) + ' ডাউনলোড প্রস্তুত হয়েছে!', '✓ ' + (quality || (container || 'MP4').toUpperCase()) + ' download ready!'));
     }
 
     function renderResult(data) {
@@ -426,6 +476,8 @@
 
       resultCard.hidden = false;
       UI.clear(resultCard);
+      UI.clear(downloadFeedbackBox);
+      downloadFeedbackBox.hidden = true;
 
       // 1. Preview Top Row
       var previewRow = UI.el('div', { class: 'snapyt-preview-row' });
@@ -511,9 +563,12 @@
           var videoFormats = (data.formats || []).filter(function (f) { return f.type === 'video'; });
           if (videoFormats.length === 0) {
             videoFormats = [
-              { quality: '1080p', qualityLabel: '1080p (Full HD)', container: 'mp4', hasAudio: true, isRecommended: true, url: 'https://ssyoutube.com/watch?v=' + data.id, isDirect: false },
-              { quality: '720p', qualityLabel: '720p (HD)', container: 'mp4', hasAudio: true, isRecommended: true, url: 'https://sfrom.net/https://www.youtube.com/watch?v=' + data.id, isDirect: false },
-              { quality: '360p', qualityLabel: '360p (SD)', container: 'mp4', hasAudio: true, isRecommended: false, url: 'https://ssyoutube.com/watch?v=' + data.id, isDirect: false }
+              { quality: '4K Ultra HD (2160p)', qualityLabel: '4K Ultra HD (2160p)', container: 'mp4', hasAudio: true, isRecommended: true, url: 'https://ssyoutube.com/watch?v=' + data.id, isDirect: false },
+              { quality: '2K Quad HD (1440p)', qualityLabel: '2K Quad HD (1440p)', container: 'mp4', hasAudio: true, isRecommended: false, url: 'https://ssyoutube.com/watch?v=' + data.id, isDirect: false },
+              { quality: '1080p (Full HD)', qualityLabel: '1080p (Full HD)', container: 'mp4', hasAudio: true, isRecommended: true, url: 'https://ssyoutube.com/watch?v=' + data.id, isDirect: false },
+              { quality: '720p (HD)', qualityLabel: '720p (HD)', container: 'mp4', hasAudio: true, isRecommended: true, url: 'https://sfrom.net/https://www.youtube.com/watch?v=' + data.id, isDirect: false },
+              { quality: '480p (SD)', qualityLabel: '480p (SD)', container: 'mp4', hasAudio: true, isRecommended: false, url: 'https://ssyoutube.com/watch?v=' + data.id, isDirect: false },
+              { quality: '360p (Fast)', qualityLabel: '360p (SD Fast)', container: 'mp4', hasAudio: true, isRecommended: false, url: 'https://ssyoutube.com/watch?v=' + data.id, isDirect: false }
             ];
           }
 
@@ -532,18 +587,31 @@
           videoFormats.forEach(function (fmt) {
             var trEl = UI.el('tr', {});
 
+            var badgeEl = '';
+            if (fmt.quality.includes('4K') || fmt.quality.includes('2160')) {
+              badgeEl = UI.el('span', { class: 'snapyt-badge-tag rec', style: 'margin-left:8px; background:#8b5cf6;' }, '4K UHD');
+            } else if (fmt.quality.includes('2K') || fmt.quality.includes('1440')) {
+              badgeEl = UI.el('span', { class: 'snapyt-badge-tag rec', style: 'margin-left:8px; background:#06b6d4;' }, '2K QHD');
+            } else if (fmt.isRecommended) {
+              badgeEl = UI.el('span', { class: 'snapyt-badge-tag rec', style: 'margin-left:8px;' }, tr('জনপ্রিয়', 'Popular'));
+            }
+
             var tdRes = UI.el('td', {},
               UI.el('strong', { style: 'color:var(--ink-1); font-size:14.5px;' }, fmt.qualityLabel || fmt.quality),
-              fmt.isRecommended ? UI.el('span', { class: 'snapyt-badge-tag rec', style: 'margin-left:8px;' }, tr('জনপ্রিয়', 'Popular')) : ''
+              badgeEl
             );
 
             var tdFormat = UI.el('td', {},
               UI.el('span', { class: 'snapyt-badge-tag std' }, (fmt.container || 'mp4').toUpperCase())
             );
 
-            var typeLabel = fmt.isDirect === false
-              ? '⚡ ' + tr('হাই-স্পিড ডাউনলোড', 'High-Speed Download')
-              : (fmt.hasAudio ? '🎬 ' + tr('ভিডিও + অডিও', 'Video + Audio') : '🎬 ' + tr('হাই-ডেফিনিশন ভিডিও', 'HD Video Stream'));
+            var typeLabel = fmt.quality.includes('4K') || fmt.quality.includes('2160')
+              ? '🎬 ' + tr('৪কে আল্ট্রা এইচডি ভিডিও (4K)', '4K Ultra HD Video')
+              : (fmt.quality.includes('2K') || fmt.quality.includes('1440')
+                ? '🎬 ' + tr('২কে কোয়াড এইচডি ভিডিও (2K)', '2K Quad HD Video')
+                : (fmt.quality.includes('1080')
+                  ? '🎬 ' + tr('ফুল এইচডি ভিডিও (1080p)', '1080p Full HD Video')
+                  : '🎬 ' + tr('এইচডি ভিডিও', 'HD Video Stream')));
 
             var tdType = UI.el('td', { style: 'font-size:13px; color:var(--ink-2);' }, typeLabel);
 
@@ -552,7 +620,7 @@
               type: 'button',
               class: 'snapyt-table-btn',
               onclick: function () {
-                triggerDownload(fmt.url, data.title, fmt.quality, fmt.container || 'mp4', fmt.isDirect);
+                triggerDownload(fmt.url, data.title, fmt.quality, fmt.container || 'mp4');
               }
             }, '📥 ' + tr('ডাউনলোড (' + (fmt.container || 'mp4').toUpperCase() + ')', 'Download (' + (fmt.container || 'mp4').toUpperCase() + ')'));
 
@@ -574,7 +642,7 @@
           var audioFormats = (data.formats || []).filter(function (f) { return f.type === 'audio'; });
           if (audioFormats.length === 0) {
             audioFormats = [
-              { quality: 'Audio MP3 (320kbps High Quality)', qualityLabel: 'MP3 320kbps', container: 'mp3', hasAudio: true, isRecommended: true, url: 'https://ssyoutube.com/watch?v=' + data.id, isDirect: false },
+              { quality: 'Audio MP3 320kbps (উচ্চ মান)', qualityLabel: 'MP3 320kbps', container: 'mp3', hasAudio: true, isRecommended: true, url: 'https://ssyoutube.com/watch?v=' + data.id, isDirect: false },
               { quality: 'Audio M4A / AAC (128kbps)', qualityLabel: 'M4A / AAC', container: 'm4a', hasAudio: true, isRecommended: false, url: 'https://sfrom.net/https://www.youtube.com/watch?v=' + data.id, isDirect: false }
             ];
           }
@@ -603,9 +671,7 @@
               UI.el('span', { class: 'snapyt-badge-tag std' }, (fmt.container || 'mp3').toUpperCase())
             );
 
-            var audioTypeLabel = fmt.isDirect === false
-              ? '⚡ ' + tr('হাই-স্পিড অডিও', 'High-Speed Audio')
-              : '🎵 ' + tr('ক্লিয়ার অডিও গান / সাউন্ড', 'High-Fidelity Audio');
+            var audioTypeLabel = '🎵 ' + tr('ক্লিয়ার অডিও গান / সাউন্ড (HQ)', 'High-Fidelity Audio');
 
             var tdType = UI.el('td', { style: 'font-size:13px; color:var(--ink-2);' }, audioTypeLabel);
 
@@ -614,7 +680,7 @@
               type: 'button',
               class: 'snapyt-table-btn',
               onclick: function () {
-                triggerDownload(fmt.url, data.title, fmt.qualityLabel || 'audio', fmt.container || 'mp3', fmt.isDirect);
+                triggerDownload(fmt.url, data.title, fmt.qualityLabel || 'audio', fmt.container || 'mp3');
               }
             }, '📥 ' + tr('ডাউনলোড অডিও', 'Download Audio'));
 
@@ -671,7 +737,7 @@
                   var blob = await r.blob();
                   var safeName = (data.title || 'thumbnail').replace(/[/\\?%*:|"<>]/g, '_').slice(0, 45);
                   UI.download(blob, safeName + '-cover.jpg');
-                  UI.toast(tr('✓ থাম্বনেইল ডাউনলোড হয়েছে!', '✓ Thumbnail downloaded!'));
+                  UI.toast(tr('✓ থাম্বনেইল সরাসরি ডাউনলোড হয়েছে!', '✓ Thumbnail downloaded!'));
                 } catch (e) {
                   window.open(t.url, '_blank');
                 } finally {
@@ -697,6 +763,8 @@
       }
 
       renderTabContent();
+
+      formatSection.appendChild(downloadFeedbackBox);
 
       var hintBox = UI.el('p', {
         style: 'margin-top:14px; font-size:12px; color:var(--ink-3); line-height:1.5;'
