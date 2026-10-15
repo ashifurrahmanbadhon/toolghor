@@ -521,7 +521,7 @@ export default function HomeClient({ initialData }: HomeClientProps) {
                           </span>
                           <span>
                             <b>{lang === 'bn' ? tool.bn : tool.en}</b>
-                            <small>{lang === 'bn' ? tool.en : tool.bn}</small>
+                            <small>{lang === 'bn' ? tool.desc : tool.descEn}</small>
                           </span>
                         </Link>
                       </li>
