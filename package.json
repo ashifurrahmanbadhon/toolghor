@@ -16,7 +16,8 @@
     "next": "16.4.0",
     "nodemailer": "^10.0.16",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "snapsave-media-downloader": "^2.5.1"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
