@@ -437,28 +437,6 @@
       downloadFeedbackBox.appendChild(box);
     }
 
-    function renderDownloadProgress(quality, text, percent) {
-      UI.clear(downloadFeedbackBox);
-      downloadFeedbackBox.hidden = false;
-
-      var box = UI.el('div', {
-        style: 'padding:14px 18px; background:color-mix(in srgb, var(--accent) 10%, var(--paper)); border-radius:12px; border:1.5px solid var(--accent); animation: spaFadeIn .2s ease-out;'
-      });
-
-      var head = UI.el('div', { style: 'display:flex; align-items:center; gap:8px; margin-bottom:6px;' },
-        UI.el('span', { style: 'font-size:18px;' }, '⏳'),
-        UI.el('strong', { style: 'color:var(--ink-1); font-size:14px;' }, tr('ডাউনলোড প্রস্তুত হচ্ছে…', 'Preparing Download…') + (percent ? ' (' + percent + '%)' : ''))
-      );
-
-      var desc = UI.el('p', { style: 'margin:0; font-size:12.5px; color:var(--ink-2); line-height:1.4;' },
-        tr('ফরম্যাট: ', 'Format: ') + quality + ' · ' + (text || tr('সার্ভার থেকে হাই-স্পিড ফাইল স্ট্রিম জেনারেট হচ্ছে, অনুগ্রহ করে কয়েক সেকেন্ড অপেক্ষা করুন...', 'Generating high-speed file stream, please wait a few seconds...'))
-      );
-
-      box.appendChild(head);
-      box.appendChild(desc);
-      downloadFeedbackBox.appendChild(box);
-    }
-
     function triggerBrowserFileSave(downloadUrl) {
       if (!downloadUrl) return;
       var link = document.createElement('a');
@@ -476,9 +454,9 @@
       if (!curData || !curData.url) return;
       var origText = btn.innerHTML;
       btn.disabled = true;
-      btn.innerHTML = '⏳ ' + tr('প্রস্তুত হচ্ছে…', 'Preparing…');
-
-      renderDownloadProgress(fmt.qualityLabel || fmt.quality, tr('সার্ভারে ফাইল প্রস্তুত করার অনুরোধ পাঠানো হচ্ছে…', 'Requesting stream from server…'), 10);
+      btn.innerHTML = '⏳ ' + tr('ডাউনলোড হচ্ছে…', 'Downloading…');
+      UI.clear(downloadFeedbackBox);
+      downloadFeedbackBox.hidden = true;
 
       try {
         var formatKey = fmt.formatKey || (fmt.type === 'audio' ? 'mp3' : '720');
@@ -486,16 +464,15 @@
         var initData = await initRes.json();
 
         if (!initData || !initData.success) {
-          throw new Error((initData && initData.error) || tr('ডাউনলোড স্ট্রিম প্রস্তুত করা যায়নি।', 'Could not prepare download stream.'));
+          throw new Error((initData && initData.error) || tr('ডাউনলোড শুরু করা যায়নি।', 'Could not initiate download.'));
         }
 
         var downloadUrl = initData.download_url;
 
         if (!downloadUrl && initData.progress_url) {
-          renderDownloadProgress(fmt.qualityLabel || fmt.quality, tr('ফাইল কনভার্ট ও এনকোড হচ্ছে…', 'Converting & encoding file…'), 35);
-
-          for (var i = 0; i < 25; i++) {
-            await new Promise(function (resolve) { setTimeout(resolve, 1200); });
+          // Poll cleanly in the background without any stuck progress box
+          for (var i = 0; i < 18; i++) {
+            await new Promise(function (resolve) { setTimeout(resolve, 1000); });
             try {
               var pRes = await fetch('/api/yt-download?action=progress&progress_url=' + encodeURIComponent(initData.progress_url));
               var pData = await pRes.json();
@@ -503,18 +480,18 @@
                 downloadUrl = pData.download_url;
                 break;
               }
-              if (pData && pData.progress) {
-                var pct = Math.min(95, Math.max(35, Math.round(pData.progress / 10)));
-                renderDownloadProgress(fmt.qualityLabel || fmt.quality, pData.text || tr('ফাইল প্রস্তুত হচ্ছে…', 'Preparing file…'), pct);
+              // If backend reported failure, break immediately
+              if (pData && pData.text && pData.text.toLowerCase().indexOf('unable') > -1) {
+                break;
               }
             } catch (pollErr) {
-              // Keep polling
+              // Non-blocking
             }
           }
         }
 
         if (!downloadUrl) {
-          throw new Error(tr('ডাউনলোড লিঙ্ক তৈরিতে সময়সীমা পার হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।', 'Download timed out. Please try again.'));
+          throw new Error(tr('এই ফরম্যাটটির সরাসরি ফাইল প্রস্তুত করা যায়নি। অনুগ্রহ করে ১০৮০p, ৭২০p বা MP3 নির্বাচন করুন।', 'Direct file could not be generated for this format. Please try 1080p, 720p, or MP3.'));
         }
 
         // Trigger direct browser download
@@ -632,7 +609,6 @@
               { formatKey: '1440', quality: '2K Quad HD (1440p)', qualityLabel: '2K Quad HD (1440p)', container: 'mp4', hasAudio: true, isRecommended: false },
               { formatKey: '1080', quality: '1080p (Full HD)', qualityLabel: '1080p (Full HD)', container: 'mp4', hasAudio: true, isRecommended: true },
               { formatKey: '720', quality: '720p (HD)', qualityLabel: '720p (HD)', container: 'mp4', hasAudio: true, isRecommended: true },
-              { formatKey: '480', quality: '480p (SD)', qualityLabel: '480p (SD)', container: 'mp4', hasAudio: true, isRecommended: false },
               { formatKey: '360', quality: '360p (Fast)', qualityLabel: '360p (SD Fast)', container: 'mp4', hasAudio: true, isRecommended: false }
             ];
           }
