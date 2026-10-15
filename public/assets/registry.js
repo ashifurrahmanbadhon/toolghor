@@ -164,6 +164,13 @@ var REGISTRY = {
       steps: ['কিউআর কোডের ছবি বেছে নিন (বা ছবি পেস্ট করুন), অথবা ক্যামেরা চালু করুন।', 'কোডের ভেতরের লেখা নিচে দেখা যাবে।', 'কপি করুন বা লিংক খুলুন।']
     },
     {
+      slug: 'video-downloader', bn: 'অল-ইন-ওয়ান ভিডিও ডাউনলোডার ও কনভার্টার', en: 'All-in-One Video Downloader & Converter', icon: 'video', cats: ['media'], group: 'media', needs: [],
+      desc: 'ইউটিউব, ইনস্টাগ্রাম, ফেসবুক ও ডিরেক্ট ভিডিও ডাউনলোড এবং লোকাল ফাইল কনভার্ট করুন',
+      keywords: 'video downloader video converter all in one youtube reels shorts instagram facebook fb mp4 webm mp3 audio download ভিডিও ডাউনলোডার কনভার্টার',
+      intro: 'যেকোনো পাবলিক ভিডিও লিংক পেস্ট করে সাথে সাথে MP4 বা MP3 ডাউনলোড করুন, অথবা আপনার ভিডিও ফাইল ব্রাউজারেই কনভার্ট করুন।',
+      steps: ['ইউটিউব, ইনস্টাগ্রাম, ফেসবুক বা সরাসরি কোনো ভিডিও লিংক পেস্ট করুন, অথবা ফাইল আপলোড করুন।', '"ফরম্যাট খুঁজুন" চাপুন এবং পছন্দসই ভিডিও (MP4/WebM) বা অডিও (MP3/M4A/WAV) বেছে নিন।', '"ডাউনলোড শুরু করুন" চাপুন এবং সরাসরি আপনার ব্রাউজারে ফাইল সংরক্ষণ করুন।']
+    },
+    {
       slug: 'youtube-downloader', bn: 'ইউটিউব ডাউনলোডার', en: 'YouTube Downloader', icon: 'youtube', cats: ['media'], group: 'media', needs: [],
       desc: 'ইউটিউব ভিডিও (MP4) বা অডিও (MP3) উচ্চমানে ডাউনলোড করুন',
       keywords: 'youtube download youtube video download youtube mp3 audio download youtube to mp3 yt video downloader shorts download ইউটিউব ভিডিও অডিও গান ডাউনলোড এমপিথ্রি এমপিফোর',
@@ -234,6 +241,7 @@ var TOOL_EN = {
   'time-zone-converter': { desc: 'Dhaka time to Saudi, Dubai, Malaysia, London, New York', intro: 'Compare times across countries to find a good time to talk with family and friends abroad.', steps: ['Pick the city you are starting from and enter a date and time.', 'Add the cities whose time you want to see.', 'See each city\'s time and date below.'] },
   'qr-generator': { desc: 'QR codes for links, Wi-Fi and WhatsApp', intro: 'Create a QR code for a link, text, Wi-Fi, WhatsApp number or email.', steps: ['Choose the type of QR code.', 'Enter the details and the code appears instantly.', 'Download it as PNG or SVG.'] },
   'qr-decoder': { desc: 'Read a QR code from an image or the camera', intro: 'Upload a picture of a QR code or scan it with your camera to see the text or link inside.', steps: ['Choose a QR image (or paste one), or turn on the camera.', 'The text inside the code appears below.', 'Copy it or open the link.'] },
+  'video-downloader': { desc: 'Download YouTube, Instagram, Facebook & direct videos or convert local files', intro: 'Paste any public video link to download MP4/MP3 instantly, or convert your video files locally inside your browser.', steps: ['Paste a YouTube, Instagram, Facebook or direct video link, or upload a local file.', 'Click "Get Available Formats" and choose your video (MP4/WebM) or audio (MP3/M4A/WAV) format.', 'Click "Start Download" to save the file directly to your browser.'] },
   'youtube-downloader': { desc: 'Download YouTube video (MP4) or audio (MP3) in high quality', intro: 'Paste any YouTube video or Shorts link to download HD video (MP4) or high-quality audio (MP3/M4A) directly.', steps: ['Paste your YouTube video or Shorts link.', 'Choose whether to download video (1080p, 720p) or audio (MP3, M4A).', 'Click "Download" to save your file.'] },
   'audio-extractor': { desc: 'Pull MP3, M4A or WAV audio out of a video', intro: 'Take just the sound from any video file and save it as MP3, M4A or WAV.', steps: ['Choose a video file.', 'Pick the audio format and quality.', 'Press "Extract audio" and download.'] },
   'social-video-cropper': { desc: 'Crop video to Reels, Shorts and Instagram sizes', intro: 'Crop a video to 9:16 (Reels/Shorts), 1:1, 4:5 or 16:9.', steps: ['Choose a video.', 'Pick the platform size and set the crop position.', 'Press "Create video" and download.'] },

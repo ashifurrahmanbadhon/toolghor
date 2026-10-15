@@ -35,6 +35,21 @@ export default function HomeClient({ initialData }: HomeClientProps) {
   // Notice Banner dismiss state
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
+  // Ensure that returning to Home from any tool starts at the very top (0, 0)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (!window.location.hash) {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        const timer = setTimeout(() => {
+          if (!window.location.hash) {
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+          }
+        }, 30);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, []);
+
   // Sync browser document title with selected language
   useEffect(() => {
     if (typeof document !== 'undefined') {

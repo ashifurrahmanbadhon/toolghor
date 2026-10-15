@@ -57,7 +57,17 @@ export default function ToolPageClient({ tool, relatedTools }: ToolPageClientPro
       <main className={`wrap tool-page cat-${primaryCat}`}>
         {/* Breadcrumb */}
         <div className="crumb">
-          <Link href="/">{lang === 'bn' ? 'হোম' : 'Home'}</Link> /{' '}
+          <Link
+            href="/"
+            scroll={true}
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+              }
+            }}
+          >
+            {lang === 'bn' ? 'হোম' : 'Home'}
+          </Link> /{' '}
           <Link href={`/#cat-${primaryCat}`}>
             {catLabel}
           </Link>{' '}

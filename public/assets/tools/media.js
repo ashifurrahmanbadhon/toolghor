@@ -827,5 +827,639 @@
 
     root.appendChild(container);
   };
+
+  /* ================= অল-ইন-ওয়ান ভিডিও ডাউনলোডার ও কনভার্টার ================= */
+  T['video-downloader'] = function (root) {
+    var mainContainer = UI.el('div', { class: 'tg-vdown-wrap' });
+
+    // Mode state: 'online' (URL Downloader) or 'local' (File Converter)
+    var curMode = 'online';
+
+    // 1. Top Mode Switcher Tabs
+    var modeNav = UI.el('div', { class: 'snapyt-mode-tabs', style: 'margin-bottom:12px;' });
+    var btnOnline = UI.el('button', {
+      type: 'button',
+      class: 'snapyt-mode-btn active',
+      onclick: function () { switchMode('online'); }
+    }, '🌐 ' + tr('অনলাইন ভিডিও ডাউনলোডার', 'Online Video Downloader'));
+
+    var btnLocal = UI.el('button', {
+      type: 'button',
+      class: 'snapyt-mode-btn',
+      onclick: function () { switchMode('local'); }
+    }, '⚡ ' + tr('লোকাল ফাইল কনভার্টার', 'Local File Converter'));
+
+    modeNav.appendChild(btnOnline);
+    modeNav.appendChild(btnLocal);
+    mainContainer.appendChild(modeNav);
+
+    // 2. Containers for both modes
+    var onlineSection = UI.el('div', { class: 'stack' });
+    var localSection = UI.el('div', { class: 'stack' });
+    localSection.hidden = true;
+
+    mainContainer.appendChild(onlineSection);
+    mainContainer.appendChild(localSection);
+
+    function switchMode(mode) {
+      curMode = mode;
+      btnOnline.classList.toggle('active', mode === 'online');
+      btnLocal.classList.toggle('active', mode === 'local');
+      onlineSection.hidden = mode !== 'online';
+      localSection.hidden = mode !== 'local';
+    }
+
+    // ========================================================
+    // MODE 1: ONLINE VIDEO DOWNLOADER
+    // ========================================================
+    var onlineHero = UI.el('div', { class: 'snapyt-hero' },
+      UI.el('div', { class: 'snapyt-badge' }, '🚀 All-in-One Downloader'),
+      UI.el('h2', {}, tr('ভিডিও ও অডিও ডাউনলোড করুন', 'Download Video & Audio')),
+      UI.el('p', {}, tr('ইউটিউব, ইনস্টাগ্রাম রিলস, ফেসবুক বা সরাসরি যেকোনো ভিডিও লিংক পেস্ট করে সাথে সাথে পছন্দের ফরম্যাটে ডাউনলোড করুন।', 'Paste any YouTube, Instagram Reels, Facebook, or direct video link to download in your preferred format.'))
+    );
+
+    // Platform Indicator Pill
+    var platformBadge = UI.el('div', { class: 'tg-platform-badge generic', style: 'margin: 0 auto 6px; display:none;' });
+
+    function updatePlatformIndicator(urlStr) {
+      var lower = (urlStr || '').trim().toLowerCase();
+      if (!lower) {
+        platformBadge.style.display = 'none';
+        return;
+      }
+      platformBadge.style.display = 'inline-flex';
+      if (lower.includes('youtube.com') || lower.includes('youtu.be')) {
+        platformBadge.className = 'tg-platform-badge youtube';
+        platformBadge.innerHTML = '🔴 YouTube Video / Shorts';
+      } else if (lower.includes('instagram.com')) {
+        platformBadge.className = 'tg-platform-badge instagram';
+        platformBadge.innerHTML = '📸 Instagram Reel / Video';
+      } else if (lower.includes('facebook.com') || lower.includes('fb.watch') || lower.includes('fb.com')) {
+        platformBadge.className = 'tg-platform-badge facebook';
+        platformBadge.innerHTML = '🔵 Facebook Reel / Video';
+      } else if (/\.(mp4|webm|mkv|mov|m4v)(\?.*)?$/i.test(lower) || lower.startsWith('http')) {
+        platformBadge.className = 'tg-platform-badge direct';
+        platformBadge.innerHTML = '🔗 Direct Video Link';
+      } else {
+        platformBadge.className = 'tg-platform-badge generic';
+        platformBadge.innerHTML = '🌐 Web Video URL';
+      }
+    }
+
+    var onlineInputShell = UI.el('div', { class: 'snapyt-input-shell' });
+    var onlineIcon = UI.el('span', { class: 'snapyt-input-icon', 'aria-hidden': 'true' },
+      UI.icon('video', 20)
+    );
+    var onlineInput = UI.el('input', {
+      type: 'url',
+      class: 'snapyt-url-input',
+      id: 'tg-vdown-url-input',
+      placeholder: tr('ভিডিও লিংক পেস্ট করুন (YouTube, Instagram, Facebook, Direct MP4)…', 'Paste video link (YouTube, Instagram, Facebook, Direct MP4)…'),
+      autocomplete: 'off',
+      spellcheck: 'false',
+      oninput: function () {
+        var v = this.value.trim();
+        onlineClearBtn.hidden = !v;
+        updatePlatformIndicator(v);
+      },
+      onkeydown: function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          fetchOnlineFormats();
+        }
+      }
+    });
+
+    var onlineClearBtn = UI.el('button', {
+      type: 'button',
+      class: 'snapyt-clear-btn',
+      title: tr('মুছে ফেলুন', 'Clear'),
+      hidden: true,
+      onclick: function () {
+        onlineInput.value = '';
+        onlineClearBtn.hidden = true;
+        updatePlatformIndicator('');
+        onlineInput.focus();
+        renderOnlineResult(null);
+      }
+    }, '✕');
+
+    var onlinePasteBtn = UI.el('button', {
+      type: 'button',
+      class: 'snapyt-paste-btn',
+      title: tr('ক্লিপবোর্ড থেকে পেস্ট করুন', 'Paste from Clipboard'),
+      onclick: async function () {
+        try {
+          if (navigator.clipboard && navigator.clipboard.readText) {
+            var text = await navigator.clipboard.readText();
+            if (text) {
+              onlineInput.value = text.trim();
+              onlineClearBtn.hidden = false;
+              updatePlatformIndicator(onlineInput.value);
+              fetchOnlineFormats();
+            }
+          } else {
+            onlineInput.focus();
+            UI.toast(tr('লিংকটি পেস্ট করতে Ctrl+V চাপুন', 'Press Ctrl+V to paste link'));
+          }
+        } catch {
+          onlineInput.focus();
+        }
+      }
+    }, UI.icon('copy', 15), tr('পেস্ট', 'Paste'));
+
+    var onlineSubmitBtn = UI.el('button', {
+      type: 'button',
+      class: 'snapyt-submit-btn',
+      id: 'tg-vdown-submit-btn',
+      onclick: function () { fetchOnlineFormats(); }
+    }, '🔍 ' + tr('ফরম্যাট খুঁজুন', 'Get Formats'));
+
+    onlineInputShell.appendChild(onlineIcon);
+    onlineInputShell.appendChild(onlineInput);
+    onlineInputShell.appendChild(onlineClearBtn);
+    onlineInputShell.appendChild(onlinePasteBtn);
+    onlineInputShell.appendChild(onlineSubmitBtn);
+
+    var onlineTipLine = UI.el('p', { class: 'snapyt-tip' },
+      tr('💡 সমর্থিত: ইউটিউব ভিডিও/শর্টস, ইনস্টাগ্রাম পাবলিক রিলস, ফেসবুক উন্মুক্ত ভিডিও এবং ডিরেক্ট MP4/WebM লিংক।', '💡 Supported: YouTube videos/Shorts, Instagram public reels, Facebook public videos, and direct MP4/WebM URLs.')
+    );
+
+    var onlineStatusBox = UI.el('div', { class: 'snapyt-status-box' });
+    var onlineResultCard = UI.el('div', { class: 'snapyt-result-card' });
+    onlineResultCard.hidden = true;
+
+    var curOnlineData = null;
+    var curFormatTab = 'video';
+    var isFetchingFormats = false;
+
+    async function fetchOnlineFormats() {
+      var rawUrl = (onlineInput.value || '').trim();
+      if (!rawUrl) {
+        UI.clear(onlineStatusBox);
+        onlineStatusBox.appendChild(UI.notice('err', tr('দয়া করে একটি সঠিক ভিডিও লিংক প্রদান করুন।', 'Please provide a valid video URL.')));
+        renderOnlineResult(null);
+        return;
+      }
+
+      isFetchingFormats = true;
+      onlineSubmitBtn.disabled = true;
+      onlineSubmitBtn.innerHTML = '⏳ ' + tr('অনুসন্ধান হচ্ছে…', 'Searching…');
+      UI.clear(onlineStatusBox);
+      onlineStatusBox.appendChild(UI.notice('info', '⏳ ' + tr('ভিডিওর ফরম্যাট ও তথ্য অনুসন্ধান করা হচ্ছে, অপেক্ষা করুন…', 'Fetching video details and available formats, please wait…')));
+
+      var controller = new AbortController();
+      var timeoutId = setTimeout(function () { controller.abort(); }, 12000);
+
+      try {
+        var res = await fetch('/api/video-downloader?url=' + encodeURIComponent(rawUrl), {
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        var data = await res.json();
+
+        if (!data || !data.success) {
+          throw new Error((data && data.error) || tr('ভিডিওর তথ্য আনা সম্ভব হয়নি। লিংকটি উন্মুক্ত কি না যাচাই করুন।', 'Could not fetch video info. Verify the URL is public.'));
+        }
+
+        curOnlineData = data;
+        UI.clear(onlineStatusBox);
+        renderOnlineResult(curOnlineData);
+      } catch (err) {
+        clearTimeout(timeoutId);
+        UI.clear(onlineStatusBox);
+        var isAbort = err.name === 'AbortError';
+        var errMsg = isAbort
+          ? tr('সার্ভার থেকে রেসপন্স পেতে দেরি হয়েছে। পুনরায় চেষ্টা করুন।', 'Request timed out. Please try again.')
+          : (err.message || tr('ভিডিওটি লোড করা যায়নি। লিংকটি সঠিক কি না যাচাই করুন।', 'Failed to load video. Please verify the URL.'));
+        onlineStatusBox.appendChild(UI.notice('err', errMsg));
+        renderOnlineResult(null);
+      } finally {
+        isFetchingFormats = false;
+        onlineSubmitBtn.disabled = false;
+        onlineSubmitBtn.innerHTML = '🔍 ' + tr('ফরম্যাট খুঁজুন', 'Get Formats');
+      }
+    }
+
+    var onlineFeedbackBox = UI.el('div', { class: 'snapyt-feedback-box', style: 'margin-top:16px;' });
+
+    async function triggerDirectDownload(url, filename) {
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = filename || 'ToolGhor-video.mp4';
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () {
+        if (a && a.parentNode) a.parentNode.removeChild(a);
+      }, 500);
+      UI.toast(tr('✓ ডাউনলোড ব্রাউজারে শুরু হয়েছে!', '✓ Download started in browser!'));
+    }
+
+    async function handleFormatDownload(fmt, btn) {
+      var origText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ ' + tr('প্রস্তুত হচ্ছে…', 'Preparing…');
+
+      UI.clear(onlineFeedbackBox);
+      onlineFeedbackBox.hidden = false;
+      onlineFeedbackBox.appendChild(UI.notice('info', '⏳ ' + tr('ডাউনলোড প্রস্তুত হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন…', 'Preparing download, please wait…')));
+
+      try {
+        // Case A: Pre-generated direct download URL (for Instagram, Facebook, direct video)
+        if (fmt.downloadUrl) {
+          await triggerDirectDownload(fmt.downloadUrl, 'ToolGhor-' + (fmt.formatKey || 'video') + '.' + (fmt.container || 'mp4'));
+          UI.clear(onlineFeedbackBox);
+          onlineFeedbackBox.appendChild(UI.notice('ok', '✓ ' + tr('ডাউনলোড সরাসরি আপনার ব্রাউজারে শুরু হয়েছে!', 'Download started directly in your browser!')));
+          return;
+        }
+
+        // Case B: YouTube conversion engine
+        if (curOnlineData && curOnlineData.platform === 'youtube') {
+          var convRes = await fetch('/api/video-downloader?action=convert&format=' + encodeURIComponent(fmt.formatKey) + '&url=' + encodeURIComponent(curOnlineData.url || onlineInput.value));
+          var convData = await convRes.json();
+
+          if (!convData || !convData.success) {
+            throw new Error((convData && convData.error) || tr('ডাউনলোড লিঙ্ক তৈরি করা যায়নি।', 'Failed to generate download link.'));
+          }
+
+          var targetDlUrl = convData.download_url;
+
+          // If conversion is async (loader.to progress polling)
+          if (!targetDlUrl && convData.progress_url) {
+            var pUrl = convData.progress_url;
+            var pollCount = 0;
+            var maxPoll = 45;
+
+            while (!targetDlUrl && pollCount < maxPoll) {
+              await new Promise(function (resolve) { setTimeout(resolve, 1500); });
+              pollCount++;
+              try {
+                var pRes = await fetch('/api/video-downloader?action=progress&progress_url=' + encodeURIComponent(pUrl));
+                var pData = await pRes.json();
+                if (pData && pData.download_url) {
+                  targetDlUrl = pData.download_url;
+                  break;
+                }
+              } catch {
+                // Continue polling
+              }
+            }
+          }
+
+          if (!targetDlUrl) {
+            throw new Error(tr('সার্ভার থেকে ডাউনলোড প্রস্তুত হতে অতিরিক্ত সময় লেগেছে। দয়া করে ৭২০p ফরম্যাটটি চেষ্টা করুন।', 'Download preparation took too long. Please try the 720p format.'));
+          }
+
+          await triggerDirectDownload(targetDlUrl, 'ToolGhor-' + (fmt.formatKey || 'video') + '.' + (fmt.container || 'mp4'));
+          UI.clear(onlineFeedbackBox);
+          onlineFeedbackBox.appendChild(UI.notice('ok', '✓ ' + tr('ডাউনলোড সরাসরি আপনার ব্রাউজারে শুরু হয়েছে!', 'Download started directly in your browser!')));
+          return;
+        }
+
+        throw new Error(tr('ডাউনলোড লিঙ্ক পাওয়া যায়নি।', 'Download link unavailable.'));
+      } catch (err) {
+        UI.clear(onlineFeedbackBox);
+        onlineFeedbackBox.appendChild(UI.notice('err', err.message || tr('ডাউনলোড শুরু করতে সমস্যা হয়েছে।', 'Failed to start download.')));
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = origText;
+      }
+    }
+
+    function renderOnlineResult(data) {
+      if (!data) {
+        onlineResultCard.hidden = true;
+        UI.clear(onlineResultCard);
+        return;
+      }
+
+      onlineResultCard.hidden = false;
+      UI.clear(onlineResultCard);
+      UI.clear(onlineFeedbackBox);
+      onlineFeedbackBox.hidden = true;
+
+      // 1. Preview Top Row
+      var previewRow = UI.el('div', { class: 'snapyt-preview-row' });
+      var thumbWrap = UI.el('div', { class: 'snapyt-thumb-wrap' });
+
+      var thumbSrc = (data.thumbnails && (data.thumbnails.max || data.thumbnails.hq)) || '';
+      var img = UI.el('img', {
+        class: 'snapyt-thumb-img',
+        src: thumbSrc,
+        alt: data.title || 'Video',
+        loading: 'lazy',
+        onerror: function () {
+          this.style.display = 'none';
+        }
+      });
+
+      var platformName = data.platform === 'youtube' ? 'YouTube' : data.platform === 'instagram' ? 'Instagram' : data.platform === 'facebook' ? 'Facebook' : 'Direct Link';
+      var badge = UI.el('span', { class: 'snapyt-thumb-badge' }, platformName);
+      thumbWrap.appendChild(img);
+      thumbWrap.appendChild(badge);
+
+      var metaCol = UI.el('div', { class: 'snapyt-meta' });
+      metaCol.appendChild(UI.el('h3', { class: 'snapyt-title' }, data.title || 'Video'));
+      metaCol.appendChild(UI.el('div', { class: 'snapyt-author-row' },
+        UI.icon('video', 16),
+        UI.el('span', {}, data.author || platformName)
+      ));
+
+      var resetBtn = UI.el('button', {
+        type: 'button',
+        class: 'tg-reset-btn',
+        onclick: function () {
+          onlineInput.value = '';
+          onlineClearBtn.hidden = true;
+          updatePlatformIndicator('');
+          renderOnlineResult(null);
+          onlineInput.focus();
+        }
+      }, '🔄 ' + tr('অন্য ভিডিও খুঁজুন', 'Search Another Video'));
+      metaCol.appendChild(resetBtn);
+
+      previewRow.appendChild(thumbWrap);
+      previewRow.appendChild(metaCol);
+      onlineResultCard.appendChild(previewRow);
+
+      // 2. Format Selection Tabs (Video vs Audio)
+      var formatSection = UI.el('div', { style: 'margin-top:20px;' });
+      var formatHeading = UI.el('div', { style: 'margin-bottom:14px;' },
+        UI.el('h4', { style: 'margin:0 0 4px; font-size:16px; font-weight:700; color:var(--ink);' }, '📥 ' + tr('ডাউনলোড ফরম্যাট নির্বাচন করুন', 'Choose Download Format')),
+        UI.el('p', { style: 'margin:0; font-size:13px; color:var(--ink-2);' }, tr('যে ফরম্যাটে নামাতে চান, সেটির ডাউনলোড বাটনে ক্লিক করুন। সাথে সাথে ব্রাউজারে ডাউনলোড শুরু হবে।', 'Click download next to your desired format to download immediately in your browser.'))
+      );
+      formatSection.appendChild(formatHeading);
+
+      var tabsNav = UI.el('div', { class: 'snapyt-tabs-nav' });
+      var tabBtnVideo = UI.el('button', {
+        type: 'button',
+        class: 'snapyt-tab-btn' + (curFormatTab === 'video' ? ' active' : ''),
+        onclick: function () { setOnlineFormatTab('video'); }
+      }, '🎬 ' + tr('ভিডিও (MP4/WebM)', 'Video (MP4/WebM)'));
+
+      var tabBtnAudio = UI.el('button', {
+        type: 'button',
+        class: 'snapyt-tab-btn' + (curFormatTab === 'audio' ? ' active' : ''),
+        onclick: function () { setOnlineFormatTab('audio'); }
+      }, '🎵 ' + tr('অডিও (MP3/M4A)', 'Audio (MP3/M4A)'));
+
+      tabsNav.appendChild(tabBtnVideo);
+      tabsNav.appendChild(tabBtnAudio);
+      formatSection.appendChild(tabsNav);
+
+      var tabContentWrap = UI.el('div', { class: 'snapyt-tab-content' });
+      formatSection.appendChild(tabContentWrap);
+
+      function setOnlineFormatTab(tab) {
+        curFormatTab = tab;
+        tabBtnVideo.classList.toggle('active', tab === 'video');
+        tabBtnAudio.classList.toggle('active', tab === 'audio');
+        renderOnlineTabContent();
+      }
+
+      function renderOnlineTabContent() {
+        UI.clear(tabContentWrap);
+        var fmts = (data.formats || []).filter(function (f) {
+          return curFormatTab === 'audio' ? f.type === 'audio' : f.type === 'video';
+        });
+
+        if (!fmts.length) {
+          tabContentWrap.appendChild(UI.notice('info', tr('এই ভিডিওটির জন্য কোনো ফরম্যাট পাওয়া যায়নি।', 'No formats available for this category.')));
+          return;
+        }
+
+        var tableWrap = UI.el('div', { class: 'snapyt-table-wrap' });
+        var table = UI.el('table', { class: 'snapyt-table' });
+        var thead = UI.el('thead', {},
+          UI.el('tr', {},
+            UI.el('th', {}, tr('কোয়ালিটি / মান', 'Quality / Format')),
+            UI.el('th', {}, tr('ফরম্যাট', 'Container')),
+            UI.el('th', {}, tr('অডিও স্ট্যাটাস', 'Audio')),
+            UI.el('th', { style: 'text-align:right;' }, tr('অ্যাকশন', 'Action'))
+          )
+        );
+        var tbody = UI.el('tbody');
+
+        fmts.forEach(function (fmt) {
+          var trEl = UI.el('tr');
+          var tdQuality = UI.el('td', {});
+          tdQuality.appendChild(UI.el('strong', {}, fmt.qualityLabel || fmt.quality || fmt.formatKey));
+          if (fmt.isRecommended) {
+            tdQuality.appendChild(UI.el('span', { class: 'snapyt-badge-tag rec', style: 'margin-left:8px;' }, tr('জনপ্রিয়', 'Popular')));
+          }
+
+          var tdFormat = UI.el('td', {},
+            UI.el('span', { class: 'snapyt-badge-tag std' }, (fmt.container || 'mp4').toUpperCase())
+          );
+
+          var tdAudio = UI.el('td', {},
+            fmt.hasAudio !== false
+              ? UI.el('span', { style: 'color:var(--ok, #10b981); font-weight:600; font-size:12.5px;' }, '✓ ' + tr('অডিও সহ', 'With Audio'))
+              : UI.el('span', { style: 'color:var(--ink-3); font-size:12.5px;' }, '❌ ' + tr('শুধু ভিডিও', 'Video Only'))
+          );
+
+          var tdAction = UI.el('td', { style: 'text-align:right;' });
+          var dlBtn = UI.el('button', {
+            type: 'button',
+            class: 'snapyt-table-btn',
+            onclick: function () { handleFormatDownload(fmt, this); }
+          }, UI.icon('download', 14), tr('ডাউনলোড', 'Download'));
+
+          tdAction.appendChild(dlBtn);
+          trEl.appendChild(tdQuality);
+          trEl.appendChild(tdFormat);
+          trEl.appendChild(tdAudio);
+          trEl.appendChild(tdAction);
+          tbody.appendChild(trEl);
+        });
+
+        table.appendChild(thead);
+        table.appendChild(tbody);
+        tableWrap.appendChild(table);
+        tabContentWrap.appendChild(tableWrap);
+      }
+
+      renderOnlineTabContent();
+      formatSection.appendChild(onlineFeedbackBox);
+
+      var tipNotice = UI.el('p', {
+        style: 'margin-top:14px; font-size:12px; color:var(--ink-3); line-height:1.5;'
+      }, tr(
+        '💡 পরামর্শ: ডাউনলোড বাটনে ক্লিক করলেই আপনার ব্রাউজারে সরাসরি ফাইল সেভ হবে। কোনো বিজ্ঞাপন বা পপআপ নেই।',
+        '💡 Tip: Clicking Download immediately saves the file in your browser. 100% ad-free & safe.'
+      ));
+      formatSection.appendChild(tipNotice);
+
+      onlineResultCard.appendChild(formatSection);
+    }
+
+    onlineSection.appendChild(onlineHero);
+    onlineSection.appendChild(platformBadge);
+    onlineSection.appendChild(onlineInputShell);
+    onlineSection.appendChild(onlineTipLine);
+    onlineSection.appendChild(onlineStatusBox);
+    onlineSection.appendChild(onlineResultCard);
+
+    // ========================================================
+    // MODE 2: LOCAL FILE CONVERTER (WebAssembly FFmpeg)
+    // ========================================================
+    var localHero = UI.el('div', { class: 'snapyt-hero' },
+      UI.el('div', { class: 'snapyt-badge', style: 'background:rgba(16,185,129,0.12); color:#10b981; border-color:rgba(16,185,129,0.25);' }, '⚡ In-Browser FFmpeg Converter'),
+      UI.el('h2', {}, tr('ভিডিও ফাইল কনভার্ট করুন', 'Convert Local Video Files')),
+      UI.el('p', {}, tr('আপনার যেকোনো ভিডিও ফাইল ব্রাউজারেই সরাসরি MP4, WebM, MP3 বা WAV তে কনভার্ট করুন। কোনো ফাইল সার্ভারে আপলোড হয় না।', 'Convert your video files directly inside your browser into MP4, WebM, MP3, or WAV. 100% private, no server upload.'))
+    );
+
+    var localFile = null;
+    var localOut = UI.el('div');
+    var localInfo = UI.el('div');
+
+    var localFmt = UI.seg([
+      { value: 'mp4', label: 'MP4 (H.264 Video)' },
+      { value: 'webm', label: 'WebM (VP9 Video)' },
+      { value: 'mp3', label: 'MP3 (Audio)' },
+      { value: 'm4a', label: 'M4A (AAC Audio)' },
+      { value: 'wav', label: 'WAV (Lossless Audio)' }
+    ], 'mp4', function (v) {
+      var isAudio = v === 'mp3' || v === 'm4a' || v === 'wav';
+      videoResField.hidden = isAudio;
+      audioBrField.hidden = !isAudio || v === 'wav';
+    });
+
+    var videoRes = UI.select([
+      { value: 'original', label: tr('মূল রেজোলিউশন (Original)', 'Original Resolution') },
+      { value: '1080', label: '1080p Full HD (1920x1080)' },
+      { value: '720', label: '720p HD (1280x720)' },
+      { value: '480', label: '480p SD (854x480)' }
+    ], 'original');
+    var videoResField = UI.field(tr('ভিডিও রেজোলিউশন', 'Video Resolution'), videoRes);
+
+    var audioBr = UI.select([
+      { value: '128k', label: tr('১২৮ kbps (সাধারণ)', '128 kbps (Standard)') },
+      { value: '192k', label: tr('১৯২ kbps (প্রস্তাবিত)', '192 kbps (Recommended)') },
+      { value: '256k', label: tr('২৫৬ kbps (উচ্চমান)', '256 kbps (High Quality)') },
+      { value: '320k', label: tr('৩২০ kbps (সর্বোচ্চ)', '320 kbps (Maximum)') }
+    ], '192k');
+    var audioBrField = UI.field(tr('অডিও মান (Bitrate)', 'Audio Quality (Bitrate)'), audioBr);
+    audioBrField.hidden = true; // default is mp4
+
+    var localGoBtn = UI.btn(tr('কনভার্ট শুরু করুন', 'Start Conversion'), runLocalConversion, {
+      icon: 'video',
+      disabled: true
+    });
+
+    var localDrop = UI.dropzone({
+      accept: 'video/*,audio/*,.mkv,.mov,.avi,.3gp,.flv,.webm,.mp4,.m4v',
+      label: tr('ভিডিও ফাইল বেছে নিন বা টেনে আনুন', 'Choose or drag a video file'),
+      onFiles: function (files) {
+        localFile = files[0];
+        UI.clear(localOut);
+        UI.clear(localInfo);
+        localInfo.appendChild(UI.notice('info', localFile.name + ' · ' + UI.fmtSize(localFile.size)));
+        var w = warnBig(localFile);
+        if (w) localInfo.appendChild(w);
+        localGoBtn.disabled = false;
+      }
+    });
+
+    async function runLocalConversion() {
+      if (!localFile) return;
+      UI.clear(localOut);
+      var prog = UI.progress();
+      localOut.appendChild(prog);
+      localGoBtn.disabled = true;
+
+      try {
+        sizeCheck(localFile);
+        var targetExt = localFmt.get();
+        var inExt = UI.ext(localFile.name) || 'mp4';
+        var inName = 'input.' + inExt;
+        var outName = 'output.' + targetExt;
+
+        var args = ['-i', inName];
+
+        if (targetExt === 'mp3') {
+          args.push('-vn', '-c:a', 'libmp3lame', '-b:a', audioBr.value);
+        } else if (targetExt === 'm4a') {
+          args.push('-vn', '-c:a', 'aac', '-b:a', audioBr.value);
+        } else if (targetExt === 'wav') {
+          args.push('-vn', '-c:a', 'pcm_s16le');
+        } else if (targetExt === 'webm') {
+          if (videoRes.value === '1080') args.push('-vf', 'scale=-2:1080');
+          else if (videoRes.value === '720') args.push('-vf', 'scale=-2:720');
+          else if (videoRes.value === '480') args.push('-vf', 'scale=-2:480');
+          args.push('-c:v', 'libvpx-vp9', '-crf', '30', '-b:v', '0', '-c:a', 'libopus');
+        } else {
+          // MP4
+          if (videoRes.value === '1080') args.push('-vf', 'scale=-2:1080');
+          else if (videoRes.value === '720') args.push('-vf', 'scale=-2:720');
+          else if (videoRes.value === '480') args.push('-vf', 'scale=-2:480');
+          args.push('-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'aac');
+        }
+
+        args.push(outName);
+
+        var data = await runFF(
+          function (msg) { prog.set(0, msg); },
+          function (p) { prog.set(p); },
+          inName,
+          localFile,
+          args,
+          outName
+        );
+
+        var mime = targetExt === 'mp3' ? 'audio/mpeg'
+          : targetExt === 'm4a' ? 'audio/mp4'
+          : targetExt === 'wav' ? 'audio/wav'
+          : targetExt === 'webm' ? 'video/webm'
+          : 'video/mp4';
+
+        var blob = new Blob([data], { type: mime });
+        var outFilename = 'ToolGhor(' + localFile.name.replace(/\.[^/.]+$/, '') + ').' + targetExt;
+
+        UI.done(localOut, blob, outFilename, '✓ ' + tr('কনভার্ট সম্পন্ন হয়েছে (', 'Conversion complete (') + targetExt.toUpperCase() + ')');
+
+        // Add media preview player
+        var previewEl;
+        if (targetExt === 'mp3' || targetExt === 'm4a' || targetExt === 'wav') {
+          previewEl = UI.el('audio', {
+            controls: true,
+            src: URL.createObjectURL(blob),
+            style: { width: '100%', marginTop: '12px' }
+          });
+        } else {
+          previewEl = UI.el('video', {
+            controls: true,
+            src: URL.createObjectURL(blob),
+            style: { width: '100%', maxHeight: '360px', marginTop: '12px', borderRadius: '8px' }
+          });
+        }
+        if (localOut.firstChild) {
+          localOut.firstChild.appendChild(previewEl);
+        }
+      } catch (err) {
+        UI.clear(localOut);
+        localOut.appendChild(UI.notice('err', UI.err(err)));
+      } finally {
+        localGoBtn.disabled = false;
+      }
+    }
+
+    localSection.appendChild(localHero);
+    localSection.appendChild(localDrop);
+    localSection.appendChild(localInfo);
+    localSection.appendChild(UI.el('div', { class: 'stack' },
+      UI.el('span', { class: 'lbl' }, tr('টার্গেট ফরম্যাট', 'Target Format')),
+      localFmt
+    ));
+    localSection.appendChild(videoResField);
+    localSection.appendChild(audioBrField);
+    localSection.appendChild(localGoBtn);
+    localSection.appendChild(localOut);
+
+    root.appendChild(mainContainer);
+  };
 })();
+
 
