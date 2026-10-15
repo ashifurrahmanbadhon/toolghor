@@ -31,7 +31,17 @@ export default function Header() {
   return (
     <header className="top">
       <div className="wrap top-in">
-        <Link href="/" className="brand" aria-label="ToolGhor">
+        <Link
+          href="/"
+          scroll={true}
+          className="brand"
+          aria-label="ToolGhor"
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+            }
+          }}
+        >
           <picture>
             <source
               type="image/webp"

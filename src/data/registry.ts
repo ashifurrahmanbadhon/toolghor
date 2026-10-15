@@ -436,6 +436,30 @@ export const TOOLS: ToolItem[] = [
 
   // --- Media Tools ---
   {
+    slug: 'video-downloader',
+    bn: 'অল-ইন-ওয়ান ভিডিও ডাউনলোডার ও কনভার্টার',
+    en: 'All-in-One Video Downloader & Converter',
+    icon: 'Video',
+    cats: ['media'],
+    group: 'media',
+    badge: 'All-in-One',
+    desc: 'ইউটিউব, ইনস্টাগ্রাম, ফেসবুক ও ডিরেক্ট ভিডিও ডাউনলোড এবং লোকাল ফাইল কনভার্ট করুন',
+    descEn: 'Download YouTube, Instagram, Facebook & direct videos or convert local files',
+    keywords: 'video downloader video converter all in one youtube reels shorts instagram facebook fb mp4 webm mp3 audio download ভিডিও ডাউনলোডার কনভার্টার',
+    intro: 'যেকোনো পাবলিক ভিডিও লিংক পেস্ট করে সাথে সাথে MP4 বা MP3 ডাউনলোড করুন, অথবা আপনার ভিডিও ফাইল ব্রাউজারেই কনভার্ট করুন।',
+    introEn: 'Paste any public video link to download MP4/MP3 instantly, or convert your video files locally inside your browser.',
+    steps: [
+      'ইউটিউব, ইনস্টাগ্রাম, ফেসবুক বা সরাসরি কোনো ভিডিও লিংক পেস্ট করুন, অথবা ফাইল আপলোড করুন।',
+      '"ফরম্যাট খুঁজুন" চাপুন এবং পছন্দসই ভিডিও (MP4/WebM) বা অডিও (MP3/M4A/WAV) বেছে নিন।',
+      '"ডাউনলোড শুরু করুন" চাপুন এবং সরাসরি আপনার ব্রাউজারে ফাইল সংরক্ষণ করুন।'
+    ],
+    stepsEn: [
+      'Paste a YouTube, Instagram, Facebook or direct video link, or upload a local file.',
+      'Click "Get Available Formats" and choose your video (MP4/WebM) or audio (MP3/M4A/WAV) format.',
+      'Click "Start Download" to save the file directly to your browser.'
+    ]
+  },
+  {
     slug: 'youtube-downloader',
     bn: 'ইউটিউব ডাউনলোডার',
     en: 'YouTube Downloader',
