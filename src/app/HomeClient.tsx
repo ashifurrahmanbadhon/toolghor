@@ -88,19 +88,27 @@ export default function HomeClient({ initialData }: HomeClientProps) {
       }
     };
 
-    if (publicData) {
-      syncGlobals(publicData);
-    } else {
-      // Fetch only if not provided by server hydration
-      fetch('/api/public/data')
+    const syncData = () => {
+      fetch('/api/public/data?t=' + Date.now())
         .then((res) => res.json())
         .then((data) => {
-          if (data.success) {
+          if (data && data.success) {
             setPublicData(data);
             syncGlobals(data);
           }
         })
         .catch(() => {});
+    };
+
+    if (publicData) {
+      syncGlobals(publicData);
+    } else {
+      syncData();
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', syncData);
+      return () => window.removeEventListener('focus', syncData);
     }
   }, []);
 

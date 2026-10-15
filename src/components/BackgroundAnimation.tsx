@@ -116,10 +116,55 @@ export default function BackgroundAnimation() {
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    // Interactive cursor background illumination (smooth, lightweight 0-lag ambient glow)
+    let mouseX = -9999;
+    let mouseY = -9999;
+    let targetMouseX = -9999;
+    let targetMouseY = -9999;
+    let isPointerActive = false;
+
+    const hasFinePointer =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      targetMouseX = e.clientX;
+      targetMouseY = e.clientY;
+      isPointerActive = true;
+    };
+
+    const handlePointerLeave = () => {
+      isPointerActive = false;
+      targetMouseX = -9999;
+      targetMouseY = -9999;
+    };
+
+    if (hasFinePointer) {
+      window.addEventListener('pointermove', handlePointerMove, { passive: true });
+      document.addEventListener('mouseleave', handlePointerLeave, { passive: true });
+    }
+
     // Main 60/120 FPS lightweight render loop
     const maxDistance = width < 768 ? 95 : 125;
     const render = () => {
       ctx.clearRect(0, 0, width, height);
+
+      // 0. Ambient cursor illumination halo in background (GPU-efficient radial gradient on existing canvas)
+      if (hasFinePointer && isPointerActive && targetMouseX > -500) {
+        mouseX += (targetMouseX - mouseX) * 0.12;
+        mouseY += (targetMouseY - mouseY) * 0.12;
+
+        const haloRadius = 180;
+        const grad = ctx.createRadialGradient(mouseX, mouseY, 0, mouseX, mouseY, haloRadius);
+        grad.addColorStop(0, isAdmin ? 'rgba(6, 182, 212, 0.08)' : 'rgba(16, 185, 129, 0.07)');
+        grad.addColorStop(0.45, isAdmin ? 'rgba(99, 102, 241, 0.025)' : 'rgba(6, 182, 212, 0.025)');
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(mouseX, mouseY, haloRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       // 1. Update and draw particles
       const pLen = particles.length;
@@ -129,6 +174,20 @@ export default function BackgroundAnimation() {
         // Smooth position updates
         p.x += p.vx;
         p.y += p.vy;
+
+        // Smooth ambient cursor deflection field (interactive micro-current)
+        if (hasFinePointer && isPointerActive && targetMouseX > -500) {
+          const cdx = p.x - mouseX;
+          const cdy = p.y - mouseY;
+          const cDistSq = cdx * cdx + cdy * cdy;
+          const influenceRadius = 110;
+          if (cDistSq < influenceRadius * influenceRadius && cDistSq > 1) {
+            const cDist = Math.sqrt(cDistSq);
+            const repelStrength = (1 - cDist / influenceRadius) * 0.75;
+            p.x += (cdx / cDist) * repelStrength;
+            p.y += (cdy / cDist) * repelStrength;
+          }
+        }
 
         // Wrap around borders seamlessly
         if (p.x < -10) p.x = width + 10;
@@ -194,6 +253,10 @@ export default function BackgroundAnimation() {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (hasFinePointer) {
+        window.removeEventListener('pointermove', handlePointerMove);
+        document.removeEventListener('mouseleave', handlePointerLeave);
+      }
     };
   }, [isAdmin]);
 
