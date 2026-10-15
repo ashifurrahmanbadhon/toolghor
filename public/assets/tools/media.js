@@ -973,7 +973,7 @@
       class: 'snapyt-submit-btn',
       id: 'tg-vdown-submit-btn',
       onclick: function () { fetchOnlineFormats(); }
-    }, '🔍 ' + tr('ফরম্যাট খুঁজুন', 'Get Formats'));
+    }, '🔍 ' + tr('ভিডিও আনুন', 'Get Video'));
 
     onlineInputShell.appendChild(onlineIcon);
     onlineInputShell.appendChild(onlineInput);
@@ -1004,7 +1004,7 @@
 
       isFetchingFormats = true;
       onlineSubmitBtn.disabled = true;
-      onlineSubmitBtn.innerHTML = '⏳ ' + tr('অনুসন্ধান হচ্ছে…', 'Searching…');
+      onlineSubmitBtn.innerHTML = '⏳ ' + tr('ভিডিও আনা হচ্ছে…', 'Getting Video…');
       UI.clear(onlineStatusBox);
       onlineStatusBox.appendChild(UI.notice('info', '⏳ ' + tr('ভিডিওর ফরম্যাট ও তথ্য অনুসন্ধান করা হচ্ছে, অপেক্ষা করুন…', 'Fetching video details and available formats, please wait…')));
 
@@ -1037,7 +1037,7 @@
       } finally {
         isFetchingFormats = false;
         onlineSubmitBtn.disabled = false;
-        onlineSubmitBtn.innerHTML = '🔍 ' + tr('ফরম্যাট খুঁজুন', 'Get Formats');
+        onlineSubmitBtn.innerHTML = '🔍 ' + tr('ভিডিও আনুন', 'Get Video');
       }
     }
 
@@ -1046,30 +1046,22 @@
     function triggerBrowserDownload(downloadUrl, filename) {
       if (!downloadUrl) return;
 
-      // Method 1: Hidden iframe (triggers browser download shelf directly without opening new tabs/popups)
-      try {
-        var ifr = document.createElement('iframe');
-        ifr.style.display = 'none';
-        ifr.src = downloadUrl;
-        document.body.appendChild(ifr);
-        setTimeout(function () {
-          if (ifr && ifr.parentNode) ifr.parentNode.removeChild(ifr);
-        }, 30000);
-      } catch (e) {}
-
-      // Method 2: Anchor click with download attribute in same window context (target="_self")
+      // Direct, safe browser attachment download via anchor click without popups or hidden iframes
       try {
         var a = document.createElement('a');
         a.href = downloadUrl;
         if (filename) a.download = filename;
         a.target = '_self';
+        a.rel = 'noopener noreferrer';
         a.style.display = 'none';
         document.body.appendChild(a);
         a.click();
         setTimeout(function () {
           if (a && a.parentNode) a.parentNode.removeChild(a);
         }, 1500);
-      } catch (e) {}
+      } catch (e) {
+        window.location.assign(downloadUrl);
+      }
     }
 
     function renderDownloadSuccess(title, quality, container, downloadUrl, filename) {
@@ -1130,15 +1122,27 @@
       var filename = 'ToolGhor-' + cleanTitle + '.' + (fmt.container || 'mp4');
 
       try {
-        // Case A: Pre-generated direct download URL (for Instagram, Facebook, direct video)
+        // Case A: Pre-generated direct download URL (for Instagram, Facebook, direct video, or SaveAPI signed link)
         if (fmt.downloadUrl) {
+          if (fmt.downloadUrl.indexOf('action=saveapi_yt_create') > -1) {
+            var sRes = await fetch(fmt.downloadUrl);
+            var sData = await sRes.json();
+            if (!sData || !sData.success || !sData.download_url) {
+              throw new Error((sData && sData.error) || tr('ডাউনলোড লিঙ্ক তৈরি করা যায়নি।', 'Failed to generate download link.'));
+            }
+            triggerBrowserDownload(sData.download_url, filename);
+            renderDownloadSuccess(curOnlineData ? curOnlineData.title : 'Video', fmt.qualityLabel || fmt.quality, fmt.container || 'mp4', sData.download_url, filename);
+            UI.toast(tr('✓ ডাউনলোড ব্রাউজারে শুরু হয়েছে!', '✓ Download started in browser!'));
+            return;
+          }
+
           triggerBrowserDownload(fmt.downloadUrl, filename);
           renderDownloadSuccess(curOnlineData ? curOnlineData.title : 'Video', fmt.qualityLabel || fmt.quality, fmt.container || 'mp4', fmt.downloadUrl, filename);
           UI.toast(tr('✓ ডাউনলোড ব্রাউজারে শুরু হয়েছে!', '✓ Download started in browser!'));
           return;
         }
 
-        // Case B: YouTube conversion engine
+        // Case B: YouTube fallback conversion engine
         if (curOnlineData && curOnlineData.platform === 'youtube') {
           var convRes = await fetch('/api/video-downloader?action=convert&format=' + encodeURIComponent(fmt.formatKey) + '&url=' + encodeURIComponent(curOnlineData.url || onlineInput.value));
           var convData = await convRes.json();
@@ -1149,7 +1153,7 @@
 
           var targetDlUrl = convData.download_url;
 
-          // If conversion is async (loader.to progress polling)
+          // If conversion is async (progress polling)
           if (!targetDlUrl && convData.progress_url) {
             var pUrl = convData.progress_url;
             var pollCount = 0;
@@ -1303,6 +1307,7 @@
             UI.el('th', {}, tr('কোয়ালিটি / মান', 'Quality / Format')),
             UI.el('th', {}, tr('ফরম্যাট', 'Container')),
             UI.el('th', {}, tr('অডিও স্ট্যাটাস', 'Audio')),
+            UI.el('th', {}, tr('ফাইল সাইজ', 'File Size')),
             UI.el('th', { style: 'text-align:right;' }, tr('অ্যাকশন', 'Action'))
           )
         );
@@ -1326,6 +1331,12 @@
               : UI.el('span', { style: 'color:var(--ink-3); font-size:12.5px;' }, '❌ ' + tr('শুধু ভিডিও', 'Video Only'))
           );
 
+          var tdSize = UI.el('td', {},
+            fmt.size_mb
+              ? UI.el('span', { style: 'color:var(--ink-2); font-weight:500; font-size:12.5px;' }, fmt.size_mb + ' MB')
+              : UI.el('span', { style: 'color:var(--ink-3); font-size:12px;' }, tr('স্ট্যান্ডার্ড', 'Standard'))
+          );
+
           var tdAction = UI.el('td', { style: 'text-align:right;' });
           var dlBtn = UI.el('button', {
             type: 'button',
@@ -1337,6 +1348,7 @@
           trEl.appendChild(tdQuality);
           trEl.appendChild(tdFormat);
           trEl.appendChild(tdAudio);
+          trEl.appendChild(tdSize);
           trEl.appendChild(tdAction);
           tbody.appendChild(trEl);
         });
