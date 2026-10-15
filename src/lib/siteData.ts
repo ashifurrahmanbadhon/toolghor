@@ -2,7 +2,7 @@ import { getDb } from '@/lib/db';
 
 let cachedSiteData: any = null;
 let lastCacheTime = 0;
-const CACHE_TTL_MS = 5 * 1000; // 5 seconds fast cache for instant live synchronization
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes high-performance in-memory cache (cleared instantly on admin edits)
 
 export async function getPublicSiteData() {
   const now = Date.now();
@@ -13,9 +13,9 @@ export async function getPublicSiteData() {
   try {
     const sql = getDb();
 
-    // Query all sections in parallel with a fast 1500ms timeout fallback
+    // Query all sections in parallel with a fast 700ms timeout fallback for instant page loads
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('DB Query Timeout')), 1500)
+      setTimeout(() => reject(new Error('DB Query Timeout')), 700)
     );
 
     const queryPromise = Promise.all([

@@ -1049,10 +1049,18 @@ export async function GET(req: NextRequest) {
         );
       }
 
+      const outFilename = createData.filename || `ToolGhor-YouTube-${format}.mp4`;
+      const sizeParam = createData.file_size ? `&size=${createData.file_size}` : '';
+      const proxiedDlUrl = `/api/video-downloader?action=proxy_download&url=${encodeURIComponent(
+        dlUrl
+      )}&filename=${encodeURIComponent(outFilename)}${sizeParam}`;
+
       return NextResponse.json({
         success: true,
-        download_url: dlUrl,
-        filename: createData.filename || null,
+        download_url: proxiedDlUrl,
+        direct_url: dlUrl,
+        file_size: createData.file_size || null,
+        filename: outFilename,
         expires_at: createData.expires || createData.expires_at || null,
       });
     } catch (err: unknown) {
@@ -1141,10 +1149,11 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 5. Action: PROXY_DOWNLOAD (Safe browser attachment stream with SSRF validation)
+  // 5. Action: PROXY_DOWNLOAD (Safe browser attachment stream with SSRF validation and byte-bounded control)
   if (action === 'proxy_download') {
     const targetUrl = searchParams.get('url') || '';
     const filename = searchParams.get('filename') || 'ToolGhor-video.mp4';
+    const explicitSize = searchParams.get('size');
 
     const safeCheck = validateSafeUrl(targetUrl);
     if (!safeCheck.safe) {
@@ -1156,8 +1165,9 @@ export async function GET(req: NextRequest) {
         headers: {
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          Accept: '*/*',
         },
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(30000),
       });
 
       if (!upstreamRes.ok || !upstreamRes.body) {
@@ -1170,10 +1180,55 @@ export async function GET(req: NextRequest) {
       const headers = new Headers();
       headers.set('Content-Type', upstreamRes.headers.get('content-type') || 'application/octet-stream');
       headers.set('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
-      const len = upstreamRes.headers.get('content-length');
-      if (len) headers.set('Content-Length', len);
 
-      return new NextResponse(upstreamRes.body, {
+      const len = upstreamRes.headers.get('content-length') || explicitSize;
+      if (len && len !== '0' && len !== 'null') {
+        headers.set('Content-Length', String(len));
+      }
+      headers.set('Connection', 'close');
+
+      // Create bounded stream if expected size is known to prevent mobile download managers from looping or exceeding file size
+      const expectedBytes = explicitSize ? parseInt(explicitSize, 10) : 0;
+      let body: ReadableStream<Uint8Array> = upstreamRes.body;
+
+      if (expectedBytes > 0) {
+        let sentBytes = 0;
+        const reader = upstreamRes.body.getReader();
+        body = new ReadableStream<Uint8Array>({
+          async pull(controller) {
+            try {
+              const { done, value } = await reader.read();
+              if (done || sentBytes >= expectedBytes) {
+                controller.close();
+                reader.cancel();
+                return;
+              }
+              const remaining = expectedBytes - sentBytes;
+              if (value.length <= remaining) {
+                sentBytes += value.length;
+                controller.enqueue(value);
+              } else {
+                const slice = value.subarray(0, remaining);
+                sentBytes += slice.length;
+                controller.enqueue(slice);
+                controller.close();
+                reader.cancel();
+              }
+              if (sentBytes >= expectedBytes) {
+                controller.close();
+                reader.cancel();
+              }
+            } catch (e) {
+              controller.error(e);
+            }
+          },
+          cancel() {
+            reader.cancel();
+          },
+        });
+      }
+
+      return new NextResponse(body, {
         status: 200,
         headers,
       });
