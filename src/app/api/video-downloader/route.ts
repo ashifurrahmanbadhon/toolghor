@@ -65,7 +65,24 @@ export async function OPTIONS() {
 }
 
 // -------------------------------------------------------------
-// Platform Detectors & Adapters
+// Format Type Interface
+// -------------------------------------------------------------
+export interface NormalizedFormat {
+  formatKey: string;
+  quality: string;
+  qualityLabel: string;
+  type: 'video' | 'audio';
+  container: string;
+  hasVideo: boolean;
+  hasAudio: boolean;
+  size_mb?: number | null;
+  downloadUrl?: string;
+  isRecommended?: boolean;
+  note?: string;
+}
+
+// -------------------------------------------------------------
+// Platform Detectors
 // -------------------------------------------------------------
 
 function detectPlatform(urlStr: string): 'youtube' | 'instagram' | 'facebook' | 'direct' | 'unsupported' {
@@ -110,6 +127,257 @@ function extractYouTubeId(rawUrl: string): string | null {
   return null;
 }
 
+// -------------------------------------------------------------
+// Documented Media Provider Integration: SaveAPI (saveapi.org)
+// -------------------------------------------------------------
+async function resolveSaveApi(rawUrl: string, apiKey: string) {
+  const isYt = /youtube\.com|youtu\.be|music\.youtube\.com/i.test(rawUrl);
+
+  if (isYt) {
+    // 1. YouTube Endpoint: /v1/youtube/info
+    const infoUrl = `https://api.saveapi.org/v1/youtube/info?url=${encodeURIComponent(rawUrl)}`;
+    const infoRes = await fetch(infoUrl, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!infoRes.ok) {
+      const errJson = await infoRes.json().catch(() => ({}));
+      return {
+        success: false,
+        error: errJson?.error?.message || `SaveAPI YouTube error (${infoRes.status})`,
+      };
+    }
+
+    const data = await infoRes.json();
+    if (!data.success) {
+      return {
+        success: false,
+        error: data?.error?.message || 'SaveAPI YouTube resolve failed',
+      };
+    }
+
+    const ytId = data.id || extractYouTubeId(rawUrl) || 'yt-video';
+    const title = data.meta?.title || `YouTube Video (${ytId})`;
+    const author = data.meta?.author || 'YouTube Creator';
+    const thumb = data.meta?.thumbnail || `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
+
+    const formats: NormalizedFormat[] = [];
+    if (Array.isArray(data.formats) && data.formats.length > 0) {
+      for (const f of data.formats) {
+        const isAudio = f.type === 'audio' || f.format === 'mp3' || f.format === 'm4a';
+        const qualityName = f.quality || f.format;
+        formats.push({
+          formatKey: f.format,
+          quality: qualityName,
+          qualityLabel: qualityName,
+          type: isAudio ? 'audio' : 'video',
+          container: f.ext || (isAudio ? 'mp3' : 'mp4'),
+          hasVideo: !isAudio,
+          hasAudio: true,
+          size_mb: typeof f.size_mb === 'number' ? f.size_mb : null,
+          isRecommended: f.format === '720' || f.format === 'mp3',
+          downloadUrl: `/api/video-downloader?action=saveapi_yt_create&url=${encodeURIComponent(
+            rawUrl
+          )}&format=${encodeURIComponent(f.format)}`,
+          note: isAudio ? 'হাই কোয়ালিটি অডিও ট্র্যাক' : `${qualityName} রেজোলিউশন`,
+        });
+      }
+    }
+
+    if (!formats.length) {
+      formats.push(
+        {
+          formatKey: '720',
+          quality: '720p HD',
+          qualityLabel: '720p HD (Fast)',
+          type: 'video',
+          container: 'mp4',
+          hasVideo: true,
+          hasAudio: true,
+          isRecommended: true,
+          downloadUrl: `/api/video-downloader?action=saveapi_yt_create&url=${encodeURIComponent(
+            rawUrl
+          )}&format=720`,
+          note: 'দ্রুত ডাউনলোড ও স্পষ্ট ভিডিও',
+        },
+        {
+          formatKey: '1080',
+          quality: '1080p Full HD',
+          qualityLabel: '1080p Full HD',
+          type: 'video',
+          container: 'mp4',
+          hasVideo: true,
+          hasAudio: true,
+          downloadUrl: `/api/video-downloader?action=saveapi_yt_create&url=${encodeURIComponent(
+            rawUrl
+          )}&format=1080`,
+          note: 'উচ্চমানের ১০৮০p ভিডিও',
+        },
+        {
+          formatKey: 'mp3',
+          quality: 'MP3 Audio (320 kbps)',
+          qualityLabel: 'MP3 (320 kbps)',
+          type: 'audio',
+          container: 'mp3',
+          hasVideo: false,
+          hasAudio: true,
+          isRecommended: true,
+          downloadUrl: `/api/video-downloader?action=saveapi_yt_create&url=${encodeURIComponent(
+            rawUrl
+          )}&format=mp3`,
+          note: 'হাই কোয়ালিটি স্টেরিও অডিও গান',
+        }
+      );
+    }
+
+    return {
+      success: true,
+      provider: 'saveapi',
+      platform: 'youtube',
+      id: ytId,
+      title,
+      author,
+      url: rawUrl,
+      is_shorts: /shorts/i.test(rawUrl),
+      thumbnails: {
+        max: thumb,
+        hq: thumb,
+      },
+      formats,
+    };
+  } else {
+    // 2. Multi-platform Endpoint: /v1/download (Instagram, Facebook, TikTok, Twitter/X, etc.)
+    const dlUrl = `https://api.saveapi.org/v1/download?url=${encodeURIComponent(rawUrl)}`;
+    const res = await fetch(dlUrl, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      return {
+        success: false,
+        error: errJson?.error?.message || `SaveAPI resolve error (${res.status})`,
+      };
+    }
+
+    const data = await res.json();
+    if (!data.success) {
+      return {
+        success: false,
+        error: data?.error?.message || 'SaveAPI media resolve failed',
+      };
+    }
+
+    const formats: NormalizedFormat[] = [];
+    const title = data.meta?.title || data.meta?.text || `${data.platform || 'Social'} Video`;
+    const cleanTitle = title.replace(/[/\\?%*:|"<>]/g, '').slice(0, 40) || 'Video';
+    const thumb = data.meta?.thumbnail || '';
+
+    // Check formats array
+    if (Array.isArray(data.formats) && data.formats.length > 0) {
+      for (const f of data.formats) {
+        const isAudio = f.type === 'audio' || f.format === 'mp3';
+        const ext = isAudio ? 'mp3' : 'mp4';
+        const fileUrl = f.url || '';
+        formats.push({
+          formatKey: f.format || (isAudio ? 'audio' : 'video'),
+          quality: f.label || (isAudio ? 'MP3 Audio' : 'HD Video'),
+          qualityLabel: f.label || (isAudio ? 'MP3 Audio' : 'HD Video'),
+          type: isAudio ? 'audio' : 'video',
+          container: ext,
+          hasVideo: !isAudio,
+          hasAudio: true,
+          size_mb: typeof f.size_mb === 'number' ? f.size_mb : null,
+          isRecommended: f.format === data.recommended_format || (!isAudio && formats.length === 0),
+          downloadUrl: fileUrl
+            ? `/api/video-downloader?action=proxy_download&url=${encodeURIComponent(
+                fileUrl
+              )}&filename=${encodeURIComponent(`ToolGhor-${cleanTitle}.${ext}`)}`
+            : undefined,
+          note: isAudio ? 'অডিও ট্র্যাক' : 'ক্লিন অরিজিনাল ভিডিও',
+        });
+      }
+    }
+
+    // Check medias array if formats was empty or missing video entries
+    if (Array.isArray(data.medias) && data.medias.length > 0) {
+      for (let i = 0; i < data.medias.length; i++) {
+        const m = data.medias[i];
+        if (m.type === 'video' && m.url) {
+          const alreadyAdded = formats.some(
+            (f) => f.type === 'video' && f.downloadUrl?.includes(encodeURIComponent(m.url))
+          );
+          if (!alreadyAdded) {
+            const ext = m.ext || 'mp4';
+            formats.push({
+              formatKey: `media-video-${i}`,
+              quality: m.quality
+                ? `${m.quality} (${ext.toUpperCase()})`
+                : `Original Video (${ext.toUpperCase()})`,
+              qualityLabel: m.quality ? `${m.quality}` : `Original (${ext.toUpperCase()})`,
+              type: 'video',
+              container: ext,
+              hasVideo: true,
+              hasAudio: true,
+              size_mb: typeof m.size_mb === 'number' ? m.size_mb : null,
+              isRecommended: formats.filter((f) => f.type === 'video').length === 0,
+              downloadUrl: `/api/video-downloader?action=proxy_download&url=${encodeURIComponent(
+                m.url
+              )}&filename=${encodeURIComponent(`ToolGhor-${cleanTitle}.${ext}`)}`,
+              note: 'সরাসরি হাই-স্পিড ভিডিও',
+            });
+          }
+        }
+      }
+    }
+
+    // Check music/audio
+    if (data.music && data.music.url) {
+      const alreadyAudio = formats.some((f) => f.type === 'audio');
+      if (!alreadyAudio) {
+        const ext = data.music.ext || 'mp3';
+        formats.push({
+          formatKey: 'media-audio',
+          quality: 'Audio Extracted (MP3)',
+          qualityLabel: 'MP3 Audio',
+          type: 'audio',
+          container: ext,
+          hasVideo: false,
+          hasAudio: true,
+          size_mb: typeof data.music.size_mb === 'number' ? data.music.size_mb : null,
+          isRecommended: true,
+          downloadUrl: `/api/video-downloader?action=proxy_download&url=${encodeURIComponent(
+            data.music.url
+          )}&filename=${encodeURIComponent(`ToolGhor-${cleanTitle}-Audio.${ext}`)}`,
+          note: 'ব্যাকগ্রাউন্ড অরিজিনাল অডিও',
+        });
+      }
+    }
+
+    return {
+      success: true,
+      provider: 'saveapi',
+      platform: data.platform || detectPlatform(rawUrl),
+      id: data.video_id || 'video',
+      title,
+      author: data.meta?.author || `${data.platform || 'Social'} User`,
+      url: rawUrl,
+      is_shorts: data.platform === 'instagram' || data.platform === 'tiktok',
+      thumbnails: {
+        max: thumb,
+        hq: thumb,
+      },
+      formats,
+    };
+  }
+}
+
+// -------------------------------------------------------------
+// Native Fallback Adapters (ToolGhor Internal Resolvers)
+// -------------------------------------------------------------
+
 // Adapter: YouTube
 async function resolveYouTube(rawUrl: string) {
   const videoId = extractYouTubeId(rawUrl);
@@ -146,7 +414,7 @@ async function resolveYouTube(rawUrl: string) {
     // Non-blocking fallback
   }
 
-  const formats = [
+  const formats: NormalizedFormat[] = [
     {
       formatKey: '1080',
       quality: '1080p Full HD',
@@ -229,7 +497,6 @@ async function resolveYouTube(rawUrl: string) {
 
 // Adapter: Instagram (Public Reels / Posts)
 async function resolveInstagram(rawUrl: string) {
-  // Extract Instagram shortcode
   const match = rawUrl.match(/(?:reel|p|tv)\/([A-Za-z0-9_-]+)/);
   const shortcode = match ? match[1] : null;
 
@@ -239,7 +506,6 @@ async function resolveInstagram(rawUrl: string) {
   let directVideoUrl = '';
 
   try {
-    // 1. Try public oEmbed
     const oembedRes = await fetch(
       `https://api.instagram.com/oembed/?url=${encodeURIComponent(rawUrl)}`,
       {
@@ -260,7 +526,6 @@ async function resolveInstagram(rawUrl: string) {
     // Fallback
   }
 
-  // 2. Try fetching embed page for video url
   if (shortcode) {
     try {
       const embedUrl = `https://www.instagram.com/p/${shortcode}/embed/captioned/`;
@@ -275,8 +540,6 @@ async function resolveInstagram(rawUrl: string) {
 
       if (embedRes.ok) {
         const html = await embedRes.text();
-
-        // Extract video src or video_url from embed HTML
         const vidMatch =
           html.match(/class="EmbeddedVideoImage"[^>]*src="([^"]+)"/) ||
           html.match(/"video_url":"([^"]+)"/) ||
@@ -298,8 +561,7 @@ async function resolveInstagram(rawUrl: string) {
     }
   }
 
-  // Format list based on genuine technical availability
-  const formats = [];
+  const formats: NormalizedFormat[] = [];
   if (directVideoUrl) {
     formats.push({
       formatKey: 'ig-mp4',
@@ -329,7 +591,6 @@ async function resolveInstagram(rawUrl: string) {
       note: 'ইনস্টাগ্রাম রিলসের ব্যাকগ্রাউন্ড অডিও',
     });
   } else {
-    // If Instagram protected the video behind a login wall, provide honest platform notification
     return {
       success: false,
       platform: 'instagram',
@@ -401,7 +662,7 @@ async function resolveFacebook(rawUrl: string) {
     };
   }
 
-  const formats = [
+  const formats: NormalizedFormat[] = [
     {
       formatKey: 'fb-mp4',
       quality: 'Original HD (MP4)',
@@ -463,10 +724,12 @@ async function resolveDirect(rawUrl: string) {
     const cLength = headRes.headers.get('content-length');
 
     let sizeStr = '';
+    let sizeMb: number | null = null;
     if (cLength) {
       const bytes = parseInt(cLength, 10);
       if (bytes > 0) {
-        sizeStr = (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        sizeMb = parseFloat((bytes / (1024 * 1024)).toFixed(1));
+        sizeStr = `${sizeMb} MB`;
       }
     }
 
@@ -474,7 +737,7 @@ async function resolveDirect(rawUrl: string) {
     const filename = urlPath.split('/').pop() || 'video.mp4';
     const ext = filename.split('.').pop()?.toLowerCase() || 'mp4';
 
-    const formats = [
+    const formats: NormalizedFormat[] = [
       {
         formatKey: 'direct-original',
         quality: `Original (${ext.toUpperCase()}${sizeStr ? ' · ' + sizeStr : ''})`,
@@ -483,6 +746,7 @@ async function resolveDirect(rawUrl: string) {
         container: ext,
         hasVideo: !cType.includes('audio'),
         hasAudio: true,
+        size_mb: sizeMb,
         downloadUrl: `/api/video-downloader?action=proxy_download&url=${encodeURIComponent(
           rawUrl
         )}&filename=${encodeURIComponent('ToolGhor-' + filename)}`,
@@ -552,7 +816,70 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // 2. Action: PROGRESS (proxy polling for loader converter)
+  // 2. Action: SAVEAPI_YT_CREATE (Authorized signed YouTube link creation via SaveAPI)
+  if (action === 'saveapi_yt_create') {
+    const apiKey = process.env.SAVEAPI_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'SAVEAPI_KEY is not configured in Vercel environment variables. Using fallback converter.',
+        },
+        { status: 501 }
+      );
+    }
+
+    const targetUrl = searchParams.get('url') || '';
+    const format = searchParams.get('format') || '720';
+    const safeCheck = validateSafeUrl(targetUrl);
+    if (!safeCheck.safe) {
+      return NextResponse.json({ success: false, error: safeCheck.error }, { status: 403 });
+    }
+
+    try {
+      const createUrl = `https://api.saveapi.org/v1/youtube/create?url=${encodeURIComponent(
+        targetUrl
+      )}&format=${encodeURIComponent(format)}`;
+      const createRes = await fetch(createUrl, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!createRes.ok) {
+        const errJson = await createRes.json().catch(() => ({}));
+        return NextResponse.json(
+          {
+            success: false,
+            error: errJson?.error?.message || 'Failed to generate YouTube download link via SaveAPI.',
+          },
+          { status: 502 }
+        );
+      }
+
+      const createData = await createRes.json();
+      if (!createData.success || !createData.download_url) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: createData?.error?.message || 'No direct download link returned from SaveAPI.',
+          },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        download_url: createData.download_url,
+        expires_at: createData.expires_at || null,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'SaveAPI YouTube create failed';
+      return NextResponse.json({ success: false, error: msg }, { status: 500 });
+    }
+  }
+
+  // 3. Action: PROGRESS (proxy polling for native fallback converter)
   if (action === 'progress') {
     const progressUrl = searchParams.get('progress_url');
     if (!progressUrl) {
@@ -589,7 +916,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 3. Action: CONVERT (for YouTube formats)
+  // 4. Action: CONVERT (fallback conversion for YouTube formats when no API key configured)
   if (action === 'convert') {
     const videoId = extractYouTubeId(rawUrl) || searchParams.get('id');
     if (!videoId) {
@@ -602,37 +929,37 @@ export async function GET(req: NextRequest) {
     let fmt = validFormats.includes(format) ? format : '720';
     if (fmt === '480') fmt = '720';
 
-      try {
-        const initUrl = `https://loader.to/ajax/download.php?button=1&start=1&end=1&format=${fmt}&url=${encodeURIComponent(
-          canonicalUrl
-        )}`;
-        const initRes = await fetch(initUrl, {
-          headers: {
-            'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          },
-          signal: AbortSignal.timeout(8000),
-        });
+    try {
+      const initUrl = `https://loader.to/ajax/download.php?button=1&start=1&end=1&format=${fmt}&url=${encodeURIComponent(
+        canonicalUrl
+      )}`;
+      const initRes = await fetch(initUrl, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        },
+        signal: AbortSignal.timeout(8000),
+      });
 
-        if (!initRes.ok) {
-          return NextResponse.json({ success: false, error: 'Conversion service unavailable.' }, { status: 502 });
-        }
-
-        const initData = await initRes.json();
-        return NextResponse.json({
-          success: true,
-          progress_url: initData.progress_url || null,
-          download_url: initData.download_url || null,
-          title: initData.title || null,
-          id: videoId,
-        });
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Conversion request failed';
-        return NextResponse.json({ success: false, error: msg }, { status: 500 });
+      if (!initRes.ok) {
+        return NextResponse.json({ success: false, error: 'Conversion service unavailable.' }, { status: 502 });
       }
+
+      const initData = await initRes.json();
+      return NextResponse.json({
+        success: true,
+        progress_url: initData.progress_url || null,
+        download_url: initData.download_url || null,
+        title: initData.title || null,
+        id: videoId,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Conversion request failed';
+      return NextResponse.json({ success: false, error: msg }, { status: 500 });
+    }
   }
 
-  // 4. Action: PROXY_DOWNLOAD (Safe browser attachment download)
+  // 5. Action: PROXY_DOWNLOAD (Safe browser attachment stream with SSRF validation)
   if (action === 'proxy_download') {
     const targetUrl = searchParams.get('url') || '';
     const filename = searchParams.get('filename') || 'ToolGhor-video.mp4';
@@ -674,7 +1001,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 5. Action: INFO (Default format inspection & metadata)
+  // 6. Action: INFO (Default format inspection & metadata)
   if (!rawUrl) {
     return NextResponse.json(
       { success: false, error: 'ভিডিও লিংক প্রদান করা বাধ্যতামূলক। (A video URL is required.)' },
@@ -687,6 +1014,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, error: safeCheck.error }, { status: 403 });
   }
 
+  // A. Primary: If SAVEAPI_KEY is configured in Vercel, query SaveAPI
+  const saveApiKey = process.env.SAVEAPI_KEY;
+  if (saveApiKey) {
+    try {
+      const saveApiResult = await resolveSaveApi(rawUrl, saveApiKey);
+      if (saveApiResult.success) {
+        return NextResponse.json(saveApiResult);
+      }
+      console.warn('[VideoDownloader] SaveAPI returned error, falling back to native resolver:', saveApiResult.error);
+    } catch (err) {
+      console.warn('[VideoDownloader] SaveAPI fetch exception, falling back to native resolver:', err);
+    }
+  }
+
+  // B. Fallback: Native ToolGhor Platform Adapters
   const platform = detectPlatform(rawUrl);
 
   switch (platform) {
