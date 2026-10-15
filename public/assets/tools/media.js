@@ -1043,18 +1043,78 @@
 
     var onlineFeedbackBox = UI.el('div', { class: 'snapyt-feedback-box', style: 'margin-top:16px;' });
 
-    async function triggerDirectDownload(url, filename) {
-      var a = document.createElement('a');
-      a.href = url;
-      a.download = filename || 'ToolGhor-video.mp4';
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(function () {
-        if (a && a.parentNode) a.parentNode.removeChild(a);
-      }, 500);
-      UI.toast(tr('✓ ডাউনলোড ব্রাউজারে শুরু হয়েছে!', '✓ Download started in browser!'));
+    function triggerBrowserDownload(downloadUrl, filename) {
+      if (!downloadUrl) return;
+
+      // Method 1: Hidden iframe (triggers browser download shelf directly without opening new tabs/popups)
+      try {
+        var ifr = document.createElement('iframe');
+        ifr.style.display = 'none';
+        ifr.src = downloadUrl;
+        document.body.appendChild(ifr);
+        setTimeout(function () {
+          if (ifr && ifr.parentNode) ifr.parentNode.removeChild(ifr);
+        }, 30000);
+      } catch (e) {}
+
+      // Method 2: Anchor click with download attribute in same window context (target="_self")
+      try {
+        var a = document.createElement('a');
+        a.href = downloadUrl;
+        if (filename) a.download = filename;
+        a.target = '_self';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () {
+          if (a && a.parentNode) a.parentNode.removeChild(a);
+        }, 1500);
+      } catch (e) {}
+    }
+
+    function renderDownloadSuccess(title, quality, container, downloadUrl, filename) {
+      UI.clear(onlineFeedbackBox);
+      onlineFeedbackBox.hidden = false;
+
+      var box = UI.el('div', {
+        style: 'padding:16px 18px; background:color-mix(in srgb, #10b981 12%, var(--paper)); border-radius:12px; border:1.5px solid #10b981; animation: spaFadeIn .2s ease-out;'
+      });
+
+      var head = UI.el('div', { style: 'display:flex; align-items:center; gap:8px; margin-bottom:8px;' },
+        UI.el('span', { style: 'font-size:22px;' }, '✅'),
+        UI.el('strong', { style: 'color:var(--ink-1); font-size:16px;' }, tr('ডাউনলোড প্রস্তুত ও শুরু হয়েছে!', 'Download Ready & Started!'))
+      );
+
+      var desc = UI.el('p', { style: 'margin:0 0 12px; font-size:13.5px; color:var(--ink-2); line-height:1.4;' },
+        tr('ফাইলটি আপনার ব্রাউজারে সেভ হচ্ছে: ', 'The file is now saving in your browser: ') +
+        UI.el('b', {}, (title || 'Video').slice(0, 65)) + ' (' + quality + ' ' + (container || 'mp4').toUpperCase() + ')'
+      );
+
+      var btnRow = UI.el('div', { style: 'display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px;' });
+
+      var saveLinkBtn = UI.el('a', {
+        class: 'btn-pri sm',
+        href: downloadUrl,
+        download: filename || '',
+        target: '_self',
+        rel: 'noopener noreferrer',
+        style: 'background:#10b981; border-color:#10b981; font-weight:700; color:#fff; text-decoration:none; display:inline-flex; align-items:center; gap:8px; padding:10px 18px; border-radius:8px; cursor:pointer;',
+        onclick: function () {
+          triggerBrowserDownload(downloadUrl, filename);
+        }
+      }, '📥 ' + tr('সরাসরি ফাইল সেভ করুন (Save File Directly)', 'Save File Directly'));
+
+      btnRow.appendChild(saveLinkBtn);
+
+      var hint = UI.el('small', { style: 'display:block; margin-top:10px; color:var(--ink-3); font-size:12px;' },
+        tr('💡 পরামর্শ: আপনার ব্রাউজারের ডাউনলোড বারে ফাইলটি না নামলে ওপরের সবুজ বাটনে চাপুন। সাথে সাথে ফাইলটি সেভ হবে।', '💡 Tip: If download didn\'t begin automatically in your browser bar, click the green button above to save immediately.')
+      );
+
+      box.appendChild(head);
+      box.appendChild(desc);
+      box.appendChild(btnRow);
+      box.appendChild(hint);
+      onlineFeedbackBox.appendChild(box);
     }
 
     async function handleFormatDownload(fmt, btn) {
@@ -1066,12 +1126,15 @@
       onlineFeedbackBox.hidden = false;
       onlineFeedbackBox.appendChild(UI.notice('info', '⏳ ' + tr('ডাউনলোড প্রস্তুত হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন…', 'Preparing download, please wait…')));
 
+      var cleanTitle = (curOnlineData && curOnlineData.title) ? curOnlineData.title.replace(/[/\\?%*:|"<>]/g, '').slice(0, 50) : 'Video';
+      var filename = 'ToolGhor-' + cleanTitle + '.' + (fmt.container || 'mp4');
+
       try {
         // Case A: Pre-generated direct download URL (for Instagram, Facebook, direct video)
         if (fmt.downloadUrl) {
-          await triggerDirectDownload(fmt.downloadUrl, 'ToolGhor-' + (fmt.formatKey || 'video') + '.' + (fmt.container || 'mp4'));
-          UI.clear(onlineFeedbackBox);
-          onlineFeedbackBox.appendChild(UI.notice('ok', '✓ ' + tr('ডাউনলোড সরাসরি আপনার ব্রাউজারে শুরু হয়েছে!', 'Download started directly in your browser!')));
+          triggerBrowserDownload(fmt.downloadUrl, filename);
+          renderDownloadSuccess(curOnlineData ? curOnlineData.title : 'Video', fmt.qualityLabel || fmt.quality, fmt.container || 'mp4', fmt.downloadUrl, filename);
+          UI.toast(tr('✓ ডাউনলোড ব্রাউজারে শুরু হয়েছে!', '✓ Download started in browser!'));
           return;
         }
 
@@ -1093,13 +1156,16 @@
             var maxPoll = 45;
 
             while (!targetDlUrl && pollCount < maxPoll) {
-              await new Promise(function (resolve) { setTimeout(resolve, 1500); });
+              await new Promise(function (resolve) { setTimeout(resolve, 1200); });
               pollCount++;
               try {
                 var pRes = await fetch('/api/video-downloader?action=progress&progress_url=' + encodeURIComponent(pUrl));
                 var pData = await pRes.json();
                 if (pData && pData.download_url) {
                   targetDlUrl = pData.download_url;
+                  break;
+                }
+                if (pData && pData.text && pData.text.toLowerCase().indexOf('unable') > -1) {
                   break;
                 }
               } catch {
@@ -1112,9 +1178,9 @@
             throw new Error(tr('সার্ভার থেকে ডাউনলোড প্রস্তুত হতে অতিরিক্ত সময় লেগেছে। দয়া করে ৭২০p ফরম্যাটটি চেষ্টা করুন।', 'Download preparation took too long. Please try the 720p format.'));
           }
 
-          await triggerDirectDownload(targetDlUrl, 'ToolGhor-' + (fmt.formatKey || 'video') + '.' + (fmt.container || 'mp4'));
-          UI.clear(onlineFeedbackBox);
-          onlineFeedbackBox.appendChild(UI.notice('ok', '✓ ' + tr('ডাউনলোড সরাসরি আপনার ব্রাউজারে শুরু হয়েছে!', 'Download started directly in your browser!')));
+          triggerBrowserDownload(targetDlUrl, filename);
+          renderDownloadSuccess(curOnlineData.title, fmt.qualityLabel || fmt.quality, fmt.container || 'mp4', targetDlUrl, filename);
+          UI.toast(tr('✓ ডাউনলোড ব্রাউজারে শুরু হয়েছে!', '✓ Download started in browser!'));
           return;
         }
 
