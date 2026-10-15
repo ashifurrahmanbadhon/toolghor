@@ -189,16 +189,35 @@
   T['youtube-downloader'] = function (root) {
     var curData = null;
     var isFetching = false;
+    var currentMode = 'video'; // 'video' | 'shorts'
+    var curFormatTab = 'video'; // 'video' | 'audio' | 'thumb'
 
     var container = UI.el('div', { class: 'stack snapyt-box' });
 
-    // 1. Hero Header (SnapYT Engine badge removed)
+    // 1. Hero Header
     var hero = UI.el('div', { class: 'snapyt-hero' },
-      UI.el('h2', {}, tr('ইউটিউব ভিডিও ও অডিও ডাউনলোডার', 'YouTube Video & Audio Downloader')),
-      UI.el('p', {}, tr('ইউটিউব ভিডিও বা শর্টস-এর লিংক দিন, কোয়ালিটি নির্বাচন করুন এবং সরাসরি ফাইলে সেভ করুন।', 'Paste a YouTube video or Shorts link, select quality, and save the file directly.'))
+      UI.el('h2', {}, tr('ইউটিউব ডাউনলোডার', 'YouTube Downloader')),
+      UI.el('p', {}, tr('ভিডিও বা শর্টসের লিংক দিন, পছন্দের ফরম্যাট নির্বাচন করুন এবং সরাসরি ফাইলে ডাউনলোড করুন।', 'Paste video or Shorts link, choose your preferred format, and download directly.'))
     );
 
-    // 2. Input Shell
+    // 2. Video vs Shorts Mode Switcher Tabs
+    var modeTabs = UI.el('div', { class: 'snapyt-mode-tabs' });
+    var btnModeVideo = UI.el('button', {
+      type: 'button',
+      class: 'snapyt-mode-btn active',
+      onclick: function () { switchMode('video'); }
+    }, '🎬 ' + tr('ইউটিউব ভিডিও', 'YouTube Video'));
+
+    var btnModeShorts = UI.el('button', {
+      type: 'button',
+      class: 'snapyt-mode-btn',
+      onclick: function () { switchMode('shorts'); }
+    }, '⚡ ' + tr('ইউটিউব শর্টস', 'YouTube Shorts'));
+
+    modeTabs.appendChild(btnModeVideo);
+    modeTabs.appendChild(btnModeShorts);
+
+    // 3. Input Shell
     var inputShell = UI.el('div', { class: 'snapyt-input-shell' });
     var inputIcon = UI.el('span', { class: 'snapyt-input-icon', 'aria-hidden': 'true' },
       UI.icon('youtube', 22)
@@ -207,7 +226,7 @@
       type: 'url',
       class: 'snapyt-url-input',
       id: 'snapyt-video-url',
-      placeholder: tr('ইউটিউব ভিডিও বা শর্টসের লিংক পেস্ট করুন… (যেমন: https://youtu.be/...)', 'Paste YouTube video or Shorts link here…'),
+      placeholder: tr('ইউটিউব ভিডিওর লিংক পেস্ট করুন… (যেমন: https://www.youtube.com/watch?v=...)', 'Paste YouTube video link here… (e.g. https://www.youtube.com/watch?v=...)'),
       autocomplete: 'off',
       autocorrect: 'off',
       autocapitalize: 'off',
@@ -249,16 +268,23 @@
 
     // Tip line
     var tipLine = UI.el('p', { class: 'snapyt-tip' },
-      tr('💡 পরামর্শ: ইউটিউবে ভিডিওর নিচে Share চেপে "Copy link" চাপুন এবং ওপরের বক্সে পেস্ট করুন।', '💡 Tip: open the YouTube video, tap Share → Copy link, then paste it above.')
+      tr('💡 পরামর্শ: ইউটিউব ভিডিওর নিচে Share চেপে "Copy link" চাপুন এবং ওপরের বক্সে পেস্ট করুন।', '💡 Tip: open the YouTube video, tap Share → Copy link, then paste it above.')
     );
 
-    // Feature Highlights Row
-    var featuresRow = UI.el('div', { class: 'snapyt-features' },
-      UI.el('span', { class: 'snapyt-feat-pill' }, '⚡ ' + tr('ইনস্ট্যান্ট ফেচ', 'Instant Fetch')),
-      UI.el('span', { class: 'snapyt-feat-pill' }, '🎬 ' + tr('১০৮০p Full HD পর্যন্ত', 'Up to 1080p Full HD')),
-      UI.el('span', { class: 'snapyt-feat-pill' }, '🎵 ' + tr('হাই-কোয়ালিটি MP3 অডিও', 'High Quality MP3')),
-      UI.el('span', { class: 'snapyt-feat-pill' }, '🔒 ' + tr('১০০% নিরাপদ ও ব্রাউজার-ভিত্তিক', '100% Private, No Login'))
-    );
+    function switchMode(mode) {
+      currentMode = mode;
+      btnModeVideo.classList.toggle('active', mode === 'video');
+      btnModeShorts.classList.toggle('active', mode === 'shorts');
+
+      if (mode === 'video') {
+        urlInput.placeholder = tr('ইউটিউব ভিডিওর লিংক পেস্ট করুন… (যেমন: https://www.youtube.com/watch?v=...)', 'Paste YouTube video link here… (e.g. https://www.youtube.com/watch?v=...)');
+        tipLine.textContent = tr('💡 পরামর্শ: ইউটিউব ভিডিওর নিচে Share চেপে "Copy link" চাপুন এবং ওপরের বক্সে পেস্ট করুন।', '💡 Tip: open the YouTube video, tap Share → Copy link, then paste it above.');
+      } else {
+        urlInput.placeholder = tr('ইউটিউব শর্টসের লিংক পেস্ট করুন… (যেমন: https://www.youtube.com/shorts/...)', 'Paste YouTube Shorts link here… (e.g. https://www.youtube.com/shorts/...)');
+        tipLine.textContent = tr('💡 পরামর্শ: ইউটিউব শর্টস ভিডিওর নিচে Share চেপে "Copy link" চাপুন এবং ওপরের বক্সে পেস্ট করুন।', '💡 Tip: open the YouTube Shorts, tap Share → Copy link, then paste it above.');
+      }
+      urlInput.focus();
+    }
 
     // Sample links
     var samplesWrap = UI.el('div', { class: 'snapyt-samples' },
@@ -267,6 +293,7 @@
         type: 'button',
         class: 'snapyt-sample-chip',
         onclick: function () {
+          switchMode('video');
           urlInput.value = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
           clearBtn.hidden = false;
           doFetch(urlInput.value);
@@ -276,7 +303,8 @@
         type: 'button',
         class: 'snapyt-sample-chip',
         onclick: function () {
-          urlInput.value = 'https://www.youtube.com/shorts/J46a_iGf3Yg';
+          switchMode('shorts');
+          urlInput.value = 'https://www.youtube.com/shorts/M7FIvfx5J10';
           clearBtn.hidden = false;
           doFetch(urlInput.value);
         }
@@ -287,7 +315,7 @@
     var resultCard = UI.el('div', { class: 'snapyt-result-card' });
     resultCard.hidden = true;
 
-    // Input handlers (do NOT fetch on every keystroke)
+    // Input handlers
     urlInput.addEventListener('input', function () {
       clearBtn.hidden = !urlInput.value.trim();
     });
@@ -306,6 +334,9 @@
           if (clip && clip.trim()) {
             urlInput.value = clip.trim();
             clearBtn.hidden = false;
+            if (/shorts/i.test(clip)) {
+              switchMode('shorts');
+            }
             doFetch(urlInput.value);
             return;
           }
@@ -387,6 +418,22 @@
       }
     }
 
+    function triggerDownload(url, title, quality, container) {
+      var safeTitle = (title || 'youtube-media').replace(/[/\\?%*:|"<>]/g, '_').slice(0, 45);
+      var ext = container || 'mp4';
+      var filename = safeTitle + '-' + (quality || '').replace(/[^a-zA-Z0-9]/g, '') + '.' + ext;
+
+      var a = document.createElement('a');
+      a.href = url;
+      a.setAttribute('download', filename);
+      a.setAttribute('target', '_blank');
+      a.setAttribute('rel', 'noopener noreferrer');
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { a.remove(); }, 2000);
+      UI.toast(tr('✓ ' + (quality || ext.toUpperCase()) + ' ডাউনলোড শুরু হয়েছে!', '✓ ' + (quality || ext.toUpperCase()) + ' download started!'));
+    }
+
     function renderResult(data) {
       if (!data) {
         resultCard.hidden = true;
@@ -430,101 +477,250 @@
       previewRow.appendChild(metaCol);
       resultCard.appendChild(previewRow);
 
-      // 2. Direct 1-Click HD Thumbnail Download Row (Instant & 100% working)
-      var directThumbRow = UI.el('div', {
-        style: 'display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; padding:14px 18px; margin-top:16px; border-radius:12px; background:color-mix(in srgb, var(--paddy) 8%, var(--paper)); border:1px solid color-mix(in srgb, var(--paddy) 30%, transparent);'
-      });
-      var thumbTextWrap = UI.el('div', {},
-        UI.el('strong', { style: 'font-size:14.5px; display:block; color:var(--ink-1);' }, '🖼️ ' + tr('অফিসিয়াল ফুল HD থাম্বনেইল', 'Official Full HD Thumbnail (1280x720)')),
-        UI.el('span', { style: 'font-size:12px; color:var(--ink-3);' }, tr('এক ক্লিকে মূল রেজোলিউশনের JPG ছবি ডাউনলোড করুন', '1-Click direct download of original high-resolution JPG image'))
+      // 2. Format Selection Header
+      var formatSection = UI.el('div', { style: 'margin-top:20px;' });
+      var formatHeading = UI.el('div', { style: 'margin-bottom:14px;' },
+        UI.el('h4', { style: 'margin:0 0 4px; font-size:16px; font-weight:700; color:var(--ink-1);' }, '📥 ' + tr('ডাউনলোড ফরম্যাট নির্বাচন করুন', 'Choose Download Format')),
+        UI.el('p', { style: 'margin:0; font-size:13px; color:var(--ink-3);' }, tr('যে ফরম্যাটে নামাতে চান, সেটির ডাউনলোড বাটনে ক্লিক করুন। সাথে সাথে ডাউনলোড শুরু হবে।', 'Click the download button next to your desired format to download immediately.'))
       );
-      var dlThumbBtn = UI.el('button', {
+      formatSection.appendChild(formatHeading);
+
+      // Tabs: Video / Audio / Thumbnail
+      var tabsNav = UI.el('div', { class: 'snapyt-tabs-nav' });
+      var tabBtnVideo = UI.el('button', {
         type: 'button',
-        class: 'snapyt-table-btn',
-        style: 'min-width:140px;',
-        onclick: async function () {
-          dlThumbBtn.disabled = true;
-          dlThumbBtn.innerHTML = '⏳ ' + tr('ডাউনলোড হচ্ছে…', 'Downloading…');
-          try {
-            var r = await fetch(data.thumbMax);
-            if (!r.ok) r = await fetch(data.thumbHq);
-            var blob = await r.blob();
-            var safeName = (data.title || 'youtube-thumbnail').replace(/[/\\?%*:|"<>]/g, '_').slice(0, 45);
-            UI.download(blob, safeName + '-thumbnail.jpg');
-            UI.toast(tr('✓ থাম্বনেইল সফলভাবে ডাউনলোড হয়েছে!', '✓ Thumbnail downloaded successfully!'));
-          } catch (e) {
-            window.open(data.thumbMax, '_blank');
-          } finally {
-            dlThumbBtn.disabled = false;
-            dlThumbBtn.innerHTML = '📥 ' + tr('থাম্বনেইল ডাউনলোড', 'Download Thumbnail');
-          }
-        }
-      }, '📥 ' + tr('থাম্বনেইল ডাউনলোড', 'Download Thumbnail'));
-      directThumbRow.appendChild(thumbTextWrap);
-      directThumbRow.appendChild(dlThumbBtn);
-      resultCard.appendChild(directThumbRow);
+        class: 'snapyt-tab-btn' + (curFormatTab === 'video' ? ' active' : ''),
+        onclick: function () { setFormatTab('video'); }
+      }, '🎬 ' + tr('ভিডিও (Video)', 'Video'));
 
-      // 3. Direct Video / Audio Streams
-      var directSection = UI.el('div', { style: 'margin-top:20px;' });
-      directSection.appendChild(UI.el('h4', { style: 'margin-bottom:12px; font-size:15px; font-weight:700;' }, '⚡ ' + tr('ভিডিও ও অডিও সরাসরি ডাউনলোড করুন', 'Direct Video & Audio Downloads')));
+      var tabBtnAudio = UI.el('button', {
+        type: 'button',
+        class: 'snapyt-tab-btn' + (curFormatTab === 'audio' ? ' active' : ''),
+        onclick: function () { setFormatTab('audio'); }
+      }, '🎵 ' + tr('অডিও (Audio)', 'Audio'));
 
-      if (data.formats && data.formats.length > 0) {
-        var streamGrid = UI.el('div', { style: 'display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;' });
-        data.formats.forEach(function (fmt) {
-          var fmtCard = UI.el('div', {
-            style: 'padding:14px; border-radius:12px; background:var(--paper-2); border:1px solid var(--line); display:flex; flex-direction:column; gap:8px;'
-          });
-          fmtCard.appendChild(UI.el('strong', { style: 'font-size:15px; color:var(--ink-1);' }, (fmt.type === 'video' ? '🎬 ' : '🎵 ') + fmt.quality));
-          fmtCard.appendChild(UI.el('span', { style: 'font-size:12px; color:var(--ink-3);' }, fmt.container.toUpperCase() + ' • ' + (fmt.type === 'video' ? tr('ভিডিও ফাইল', 'Video File') : tr('অডিও ফাইল', 'Audio File'))));
+      var tabBtnThumb = UI.el('button', {
+        type: 'button',
+        class: 'snapyt-tab-btn' + (curFormatTab === 'thumb' ? ' active' : ''),
+        onclick: function () { setFormatTab('thumb'); }
+      }, '🖼️ ' + tr('থাম্বনেইল (Thumbnail)', 'Thumbnail'));
 
-          var dlDirectBtn = UI.el('button', {
-            type: 'button',
-            class: 'btn-pri sm',
-            style: 'margin-top:auto;',
-            onclick: function () {
-              var safeName = (data.title || 'video').replace(/[/\\?%*:|"<>]/g, '_').slice(0, 45) + '.' + fmt.container;
-              var a = document.createElement('a');
-              a.href = fmt.url;
-              a.setAttribute('download', safeName);
-              a.setAttribute('target', '_blank');
-              a.setAttribute('rel', 'noopener noreferrer');
-              document.body.appendChild(a);
-              a.click();
-              setTimeout(function () { a.remove(); }, 1500);
-              UI.toast(tr('✓ ডাউনলোড শুরু হয়েছে!', '✓ Download initiated!'));
-            }
-          }, '📥 ' + tr('ডাউনলোড (' + fmt.container.toUpperCase() + ')', 'Download (' + fmt.container.toUpperCase() + ')'));
+      tabsNav.appendChild(tabBtnVideo);
+      tabsNav.appendChild(tabBtnAudio);
+      tabsNav.appendChild(tabBtnThumb);
+      formatSection.appendChild(tabsNav);
 
-          fmtCard.appendChild(dlDirectBtn);
-          streamGrid.appendChild(fmtCard);
-        });
-        directSection.appendChild(streamGrid);
+      var tabContentWrap = UI.el('div', { class: 'snapyt-tab-content' });
+      formatSection.appendChild(tabContentWrap);
 
-        var hintBox = UI.el('p', {
-          style: 'margin-top:12px; font-size:12px; color:var(--ink-3); line-height:1.5;'
-        }, tr(
-          '💡 পরামর্শ: ব্রাউজারে সরাসরি চালু হলে প্লেয়ারের ৩-ডট (⋮) এ ক্লিক করে "Download" চাপুন অথবা Ctrl+S দিয়ে ফাইল সেভ করুন।',
-          '💡 Tip: If video streams in browser tab, click the 3-dots (⋮) player menu → "Download" or press Ctrl+S to save.'
-        ));
-        directSection.appendChild(hintBox);
-      } else {
-        // Informative guidance
-        var note = UI.el('div', {
-          style: 'padding:14px; border-radius:10px; background:var(--paper-2); border:1px solid var(--line); font-size:13px; color:var(--ink-2);'
-        }, tr(
-          'ভিডিওটির নিজস্ব কপি পেতে YouTube Studio > Content এ গিয়ে মূল MP4 ফাইলটি নামিয়ে নিন। সম্পূর্ণ থাম্বনেইলটি ওপরের বাটন দিয়ে এক ক্লিকে ডাউনলোড করতে পারেন।',
-          'For videos you manage, use YouTube Studio > Content to download your original MP4. You can also download the full HD thumbnail above with 1 click.'
-        ));
-        directSection.appendChild(note);
+      function setFormatTab(tab) {
+        curFormatTab = tab;
+        tabBtnVideo.classList.toggle('active', tab === 'video');
+        tabBtnAudio.classList.toggle('active', tab === 'audio');
+        tabBtnThumb.classList.toggle('active', tab === 'thumb');
+        renderTabContent();
       }
 
-      resultCard.appendChild(directSection);
+      function renderTabContent() {
+        UI.clear(tabContentWrap);
+
+        if (curFormatTab === 'video') {
+          var videoFormats = (data.formats || []).filter(function (f) { return f.type === 'video'; });
+          if (videoFormats.length === 0) {
+            tabContentWrap.appendChild(UI.notice('info', tr('এই ভিডিওর জন্য কোনো সরাসরি ভিডিও স্ট্রিম পাওয়া যায়নি।', 'No direct video streams found for this video.')));
+            return;
+          }
+
+          var tableWrap = UI.el('div', { class: 'snapyt-table-wrap' });
+          var table = UI.el('table', { class: 'snapyt-table' });
+          var thead = UI.el('thead', {},
+            UI.el('tr', {},
+              UI.el('th', {}, tr('রেজোলিউশন / কোয়ালিটি', 'Resolution / Quality')),
+              UI.el('th', {}, tr('ফাইল ফরম্যাট', 'Format')),
+              UI.el('th', {}, tr('ধরন', 'Type')),
+              UI.el('th', { style: 'text-align:right;' }, tr('অ্যাকশন', 'Action'))
+            )
+          );
+          var tbody = UI.el('tbody', {});
+
+          videoFormats.forEach(function (fmt) {
+            var trEl = UI.el('tr', {});
+
+            var tdRes = UI.el('td', {},
+              UI.el('strong', { style: 'color:var(--ink-1); font-size:14.5px;' }, fmt.qualityLabel || fmt.quality),
+              fmt.isRecommended ? UI.el('span', { class: 'snapyt-badge-tag rec', style: 'margin-left:8px;' }, tr('জনপ্রিয়', 'Popular')) : ''
+            );
+
+            var tdFormat = UI.el('td', {},
+              UI.el('span', { class: 'snapyt-badge-tag std' }, (fmt.container || 'mp4').toUpperCase())
+            );
+
+            var tdType = UI.el('td', { style: 'font-size:13px; color:var(--ink-2);' },
+              fmt.hasAudio ? '🎬 ' + tr('ভিডিও + অডিও', 'Video + Audio') : '🎬 ' + tr('হাই-ডেফিনিশন ভিডিও', 'HD Video Stream')
+            );
+
+            var tdAction = UI.el('td', { style: 'text-align:right;' });
+            var dlBtn = UI.el('button', {
+              type: 'button',
+              class: 'snapyt-table-btn',
+              onclick: function () {
+                triggerDownload(fmt.url, data.title, fmt.quality, fmt.container || 'mp4');
+              }
+            }, '📥 ' + tr('ডাউনলোড (' + (fmt.container || 'mp4').toUpperCase() + ')', 'Download (' + (fmt.container || 'mp4').toUpperCase() + ')'));
+
+            tdAction.appendChild(dlBtn);
+
+            trEl.appendChild(tdRes);
+            trEl.appendChild(tdFormat);
+            trEl.appendChild(tdType);
+            trEl.appendChild(tdAction);
+            tbody.appendChild(trEl);
+          });
+
+          table.appendChild(thead);
+          table.appendChild(tbody);
+          tableWrap.appendChild(table);
+          tabContentWrap.appendChild(tableWrap);
+
+        } else if (curFormatTab === 'audio') {
+          var audioFormats = (data.formats || []).filter(function (f) { return f.type === 'audio'; });
+          if (audioFormats.length === 0) {
+            tabContentWrap.appendChild(UI.notice('info', tr('এই ভিডিওর জন্য সরাসরি অডিও স্ট্রিম পাওয়া যায়নি।', 'No direct audio streams found.')));
+            return;
+          }
+
+          var audioTableWrap = UI.el('div', { class: 'snapyt-table-wrap' });
+          var audioTable = UI.el('table', { class: 'snapyt-table' });
+          var audioThead = UI.el('thead', {},
+            UI.el('tr', {},
+              UI.el('th', {}, tr('অডিও কোয়ালিটি', 'Audio Quality')),
+              UI.el('th', {}, tr('ফরম্যাট', 'Format')),
+              UI.el('th', {}, tr('বিবরণ', 'Details')),
+              UI.el('th', { style: 'text-align:right;' }, tr('অ্যাকশন', 'Action'))
+            )
+          );
+          var audioTbody = UI.el('tbody', {});
+
+          audioFormats.forEach(function (fmt) {
+            var trEl = UI.el('tr', {});
+
+            var tdRes = UI.el('td', {},
+              UI.el('strong', { style: 'color:var(--ink-1); font-size:14.5px;' }, fmt.quality),
+              fmt.isRecommended ? UI.el('span', { class: 'snapyt-badge-tag rec', style: 'margin-left:8px;' }, tr('সেরা মান', 'Best Quality')) : ''
+            );
+
+            var tdFormat = UI.el('td', {},
+              UI.el('span', { class: 'snapyt-badge-tag std' }, (fmt.container || 'm4a').toUpperCase())
+            );
+
+            var tdType = UI.el('td', { style: 'font-size:13px; color:var(--ink-2);' },
+              '🎵 ' + tr('ক্লিয়ার অডিও গান / সাউন্ড', 'High-Fidelity Audio')
+            );
+
+            var tdAction = UI.el('td', { style: 'text-align:right;' });
+            var dlBtn = UI.el('button', {
+              type: 'button',
+              class: 'snapyt-table-btn',
+              onclick: function () {
+                triggerDownload(fmt.url, data.title, fmt.qualityLabel || 'audio', fmt.container || 'm4a');
+              }
+            }, '📥 ' + tr('ডাউনলোড অডিও', 'Download Audio'));
+
+            tdAction.appendChild(dlBtn);
+
+            trEl.appendChild(tdRes);
+            trEl.appendChild(tdFormat);
+            trEl.appendChild(tdType);
+            trEl.appendChild(tdAction);
+            audioTbody.appendChild(trEl);
+          });
+
+          audioTable.appendChild(audioThead);
+          audioTable.appendChild(audioTbody);
+          audioTableWrap.appendChild(audioTable);
+          tabContentWrap.appendChild(audioTableWrap);
+
+        } else if (curFormatTab === 'thumb') {
+          var thumbTableWrap = UI.el('div', { class: 'snapyt-table-wrap' });
+          var thumbTable = UI.el('table', { class: 'snapyt-table' });
+          var thumbThead = UI.el('thead', {},
+            UI.el('tr', {},
+              UI.el('th', {}, tr('রেজোলিউশন', 'Resolution')),
+              UI.el('th', {}, tr('ফাইল টাইপ', 'Type')),
+              UI.el('th', {}, tr('বিবরণ', 'Details')),
+              UI.el('th', { style: 'text-align:right;' }, tr('অ্যাকশন', 'Action'))
+            )
+          );
+          var thumbTbody = UI.el('tbody', {});
+
+          var thumbs = [
+            { res: '1280x720 (Full HD)', url: data.thumbMax, desc: tr('মূল ফুল HD থাম্বনেইল ছবি', 'Original Full HD Thumbnail') },
+            { res: '640x480 (High Quality)', url: data.thumbHq, desc: tr('স্ট্যান্ডার্ড কোয়ালিটি থাম্বনেইল', 'Standard Quality Thumbnail') }
+          ];
+
+          thumbs.forEach(function (t) {
+            var trEl = UI.el('tr', {});
+            var tdRes = UI.el('td', {},
+              UI.el('strong', { style: 'color:var(--ink-1); font-size:14.5px;' }, t.res)
+            );
+            var tdFormat = UI.el('td', {},
+              UI.el('span', { class: 'snapyt-badge-tag std' }, 'JPG')
+            );
+            var tdType = UI.el('td', { style: 'font-size:13px; color:var(--ink-2);' }, '🖼️ ' + t.desc);
+            var tdAction = UI.el('td', { style: 'text-align:right;' });
+            var dlBtn = UI.el('button', {
+              type: 'button',
+              class: 'snapyt-table-btn',
+              onclick: async function () {
+                dlBtn.disabled = true;
+                dlBtn.innerHTML = '⏳ ' + tr('ডাউনলোড হচ্ছে…', 'Downloading…');
+                try {
+                  var r = await fetch(t.url);
+                  var blob = await r.blob();
+                  var safeName = (data.title || 'thumbnail').replace(/[/\\?%*:|"<>]/g, '_').slice(0, 45);
+                  UI.download(blob, safeName + '-cover.jpg');
+                  UI.toast(tr('✓ থাম্বনেইল ডাউনলোড হয়েছে!', '✓ Thumbnail downloaded!'));
+                } catch (e) {
+                  window.open(t.url, '_blank');
+                } finally {
+                  dlBtn.disabled = false;
+                  dlBtn.innerHTML = '📥 ' + tr('ডাউনলোড JPG', 'Download JPG');
+                }
+              }
+            }, '📥 ' + tr('ডাউনলোড JPG', 'Download JPG'));
+
+            tdAction.appendChild(dlBtn);
+            trEl.appendChild(tdRes);
+            trEl.appendChild(tdFormat);
+            trEl.appendChild(tdType);
+            trEl.appendChild(tdAction);
+            thumbTbody.appendChild(trEl);
+          });
+
+          thumbTable.appendChild(thumbThead);
+          thumbTable.appendChild(thumbTbody);
+          thumbTableWrap.appendChild(thumbTable);
+          tabContentWrap.appendChild(thumbTableWrap);
+        }
+      }
+
+      renderTabContent();
+
+      var hintBox = UI.el('p', {
+        style: 'margin-top:14px; font-size:12px; color:var(--ink-3); line-height:1.5;'
+      }, tr(
+        '💡 পরামর্শ: ক্লিক করার পর ব্রাউজারে সরাসরি চালু হলে প্লেয়ারের ৩-ডট (⋮) এ ক্লিক করে "Download" চাপুন অথবা Ctrl+S দিয়ে ফাইলটি কম্পিউটারে সেভ করুন।',
+        '💡 Tip: If video plays in browser, click the 3-dots (⋮) player menu → "Download" or press Ctrl+S to save the file.'
+      ));
+      formatSection.appendChild(hintBox);
+
+      resultCard.appendChild(formatSection);
     }
 
     container.appendChild(hero);
+    container.appendChild(modeTabs);
     container.appendChild(inputShell);
     container.appendChild(tipLine);
-    container.appendChild(featuresRow);
     container.appendChild(samplesWrap);
     container.appendChild(statusBox);
     container.appendChild(resultCard);

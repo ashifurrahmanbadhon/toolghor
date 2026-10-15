@@ -2942,6 +2942,37 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
   max-width: 620px;
   line-height: 1.5;
 }
+.snapyt-mode-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.snapyt-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-2);
+  font-size: 14.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.snapyt-mode-btn:hover {
+  border-color: color-mix(in srgb, #ff0033 40%, var(--line));
+  color: var(--ink);
+  transform: translateY(-1px);
+}
+.snapyt-mode-btn.active {
+  background: #ff0033;
+  color: #ffffff !important;
+  border-color: #ff0033;
+  box-shadow: 0 4px 14px rgba(255, 0, 51, 0.35);
+}
 .snapyt-input-shell {
   display: flex;
   align-items: center;
