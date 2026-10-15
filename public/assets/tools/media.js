@@ -395,7 +395,7 @@
 
     var downloadFeedbackBox = UI.el('div', { class: 'snapyt-feedback-box', style: 'margin-top:16px;' });
 
-    function renderDownloadStatus(quality, container, title, url) {
+    function renderDownloadSuccess(title, quality, container, downloadUrl) {
       UI.clear(downloadFeedbackBox);
       downloadFeedbackBox.hidden = false;
 
@@ -404,12 +404,13 @@
       });
 
       var head = UI.el('div', { style: 'display:flex; align-items:center; gap:8px; margin-bottom:8px;' },
-        UI.el('span', { style: 'font-size:20px;' }, '🚀'),
-        UI.el('strong', { style: 'color:var(--ink-1); font-size:15px;' }, tr('ডাউনলোড প্রস্তুত হয়েছে!', 'Download Ready!'))
+        UI.el('span', { style: 'font-size:20px;' }, '✅'),
+        UI.el('strong', { style: 'color:var(--ink-1); font-size:15px;' }, tr('ডাউনলোড শুরু হয়েছে!', 'Download Started!'))
       );
 
       var desc = UI.el('p', { style: 'margin:0 0 12px; font-size:13px; color:var(--ink-2); line-height:1.4;' },
-        tr('ভিডিও: ', 'Video: ') + UI.el('b', {}, (title || 'YouTube Media').slice(0, 60)) + ' (' + quality + ' ' + (container || 'mp4').toUpperCase() + ')'
+        tr('আপনার ব্রাউজারের ডাউনলোড বারে ফাইল সেভ হচ্ছে: ', 'The file is now downloading in your browser: ') +
+        UI.el('b', {}, (title || 'YouTube Media').slice(0, 60)) + ' (' + quality + ' ' + (container || 'mp4').toUpperCase() + ')'
       );
 
       var btnRow = UI.el('div', { style: 'display:flex; gap:10px; flex-wrap:wrap; align-items:center;' });
@@ -419,32 +420,14 @@
         class: 'btn-pri sm',
         style: 'background:#10b981; border-color:#10b981; font-weight:700; color:#fff;',
         onclick: function () {
-          window.open(url, '_blank', 'noopener,noreferrer');
+          triggerBrowserFileSave(downloadUrl);
         }
-      }, '📥 ' + tr('ফাইল সরাসরি সেভ করুন (Save File)', 'Save File Now'));
-
-      var altBtn1 = UI.el('button', {
-        type: 'button',
-        class: 'btn-sec sm',
-        onclick: function () {
-          window.open('https://www.y2mate.com/youtube/' + (curData ? curData.id : ''), '_blank', 'noopener,noreferrer');
-        }
-      }, '⚡ ' + tr('বিকল্প সার্ভার (Y2Mate)', 'Mirror Server (Y2Mate)'));
-
-      var altBtn2 = UI.el('button', {
-        type: 'button',
-        class: 'btn-sec sm',
-        onclick: function () {
-          window.open('https://ssyoutube.com/watch?v=' + (curData ? curData.id : ''), '_blank', 'noopener,noreferrer');
-        }
-      }, '⚡ ' + tr('বিকল্প সার্ভার (SaveFrom)', 'Mirror Server (SaveFrom)'));
+      }, '📥 ' + tr('আবার ডাউনলোড করুন (Download Again)', 'Download Again'));
 
       btnRow.appendChild(mainSaveBtn);
-      btnRow.appendChild(altBtn1);
-      btnRow.appendChild(altBtn2);
 
       var hint = UI.el('small', { style: 'display:block; margin-top:10px; color:var(--ink-3); font-size:12px;' },
-        tr('💡 পরামর্শ: ব্রাউজারে পপ-আপ ব্লক থাকলে উপরের সবুজ বাটনে চাপ দিন, সাথে সাথে ফাইল সেভ শুরু হবে।', '💡 Tip: If popups were blocked, click the green button above to start your download.')
+        tr('💡 পরামর্শ: স্বয়ংক্রিয়ভাবে ব্রাউজারে ডাউনলোড না হলে উপরের সবুজ বাটনে চাপ দিন।', '💡 Tip: If the download didn\'t begin automatically, click the green button above.')
       );
 
       box.appendChild(head);
@@ -454,17 +437,99 @@
       downloadFeedbackBox.appendChild(box);
     }
 
-    function triggerDownload(url, title, quality, container) {
-      if (!url) return;
+    function renderDownloadProgress(quality, text, percent) {
+      UI.clear(downloadFeedbackBox);
+      downloadFeedbackBox.hidden = false;
 
-      // Open download page in new window directly from user click
-      var win = window.open(url, '_blank', 'noopener,noreferrer');
-      if (!win) {
-        window.location.href = url;
+      var box = UI.el('div', {
+        style: 'padding:14px 18px; background:color-mix(in srgb, var(--accent) 10%, var(--paper)); border-radius:12px; border:1.5px solid var(--accent); animation: spaFadeIn .2s ease-out;'
+      });
+
+      var head = UI.el('div', { style: 'display:flex; align-items:center; gap:8px; margin-bottom:6px;' },
+        UI.el('span', { style: 'font-size:18px;' }, '⏳'),
+        UI.el('strong', { style: 'color:var(--ink-1); font-size:14px;' }, tr('ডাউনলোড প্রস্তুত হচ্ছে…', 'Preparing Download…') + (percent ? ' (' + percent + '%)' : ''))
+      );
+
+      var desc = UI.el('p', { style: 'margin:0; font-size:12.5px; color:var(--ink-2); line-height:1.4;' },
+        tr('ফরম্যাট: ', 'Format: ') + quality + ' · ' + (text || tr('সার্ভার থেকে হাই-স্পিড ফাইল স্ট্রিম জেনারেট হচ্ছে, অনুগ্রহ করে কয়েক সেকেন্ড অপেক্ষা করুন...', 'Generating high-speed file stream, please wait a few seconds...'))
+      );
+
+      box.appendChild(head);
+      box.appendChild(desc);
+      downloadFeedbackBox.appendChild(box);
+    }
+
+    function triggerBrowserFileSave(downloadUrl) {
+      if (!downloadUrl) return;
+      var link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', '');
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(function () {
+        if (link.parentNode) link.parentNode.removeChild(link);
+      }, 1000);
+    }
+
+    async function startDirectDownload(fmt, btn) {
+      if (!curData || !curData.url) return;
+      var origText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ ' + tr('প্রস্তুত হচ্ছে…', 'Preparing…');
+
+      renderDownloadProgress(fmt.qualityLabel || fmt.quality, tr('সার্ভারে ফাইল প্রস্তুত করার অনুরোধ পাঠানো হচ্ছে…', 'Requesting stream from server…'), 10);
+
+      try {
+        var formatKey = fmt.formatKey || (fmt.type === 'audio' ? 'mp3' : '720');
+        var initRes = await fetch('/api/yt-download?action=convert&url=' + encodeURIComponent(curData.url) + '&format=' + encodeURIComponent(formatKey));
+        var initData = await initRes.json();
+
+        if (!initData || !initData.success) {
+          throw new Error((initData && initData.error) || tr('ডাউনলোড স্ট্রিম প্রস্তুত করা যায়নি।', 'Could not prepare download stream.'));
+        }
+
+        var downloadUrl = initData.download_url;
+
+        if (!downloadUrl && initData.progress_url) {
+          renderDownloadProgress(fmt.qualityLabel || fmt.quality, tr('ফাইল কনভার্ট ও এনকোড হচ্ছে…', 'Converting & encoding file…'), 35);
+
+          for (var i = 0; i < 25; i++) {
+            await new Promise(function (resolve) { setTimeout(resolve, 1200); });
+            try {
+              var pRes = await fetch('/api/yt-download?action=progress&progress_url=' + encodeURIComponent(initData.progress_url));
+              var pData = await pRes.json();
+              if (pData && pData.download_url) {
+                downloadUrl = pData.download_url;
+                break;
+              }
+              if (pData && pData.progress) {
+                var pct = Math.min(95, Math.max(35, Math.round(pData.progress / 10)));
+                renderDownloadProgress(fmt.qualityLabel || fmt.quality, pData.text || tr('ফাইল প্রস্তুত হচ্ছে…', 'Preparing file…'), pct);
+              }
+            } catch (pollErr) {
+              // Keep polling
+            }
+          }
+        }
+
+        if (!downloadUrl) {
+          throw new Error(tr('ডাউনলোড লিঙ্ক তৈরিতে সময়সীমা পার হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।', 'Download timed out. Please try again.'));
+        }
+
+        // Trigger direct browser download
+        triggerBrowserFileSave(downloadUrl);
+        renderDownloadSuccess(curData.title, fmt.qualityLabel || fmt.quality, fmt.container || 'mp4', downloadUrl);
+        UI.toast(tr('✓ ডাউনলোড ব্রাউজারে শুরু হয়েছে!', '✓ Download started in browser!'));
+
+      } catch (err) {
+        UI.clear(downloadFeedbackBox);
+        downloadFeedbackBox.hidden = false;
+        downloadFeedbackBox.appendChild(UI.notice('err', err.message || tr('ডাউনলোড শুরু করতে সমস্যা হয়েছে।', 'Failed to start download.')));
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = origText;
       }
-
-      renderDownloadStatus(quality, container, title, url);
-      UI.toast(tr('✓ ' + (quality || (container || 'MP4').toUpperCase()) + ' ডাউনলোড প্রস্তুত হয়েছে!', '✓ ' + (quality || (container || 'MP4').toUpperCase()) + ' download ready!'));
     }
 
     function renderResult(data) {
@@ -563,12 +628,12 @@
           var videoFormats = (data.formats || []).filter(function (f) { return f.type === 'video'; });
           if (videoFormats.length === 0) {
             videoFormats = [
-              { quality: '4K Ultra HD (2160p)', qualityLabel: '4K Ultra HD (2160p)', container: 'mp4', hasAudio: true, isRecommended: true, url: 'https://ssyoutube.com/watch?v=' + data.id, isDirect: false },
-              { quality: '2K Quad HD (1440p)', qualityLabel: '2K Quad HD (1440p)', container: 'mp4', hasAudio: true, isRecommended: false, url: 'https://ssyoutube.com/watch?v=' + data.id, isDirect: false },
-              { quality: '1080p (Full HD)', qualityLabel: '1080p (Full HD)', container: 'mp4', hasAudio: true, isRecommended: true, url: 'https://ssyoutube.com/watch?v=' + data.id, isDirect: false },
-              { quality: '720p (HD)', qualityLabel: '720p (HD)', container: 'mp4', hasAudio: true, isRecommended: true, url: 'https://sfrom.net/https://www.youtube.com/watch?v=' + data.id, isDirect: false },
-              { quality: '480p (SD)', qualityLabel: '480p (SD)', container: 'mp4', hasAudio: true, isRecommended: false, url: 'https://ssyoutube.com/watch?v=' + data.id, isDirect: false },
-              { quality: '360p (Fast)', qualityLabel: '360p (SD Fast)', container: 'mp4', hasAudio: true, isRecommended: false, url: 'https://ssyoutube.com/watch?v=' + data.id, isDirect: false }
+              { formatKey: '4k', quality: '4K Ultra HD (2160p)', qualityLabel: '4K Ultra HD (2160p)', container: 'mp4', hasAudio: true, isRecommended: true },
+              { formatKey: '1440', quality: '2K Quad HD (1440p)', qualityLabel: '2K Quad HD (1440p)', container: 'mp4', hasAudio: true, isRecommended: false },
+              { formatKey: '1080', quality: '1080p (Full HD)', qualityLabel: '1080p (Full HD)', container: 'mp4', hasAudio: true, isRecommended: true },
+              { formatKey: '720', quality: '720p (HD)', qualityLabel: '720p (HD)', container: 'mp4', hasAudio: true, isRecommended: true },
+              { formatKey: '480', quality: '480p (SD)', qualityLabel: '480p (SD)', container: 'mp4', hasAudio: true, isRecommended: false },
+              { formatKey: '360', quality: '360p (Fast)', qualityLabel: '360p (SD Fast)', container: 'mp4', hasAudio: true, isRecommended: false }
             ];
           }
 
@@ -620,7 +685,7 @@
               type: 'button',
               class: 'snapyt-table-btn',
               onclick: function () {
-                triggerDownload(fmt.url, data.title, fmt.quality, fmt.container || 'mp4');
+                startDirectDownload(fmt, this);
               }
             }, '📥 ' + tr('ডাউনলোড (' + (fmt.container || 'mp4').toUpperCase() + ')', 'Download (' + (fmt.container || 'mp4').toUpperCase() + ')'));
 
@@ -642,8 +707,8 @@
           var audioFormats = (data.formats || []).filter(function (f) { return f.type === 'audio'; });
           if (audioFormats.length === 0) {
             audioFormats = [
-              { quality: 'Audio MP3 320kbps (উচ্চ মান)', qualityLabel: 'MP3 320kbps', container: 'mp3', hasAudio: true, isRecommended: true, url: 'https://ssyoutube.com/watch?v=' + data.id, isDirect: false },
-              { quality: 'Audio M4A / AAC (128kbps)', qualityLabel: 'M4A / AAC', container: 'm4a', hasAudio: true, isRecommended: false, url: 'https://sfrom.net/https://www.youtube.com/watch?v=' + data.id, isDirect: false }
+              { formatKey: 'mp3', quality: 'Audio MP3 320kbps (উচ্চ মান)', qualityLabel: 'MP3 320kbps', container: 'mp3', hasAudio: true, isRecommended: true },
+              { formatKey: 'm4a', quality: 'Audio M4A / AAC (128kbps)', qualityLabel: 'M4A / AAC', container: 'm4a', hasAudio: true, isRecommended: false }
             ];
           }
 
@@ -680,7 +745,7 @@
               type: 'button',
               class: 'snapyt-table-btn',
               onclick: function () {
-                triggerDownload(fmt.url, data.title, fmt.qualityLabel || 'audio', fmt.container || 'mp3');
+                startDirectDownload(fmt, this);
               }
             }, '📥 ' + tr('ডাউনলোড অডিও', 'Download Audio'));
 

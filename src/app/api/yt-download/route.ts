@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// In-memory sliding window rate limiter (max 30 requests per minute per IP)
+// In-memory sliding window rate limiter (max 120 requests per minute per IP to accommodate polling)
 const ipRequestMap = new Map<string, { count: number; expiresAt: number }>();
 
-function checkRateLimit(ip: string): boolean {
+function checkRateLimit(ip: string, isPolling = false): boolean {
+  if (isPolling) return true; // Don't exhaust rate limit on status polling
   const now = Date.now();
   const entry = ipRequestMap.get(ip);
   if (!entry || entry.expiresAt < now) {
     ipRequestMap.set(ip, { count: 1, expiresAt: now + 60_000 });
     return true;
   }
-  if (entry.count >= 30) {
+  if (entry.count >= 60) {
     return false;
   }
   entry.count += 1;
@@ -49,15 +50,95 @@ function extractYouTubeId(rawUrl: string): string | null {
 }
 
 export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const action = (searchParams.get('action') || 'info').toLowerCase();
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-  if (!checkRateLimit(ip)) {
+
+  if (!checkRateLimit(ip, action === 'progress')) {
     return NextResponse.json(
       { success: false, error: 'Rate limit exceeded. Please wait a moment before trying again.' },
       { status: 429 }
     );
   }
 
-  const { searchParams } = new URL(req.url);
+  // 1. Action: PROGRESS (proxy status polling for direct download)
+  if (action === 'progress') {
+    const progressUrl = searchParams.get('progress_url');
+    if (!progressUrl || !/^https?:\/\//i.test(progressUrl)) {
+      return NextResponse.json({ success: false, error: 'Invalid progress URL.' }, { status: 400 });
+    }
+
+    try {
+      const pRes = await fetch(progressUrl, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        },
+        signal: AbortSignal.timeout(6000),
+      });
+
+      if (!pRes.ok) {
+        return NextResponse.json({ success: false, error: 'Progress service unavailable.' }, { status: 502 });
+      }
+
+      const pData = await pRes.json();
+      return NextResponse.json({
+        success: true,
+        progress: typeof pData.progress === 'number' ? pData.progress : null,
+        text: pData.text || '',
+        download_url: pData.download_url || null,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Progress request failed';
+      return NextResponse.json({ success: false, error: msg }, { status: 500 });
+    }
+  }
+
+  // 2. Action: CONVERT (initiate backend conversion to produce direct browser download link)
+  if (action === 'convert') {
+    const rawUrl = (searchParams.get('url') || '').trim();
+    const format = (searchParams.get('format') || '720').toLowerCase();
+
+    const videoId = extractYouTubeId(rawUrl);
+    if (!videoId) {
+      return NextResponse.json({ success: false, error: 'Invalid YouTube URL.' }, { status: 400 });
+    }
+
+    const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const validFormats = ['4k', '1440', '1080', '720', '480', '360', 'mp3', 'm4a'];
+    const fmt = validFormats.includes(format) ? format : '720';
+
+    try {
+      const initUrl = `https://loader.to/ajax/download.php?button=1&start=1&end=1&format=${fmt}&url=${encodeURIComponent(
+        canonicalUrl
+      )}`;
+      const initRes = await fetch(initUrl, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        },
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (!initRes.ok) {
+        return NextResponse.json({ success: false, error: 'Conversion service unavailable.' }, { status: 502 });
+      }
+
+      const initData = await initRes.json();
+      return NextResponse.json({
+        success: true,
+        progress_url: initData.progress_url || null,
+        download_url: initData.download_url || null,
+        title: initData.title || null,
+        id: videoId,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Conversion request failed';
+      return NextResponse.json({ success: false, error: msg }, { status: 500 });
+    }
+  }
+
+  // 3. Action: INFO (default metadata & supported formats list)
   const rawUrl = (searchParams.get('url') || '').trim();
 
   if (!rawUrl) {
@@ -87,7 +168,7 @@ export async function GET(req: NextRequest) {
   let author = 'YouTube Creator';
   let authorUrl = '';
 
-  // 1. Fetch official YouTube oEmbed metadata (instant, reliable, <300ms)
+  // Fetch official YouTube oEmbed metadata (instant, reliable, <300ms)
   try {
     const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(canonicalUrl)}&format=json`;
     const oembedRes = await fetch(oembedUrl, {
@@ -107,103 +188,103 @@ export async function GET(req: NextRequest) {
     // Non-blocking fallback
   }
 
-  // Generate complete, guaranteed download formats up to 4K
+  // Complete, high-speed direct download formats (up to 4K UHD)
   const formats = [
     {
+      formatKey: '4k',
       quality: '4K Ultra HD (2160p)',
       qualityLabel: '4K Ultra HD (2160p)',
       type: 'video',
       container: 'mp4',
       hasVideo: true,
       hasAudio: true,
-      url: `https://ssyoutube.com/watch?v=${videoId}`,
       label: '4K Ultra HD MP4 (2160p)',
       isRecommended: true,
-      isDirect: false,
+      isDirect: true,
     },
     {
+      formatKey: '1440',
       quality: '2K Quad HD (1440p)',
       qualityLabel: '2K Quad HD (1440p)',
       type: 'video',
       container: 'mp4',
       hasVideo: true,
       hasAudio: true,
-      url: `https://ssyoutube.com/watch?v=${videoId}`,
       label: '2K Quad HD MP4 (1440p)',
       isRecommended: false,
-      isDirect: false,
+      isDirect: true,
     },
     {
+      formatKey: '1080',
       quality: '1080p (Full HD)',
       qualityLabel: '1080p (Full HD)',
       type: 'video',
       container: 'mp4',
       hasVideo: true,
       hasAudio: true,
-      url: `https://ssyoutube.com/watch?v=${videoId}`,
       label: '1080p Full HD MP4',
       isRecommended: true,
-      isDirect: false,
+      isDirect: true,
     },
     {
+      formatKey: '720',
       quality: '720p (HD)',
       qualityLabel: '720p (HD)',
       type: 'video',
       container: 'mp4',
       hasVideo: true,
       hasAudio: true,
-      url: `https://sfrom.net/https://www.youtube.com/watch?v=${videoId}`,
       label: '720p HD MP4',
       isRecommended: true,
-      isDirect: false,
+      isDirect: true,
     },
     {
+      formatKey: '480',
       quality: '480p (SD)',
       qualityLabel: '480p (SD)',
       type: 'video',
       container: 'mp4',
       hasVideo: true,
       hasAudio: true,
-      url: `https://ssyoutube.com/watch?v=${videoId}`,
       label: '480p SD MP4',
       isRecommended: false,
-      isDirect: false,
+      isDirect: true,
     },
     {
+      formatKey: '360',
       quality: '360p (Fast)',
       qualityLabel: '360p (SD Fast)',
       type: 'video',
       container: 'mp4',
       hasVideo: true,
       hasAudio: true,
-      url: `https://ssyoutube.com/watch?v=${videoId}`,
       label: '360p SD MP4',
       isRecommended: false,
-      isDirect: false,
+      isDirect: true,
     },
     {
+      formatKey: 'mp3',
       quality: 'Audio MP3 320kbps (উচ্চ মান)',
       qualityLabel: 'MP3 320kbps (উচ্চ মান)',
       type: 'audio',
       container: 'mp3',
       hasVideo: false,
       hasAudio: true,
-      url: `https://ssyoutube.com/watch?v=${videoId}`,
       label: 'Audio MP3 320kbps',
       isRecommended: true,
-      isDirect: false,
+      isDirect: true,
     },
     {
+      formatKey: 'm4a',
       quality: 'Audio M4A / AAC (128kbps)',
       qualityLabel: 'M4A / AAC (অরিজিনাল অডিও)',
       type: 'audio',
       container: 'm4a',
       hasVideo: false,
       hasAudio: true,
-      url: `https://sfrom.net/https://www.youtube.com/watch?v=${videoId}`,
       label: 'Audio M4A',
       isRecommended: false,
-      isDirect: false,
+      isDirect: true,
     },
   ];
 
