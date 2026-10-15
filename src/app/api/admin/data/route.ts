@@ -78,7 +78,10 @@ export async function POST(req: NextRequest) {
       clearSiteDataCache();
       try {
         revalidatePath('/', 'page');
+        revalidatePath('/', 'layout');
         revalidatePath('/tools/[slug]', 'page');
+        revalidatePath('/tools/[slug]', 'layout');
+        revalidatePath('/admin', 'page');
       } catch (e) {}
       return NextResponse.json({ success: true, message, ...extra });
     }

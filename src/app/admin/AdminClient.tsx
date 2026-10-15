@@ -134,6 +134,7 @@ export default function AdminConsole() {
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   // Admin Profile & Security State
   const [adminProfile, setAdminProfile] = useState({
@@ -330,8 +331,9 @@ export default function AdminConsole() {
   useEffect(() => {
     setMounted(true);
     try {
-      const isAuth = sessionStorage.getItem('toolghor_admin_auth');
-      if (isAuth === 'true') {
+      const isAuthSession = sessionStorage.getItem('toolghor_admin_auth');
+      const isAuthLocal = localStorage.getItem('toolghor_admin_auth');
+      if (isAuthSession === 'true' || isAuthLocal === 'true') {
         setIsAuthenticated(true);
         fetchAllSections();
       }
@@ -357,6 +359,13 @@ export default function AdminConsole() {
       if (res.ok && data.success) {
         try {
           sessionStorage.setItem('toolghor_admin_auth', 'true');
+          if (rememberMe) {
+            localStorage.setItem('toolghor_admin_auth', 'true');
+            localStorage.setItem('toolghor_admin_remember', 'true');
+          } else {
+            localStorage.removeItem('toolghor_admin_auth');
+            localStorage.removeItem('toolghor_admin_remember');
+          }
         } catch {}
         setIsAuthenticated(true);
         setPinError(false);
@@ -582,6 +591,8 @@ export default function AdminConsole() {
     setIsAuthenticated(false);
     try {
       sessionStorage.removeItem('toolghor_admin_auth');
+      localStorage.removeItem('toolghor_admin_auth');
+      localStorage.removeItem('toolghor_admin_remember');
     } catch {}
   };
 
@@ -788,6 +799,29 @@ export default function AdminConsole() {
                 Incorrect passcode. Please try again or use Forgot Password.
               </p>
             )}
+
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+              <label
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  color: '#94a3b8',
+                  userSelect: 'none',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  style={{ accentColor: '#10b981', width: '16px', height: '16px', cursor: 'pointer' }}
+                />
+                <span>Remember me on this browser</span>
+              </label>
+            </div>
+
             <button
               type="submit"
               disabled={loginLoading}
