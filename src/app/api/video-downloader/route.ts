@@ -638,43 +638,161 @@ async function resolveInstagram(rawUrl: string) {
   };
 }
 
-// Adapter: Facebook (Public Reels / Watch)
+// -------------------------------------------------------------
+// SnapSave Integration (for Instagram & Facebook Reels with Sound)
+// -------------------------------------------------------------
+async function resolveSnapSave(rawUrl: string, platform: 'instagram' | 'facebook') {
+  try {
+    const { snapsave } = await import('snapsave-media-downloader');
+    const res = await snapsave(rawUrl);
+    if (!res || !res.success || !res.data) {
+      return null;
+    }
+
+    const data = res.data;
+    const medias = Array.isArray(data.media) ? data.media : [];
+    const videoMedias = medias.filter((m: any) => m && m.type === 'video' && m.url);
+
+    if (videoMedias.length === 0) {
+      return null;
+    }
+
+    const title = data.description || (platform === 'instagram' ? 'Instagram Reel / Video' : 'Facebook Reel / Video');
+    const cleanTitle =
+      title.replace(/[/\\?%*:|"<>]/g, '').slice(0, 40).trim() ||
+      (platform === 'instagram' ? 'Instagram-Reel' : 'Facebook-Video');
+    const thumb = data.preview || (medias[0] && medias[0].thumbnail) || '';
+
+    const formats: NormalizedFormat[] = [];
+    for (let i = 0; i < videoMedias.length; i++) {
+      const vm = videoMedias[i];
+      const resLabel = vm.resolution || (i === 0 ? 'HD Video (720p/1080p)' : 'SD Video (Standard)');
+      const isHd = /hd|1080|720/i.test(resLabel) || i === 0;
+
+      formats.push({
+        formatKey: `snapsave-video-${i}`,
+        quality: `${resLabel} - অডিও সহ`,
+        qualityLabel: resLabel,
+        type: 'video',
+        container: 'mp4',
+        hasVideo: true,
+        hasAudio: true,
+        isRecommended: isHd,
+        downloadUrl: vm.url,
+        note: 'সম্পূর্ণ অরিজিনাল সাউন্ড ও এইচডি ভিডিও',
+      });
+    }
+
+    if (videoMedias[0] && videoMedias[0].url) {
+      formats.push({
+        formatKey: 'snapsave-audio',
+        quality: 'MP3 অডিও সাউন্ড / গান',
+        qualityLabel: 'MP3 Audio (Sound)',
+        type: 'audio',
+        container: 'mp3',
+        hasVideo: false,
+        hasAudio: true,
+        isRecommended: true,
+        downloadUrl: videoMedias[0].url,
+        note: 'রিলসের সম্পূর্ণ ব্যাকগ্রাউন্ড সাউন্ড',
+      });
+    }
+
+    return {
+      success: true,
+      provider: 'snapsave',
+      platform,
+      id: `${platform}-reel`,
+      title,
+      author: platform === 'instagram' ? 'Instagram Creator' : 'Facebook Creator',
+      url: rawUrl,
+      is_shorts: true,
+      thumbnails: {
+        max: thumb,
+        hq: thumb,
+      },
+      formats,
+    };
+  } catch (err) {
+    console.warn(`[VideoDownloader] snapsave resolution exception:`, err);
+    return null;
+  }
+}
+
+function decodeFbUrl(s: string): string | null {
+  if (!s) return null;
+  let str = s.replace(/&amp;/g, '&');
+  str = str.replace(/\\\//g, '/').replace(/\\u0025/g, '%').replace(/\\u0026/g, '&');
+  try {
+    str = JSON.parse('"' + str.replace(/"/g, '\\"') + '"');
+  } catch {}
+  return str;
+}
+
+// Adapter: Facebook (Public Reels / Watch / Videos)
 async function resolveFacebook(rawUrl: string) {
   let title = 'Facebook Video / Reel';
   let author = 'Facebook Creator';
   let thumb = '';
+  let hdVideoUrl = '';
+  let sdVideoUrl = '';
   let directVideoUrl = '';
 
   try {
     const res = await fetch(rawUrl, {
       headers: {
         'User-Agent':
-          'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php) Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        Accept: 'text/html,application/xhtml+xml',
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
       },
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(6500),
     });
 
     if (res.ok) {
       const html = await res.text();
       const ogTitleMatch = html.match(/<meta property="og:title" content="([^"]+)"/i);
       const ogImageMatch = html.match(/<meta property="og:image" content="([^"]+)"/i);
-      const ogVideoMatch =
-        html.match(/<meta property="og:video" content="([^"]+)"/i) ||
-        html.match(/<meta property="og:video:url" content="([^"]+)"/i) ||
-        html.match(/<meta property="og:video:secure_url" content="([^"]+)"/i);
 
       if (ogTitleMatch && ogTitleMatch[1]) title = ogTitleMatch[1];
       if (ogImageMatch && ogImageMatch[1]) thumb = ogImageMatch[1].replace(/&amp;/g, '&');
-      if (ogVideoMatch && ogVideoMatch[1]) {
-        directVideoUrl = ogVideoMatch[1].replace(/&amp;/g, '&');
+
+      // 1. Check native HD stream (muxed with audio)
+      const hdMatch =
+        html.match(/"browser_native_hd_url"\s*:\s*"([^"]+)"/) ||
+        html.match(/"playable_url_quality_hd"\s*:\s*"([^"]+)"/) ||
+        html.match(/"hd_src"\s*:\s*"([^"]+)"/);
+      if (hdMatch && hdMatch[1]) {
+        hdVideoUrl = decodeFbUrl(hdMatch[1]) || '';
+      }
+
+      // 2. Check native SD stream (muxed with audio)
+      const sdMatch =
+        html.match(/"browser_native_sd_url"\s*:\s*"([^"]+)"/) ||
+        html.match(/"playable_url"\s*:\s*"([^"]+)"/) ||
+        html.match(/"sd_src"\s*:\s*"([^"]+)"/);
+      if (sdMatch && sdMatch[1]) {
+        sdVideoUrl = decodeFbUrl(sdMatch[1]) || '';
+      }
+
+      // 3. Fallback: OpenGraph video
+      if (!hdVideoUrl && !sdVideoUrl) {
+        const ogVideoMatch =
+          html.match(/<meta property="og:video" content="([^"]+)"/i) ||
+          html.match(/<meta property="og:video:url" content="([^"]+)"/i) ||
+          html.match(/<meta property="og:video:secure_url" content="([^"]+)"/i);
+        if (ogVideoMatch && ogVideoMatch[1]) {
+          directVideoUrl = ogVideoMatch[1].replace(/&amp;/g, '&');
+        }
       }
     }
   } catch {
-    // Ignore
+    // Ignore fetch error
   }
 
-  if (!directVideoUrl) {
+  const primaryVideoUrl = hdVideoUrl || sdVideoUrl || directVideoUrl;
+
+  if (!primaryVideoUrl) {
     return {
       success: false,
       platform: 'facebook',
@@ -684,10 +802,47 @@ async function resolveFacebook(rawUrl: string) {
     };
   }
 
-  const formats: NormalizedFormat[] = [
-    {
+  const cleanTitle = title.replace(/[/\\?%*:|"<>]/g, '').slice(0, 40) || 'Facebook-Video';
+  const formats: NormalizedFormat[] = [];
+
+  if (hdVideoUrl) {
+    formats.push({
+      formatKey: 'fb-hd',
+      quality: 'HD Video (720p/1080p) - সাউন্ড সহ',
+      qualityLabel: 'HD (With Audio)',
+      type: 'video',
+      container: 'mp4',
+      hasVideo: true,
+      hasAudio: true,
+      downloadUrl: `/api/video-downloader?action=proxy_download&url=${encodeURIComponent(
+        hdVideoUrl
+      )}&filename=${encodeURIComponent(`ToolGhor-${cleanTitle}-HD.mp4`)}`,
+      isRecommended: true,
+      note: 'উচ্চমানের এইচডি ভিডিও ও অরিজিনাল সাউন্ড',
+    });
+  }
+
+  if (sdVideoUrl) {
+    formats.push({
+      formatKey: 'fb-sd',
+      quality: 'SD Video (Standard) - সাউন্ড সহ',
+      qualityLabel: 'SD (With Audio)',
+      type: 'video',
+      container: 'mp4',
+      hasVideo: true,
+      hasAudio: true,
+      downloadUrl: `/api/video-downloader?action=proxy_download&url=${encodeURIComponent(
+        sdVideoUrl
+      )}&filename=${encodeURIComponent(`ToolGhor-${cleanTitle}-SD.mp4`)}`,
+      isRecommended: !hdVideoUrl,
+      note: 'স্ট্যান্ডার্ড কোয়ালিটি ভিডিও ও সাউন্ড',
+    });
+  }
+
+  if (!hdVideoUrl && !sdVideoUrl && directVideoUrl) {
+    formats.push({
       formatKey: 'fb-mp4',
-      quality: 'Original HD (MP4)',
+      quality: 'Original Video (MP4)',
       qualityLabel: 'Original MP4',
       type: 'video',
       container: 'mp4',
@@ -695,24 +850,27 @@ async function resolveFacebook(rawUrl: string) {
       hasAudio: true,
       downloadUrl: `/api/video-downloader?action=proxy_download&url=${encodeURIComponent(
         directVideoUrl
-      )}&filename=${encodeURIComponent('ToolGhor-Facebook-Video.mp4')}`,
+      )}&filename=${encodeURIComponent(`ToolGhor-${cleanTitle}.mp4`)}`,
       isRecommended: true,
-      note: 'উন্মুক্ত ফেসবুক রিল/ভিডিও',
-    },
-    {
-      formatKey: 'fb-mp3',
-      quality: 'Audio Extracted (MP3)',
-      qualityLabel: 'MP3 Audio',
-      type: 'audio',
-      container: 'mp3',
-      hasVideo: false,
-      hasAudio: true,
-      downloadUrl: `/api/video-downloader?action=proxy_download&url=${encodeURIComponent(
-        directVideoUrl
-      )}&filename=${encodeURIComponent('ToolGhor-Facebook-Audio.mp3')}`,
-      note: 'ভিডিওর অডিও ট্র্যাক',
-    },
-  ];
+      note: 'ফেসবুক রিলস ভিডিও',
+    });
+  }
+
+  // Audio track
+  formats.push({
+    formatKey: 'fb-mp3',
+    quality: 'MP3 অডিও সাউন্ড / গান',
+    qualityLabel: 'MP3 Audio (Sound)',
+    type: 'audio',
+    container: 'mp3',
+    hasVideo: false,
+    hasAudio: true,
+    isRecommended: true,
+    downloadUrl: `/api/video-downloader?action=proxy_download&url=${encodeURIComponent(
+      primaryVideoUrl
+    )}&filename=${encodeURIComponent(`ToolGhor-${cleanTitle}-Audio.mp3`)}`,
+    note: 'রিলসের সম্পূর্ণ ব্যাকগ্রাউন্ড সাউন্ড',
+  });
 
   return {
     success: true,
@@ -1038,7 +1196,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, error: safeCheck.error }, { status: 403 });
   }
 
-  // A. Primary: If SAVEAPI_KEY is configured in Vercel, query SaveAPI
+  const platform = detectPlatform(rawUrl);
+
+  // A. Priority 1 for Instagram & Facebook: SnapSave (guarantees combined video + audio stream with sound)
+  if (platform === 'instagram' || platform === 'facebook') {
+    try {
+      const snapResult = await resolveSnapSave(rawUrl, platform);
+      if (snapResult && snapResult.success && snapResult.formats.length > 0) {
+        return NextResponse.json(snapResult);
+      }
+    } catch (err) {
+      console.warn(`[VideoDownloader] SnapSave resolution fallback for ${platform}:`, err);
+    }
+  }
+
+  // B. Primary for YouTube & generic social provider: SaveAPI
   const saveApiKey = process.env.SAVEAPI_KEY;
   if (saveApiKey) {
     try {
@@ -1052,9 +1224,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // B. Fallback: Native ToolGhor Platform Adapters
-  const platform = detectPlatform(rawUrl);
-
+  // C. Fallback: Native ToolGhor Platform Adapters
   switch (platform) {
     case 'youtube':
       return NextResponse.json(await resolveYouTube(rawUrl));
