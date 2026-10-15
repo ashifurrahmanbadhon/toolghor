@@ -6,12 +6,13 @@ import BackgroundAnimation from '@/components/BackgroundAnimation';
 import SmoothCursor from '@/components/SmoothCursor';
 
 export const metadata: Metadata = {
-  title: `${siteConfig.name} – ${siteConfig.tagline}`,
+  title: 'ToolGhor – Everyday tools, now on one platform',
   description: `${siteConfig.taglineEn}. Everyday productivity and file tools in your browser.`,
   metadataBase: new URL(siteConfig.url),
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
+      { url: '/assets/logo-icon.png', type: 'image/png' },
       { url: '/assets/favicon.png', type: 'image/png' },
     ],
     apple: '/assets/apple-touch-icon.png',
@@ -29,7 +30,23 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon.png" />
+        <link rel="icon" type="image/png" sizes="256x256" href="/assets/logo-icon.png" />
         <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var l = localStorage.getItem('lang') || localStorage.getItem('toolghor_lang') || 'en';
+                document.documentElement.lang = l;
+                if (window.location.pathname === '/' || window.location.pathname === '') {
+                  document.title = (l === 'bn') 
+                    ? 'ToolGhor – দৈনন্দিন কাজের সব টুল' 
+                    : 'ToolGhor – Everyday tools, now on one platform';
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
         <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
         <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />

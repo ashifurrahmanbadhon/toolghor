@@ -38,14 +38,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateDocumentTitle = (currentLang: Language) => {
+    if (typeof document === 'undefined') return;
+    const path = window.location.pathname;
+    if (path === '/' || path === '') {
+      document.title = currentLang === 'bn'
+        ? 'ToolGhor – দৈনন্দিন কাজের সব টুল'
+        : 'ToolGhor – Everyday tools, now on one platform';
+    }
+  };
+
   useEffect(() => {
     try {
-      // 1. Language hydration
+      // 1. Language hydration (default: 'en')
       const savedLang = (localStorage.getItem('lang') || localStorage.getItem('toolghor_lang')) as Language;
-      if (savedLang === 'bn' || savedLang === 'en') {
-        setLangState(savedLang);
-        document.documentElement.lang = savedLang;
-      }
+      const initialLang: Language = (savedLang === 'bn' || savedLang === 'en') ? savedLang : 'en';
+      setLangState(initialLang);
+      document.documentElement.lang = initialLang;
+      updateDocumentTitle(initialLang);
 
       // 2. Default dark theme hydration (defaults to dark if not set)
       const savedTheme = (localStorage.getItem('theme') || localStorage.getItem('toolghor_theme')) as Theme;
@@ -63,6 +73,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('lang', newLang);
       localStorage.setItem('toolghor_lang', newLang);
       document.documentElement.lang = newLang;
+      updateDocumentTitle(newLang);
       const w = window as any;
       if (w.UI) {
         w.UI.lang = newLang;

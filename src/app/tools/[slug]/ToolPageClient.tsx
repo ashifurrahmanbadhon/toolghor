@@ -17,6 +17,15 @@ interface ToolPageClientProps {
 export default function ToolPageClient({ tool, relatedTools }: ToolPageClientProps) {
   const { lang } = useApp();
 
+  React.useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.title =
+        lang === 'bn'
+          ? `${tool.bn} (${tool.en}) | ToolGhor`
+          : `${tool.en} (${tool.bn}) | ToolGhor`;
+    }
+  }, [lang, tool]);
+
   const title = lang === 'bn' ? tool.bn : tool.en;
   const subTitle = lang === 'bn' ? tool.en : tool.bn;
   const leadText = lang === 'bn' ? tool.intro : tool.introEn;

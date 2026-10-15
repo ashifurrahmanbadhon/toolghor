@@ -35,6 +35,15 @@ export default function HomeClient({ initialData }: HomeClientProps) {
   // Notice Banner dismiss state
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
+  // Sync browser document title with selected language
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.title = lang === 'bn'
+        ? 'ToolGhor – দৈনন্দিন কাজের সব টুল'
+        : 'ToolGhor – Everyday tools, now on one platform';
+    }
+  }, [lang]);
+
   // Synchronize client globals and background refresh
   useEffect(() => {
     const syncGlobals = (data: any) => {
