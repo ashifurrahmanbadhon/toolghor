@@ -452,12 +452,15 @@
           if (fmt.downloadUrl.indexOf('action=saveapi_yt_create') > -1) {
             var sRes = await fetch(fmt.downloadUrl);
             var sData = await sRes.json();
-            if (!sData || !sData.success || !sData.download_url) {
+            if (!sData || !sData.success || (!sData.download_url && !sData.direct_url)) {
               throw new Error((sData && sData.error) || tr('ডাউনলোড লিঙ্ক তৈরি করা যায়নি।', 'Failed to generate download link.'));
             }
+            var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+            // On mobile devices, direct_url streams straight from CDN without false Content-Length mismatch, preventing the 99% stall
+            var finalDlUrl = (isMobile && sData.direct_url) ? sData.direct_url : (sData.download_url || sData.direct_url);
             var targetFilename = sData.filename || filename;
-            triggerBrowserDownload(sData.download_url, targetFilename);
-            renderDownloadSuccess(curOnlineData ? curOnlineData.title : 'Video', fmt.qualityLabel || fmt.quality, sData.ext || fmt.container || 'mp4', sData.download_url, targetFilename);
+            triggerBrowserDownload(finalDlUrl, targetFilename);
+            renderDownloadSuccess(curOnlineData ? curOnlineData.title : 'Video', fmt.qualityLabel || fmt.quality, sData.ext || fmt.container || 'mp4', finalDlUrl, targetFilename);
             btn.innerHTML = '✓ ' + tr('শুরু হয়েছে', 'Started');
             UI.toast(tr('✓ ডাউনলোড ব্রাউজারে শুরু হয়েছে!', '✓ Download started in browser!'));
             setTimeout(function () {
