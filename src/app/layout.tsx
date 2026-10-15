@@ -10,8 +10,12 @@ export const metadata: Metadata = {
   description: `${siteConfig.taglineEn}. Everyday productivity and file tools in your browser.`,
   metadataBase: new URL(siteConfig.url),
   icons: {
-    icon: '/assets/favicon.png',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/assets/favicon.png', type: 'image/png' },
+    ],
     apple: '/assets/apple-touch-icon.png',
+    shortcut: '/favicon.ico',
   },
 };
 
@@ -23,6 +27,9 @@ export default function RootLayout({
   return (
     <html lang="en" data-theme="dark" className="dark" suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon.png" />
+        <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
         <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
         <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
