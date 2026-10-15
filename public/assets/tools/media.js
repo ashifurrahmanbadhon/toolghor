@@ -185,22 +185,20 @@
       UI.el('small', { class: 'lbl' }, tr('বড় ভিডিওতে সময় লাগে। ১–২ মিনিটের ভিডিওর জন্য সবচেয়ে ভালো। প্রসেস চলার সময় ট্যাব বন্ধ করবেন না।', "Large videos take time. Works best for videos of 1–2 minutes. Do not close this tab while processing."))));
   };
 
-  /* ================= SnapYT YouTube Downloader (https://www.snapyt.app) ================= */
+    /* ================= YouTube Video Downloader ================= */
   T['youtube-downloader'] = function (root) {
     var curData = null;
-    var curTab = 'video'; // 'video' | 'audio' | 'thumb'
     var isFetching = false;
 
     var container = UI.el('div', { class: 'stack snapyt-box' });
 
-    // 1. Hero Header
+    // 1. Hero Header (SnapYT Engine badge removed)
     var hero = UI.el('div', { class: 'snapyt-hero' },
-      UI.el('span', { class: 'snapyt-badge' }, '⚡ ' + tr('SnapYT ইঞ্জিন • হাই স্পিড', 'SnapYT Engine • High Speed')),
       UI.el('h2', {}, tr('ইউটিউব ভিডিও ও অডিও ডাউনলোডার', 'YouTube Video & Audio Downloader')),
-      UI.el('p', {}, tr('ইউটিউব ভিডিও বা শর্টস-এর লিংক দিন, পছন্দের কোয়ালিটি নির্বাচন করুন এবং এক ক্লিকে সরাসরি ফাইলে সেভ করুন।', 'Paste a YouTube video or Shorts link, choose your preferred quality, and save the video or audio in seconds.'))
+      UI.el('p', {}, tr('ইউটিউব ভিডিও বা শর্টস-এর লিংক দিন, কোয়ালিটি নির্বাচন করুন এবং সরাসরি ফাইলে সেভ করুন।', 'Paste a YouTube video or Shorts link, select quality, and save the file directly.'))
     );
 
-    // 2. Input Shell (SnapYT styled)
+    // 2. Input Shell
     var inputShell = UI.el('div', { class: 'snapyt-input-shell' });
     var inputIcon = UI.el('span', { class: 'snapyt-input-icon', 'aria-hidden': 'true' },
       UI.icon('youtube', 22)
@@ -254,7 +252,7 @@
       tr('💡 পরামর্শ: ইউটিউবে ভিডিওর নিচে Share চেপে "Copy link" চাপুন এবং ওপরের বক্সে পেস্ট করুন।', '💡 Tip: open the YouTube video, tap Share → Copy link, then paste it above.')
     );
 
-    // Feature Highlights Row (SnapYT style)
+    // Feature Highlights Row
     var featuresRow = UI.el('div', { class: 'snapyt-features' },
       UI.el('span', { class: 'snapyt-feat-pill' }, '⚡ ' + tr('ইনস্ট্যান্ট ফেচ', 'Instant Fetch')),
       UI.el('span', { class: 'snapyt-feat-pill' }, '🎬 ' + tr('১০৮০p Full HD পর্যন্ত', 'Up to 1080p Full HD')),
@@ -289,22 +287,9 @@
     var resultCard = UI.el('div', { class: 'snapyt-result-card' });
     resultCard.hidden = true;
 
-    // Input handlers
+    // Input handlers (do NOT fetch on every keystroke)
     urlInput.addEventListener('input', function () {
       clearBtn.hidden = !urlInput.value.trim();
-      var id = parseYtId(urlInput.value);
-      if (id && (!curData || curData.id !== id)) {
-        doFetch(urlInput.value);
-      }
-    });
-
-    urlInput.addEventListener('paste', function () {
-      setTimeout(function () {
-        clearBtn.hidden = !urlInput.value.trim();
-        if (urlInput.value.trim()) {
-          doFetch(urlInput.value);
-        }
-      }, 50);
     });
 
     urlInput.addEventListener('keydown', function (e) {
@@ -334,8 +319,10 @@
       if (!url) return null;
       var str = url.trim();
       if (/^[a-zA-Z0-9_-]{11}$/.test(str)) return str;
-      var m = str.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|watch\?v=|watch\?.+&v=))([\w-]{11})/i);
-      return m ? m[1] : null;
+      var m = str.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|live\/|watch\?v=|watch\?.+&v=))([\w-]{11})/i);
+      if (m) return m[1];
+      var m2 = str.match(/music\.youtube\.com\/watch\?v=([\w-]{11})/i);
+      return m2 ? m2[1] : null;
     }
 
     async function doFetch(rawUrl) {
@@ -356,8 +343,14 @@
       UI.clear(statusBox);
       statusBox.appendChild(UI.notice('info', '⏳ ' + tr('ভিডিওর তথ্য অনুসন্ধান করা হচ্ছে, অপেক্ষা করুন…', 'Fetching video details, please wait…')));
 
+      var controller = new AbortController();
+      var timeoutId = setTimeout(function () { controller.abort(); }, 7000);
+
       try {
-        var res = await fetch('/api/yt-download?url=' + encodeURIComponent(rawUrl));
+        var res = await fetch('/api/yt-download?url=' + encodeURIComponent(rawUrl), {
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
         var data = await res.json();
 
         if (!data || !data.success) {
@@ -373,15 +366,19 @@
           thumbMax: (data.thumbnails && data.thumbnails.max) || ('https://i.ytimg.com/vi/' + id + '/maxresdefault.jpg'),
           thumbHq: (data.thumbnails && data.thumbnails.hq) || ('https://i.ytimg.com/vi/' + id + '/hqdefault.jpg'),
           directAvailable: !!data.direct_available,
-          formats: data.formats || [],
-          compliance: data.compliance || null
+          formats: data.formats || []
         };
 
         UI.clear(statusBox);
         renderResult(curData);
       } catch (err) {
+        clearTimeout(timeoutId);
         UI.clear(statusBox);
-        statusBox.appendChild(UI.notice('err', err.message || tr('ভিডিওটি লোড করা সম্ভব হয়নি। লিংকটি যাচাই করুন।', 'Could not load video. Please verify the URL.')));
+        var isAbort = err.name === 'AbortError';
+        var errMsg = isAbort
+          ? tr('সার্ভার থেকে রেসপন্স পেতে দেরি হয়েছে। পুনরায় চেষ্টা করুন।', 'Server request timed out. Please try again.')
+          : (err.message || tr('ভিডিওটি লোড করা সম্ভব হয়নি। লিংকটি যাচাই করুন।', 'Could not load video. Please verify the URL.'));
+        statusBox.appendChild(UI.notice('err', errMsg));
         renderResult(null);
       } finally {
         isFetching = false;
@@ -433,7 +430,7 @@
       previewRow.appendChild(metaCol);
       resultCard.appendChild(previewRow);
 
-      // 2. Direct 1-Click HD Thumbnail Download Row (Always working and instant)
+      // 2. Direct 1-Click HD Thumbnail Download Row (Instant & 100% working)
       var directThumbRow = UI.el('div', {
         style: 'display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; padding:14px 18px; margin-top:16px; border-radius:12px; background:color-mix(in srgb, var(--paddy) 8%, var(--paper)); border:1px solid color-mix(in srgb, var(--paddy) 30%, transparent);'
       });
@@ -467,21 +464,18 @@
       directThumbRow.appendChild(dlThumbBtn);
       resultCard.appendChild(directThumbRow);
 
-      var downloadStatusWrap = UI.el('div', { class: 'snapyt-dl-status-wrap' });
-      resultCard.appendChild(downloadStatusWrap);
+      // 3. Direct Video / Audio Streams
+      var directSection = UI.el('div', { style: 'margin-top:20px;' });
+      directSection.appendChild(UI.el('h4', { style: 'margin-bottom:12px; font-size:15px; font-weight:700;' }, '⚡ ' + tr('ভিডিও ও অডিও সরাসরি ডাউনলোড করুন', 'Direct Video & Audio Downloads')));
 
-      // 3. Direct Video / Audio Streams (When direct streams are available)
-      if (data.directAvailable && data.formats && data.formats.length > 0) {
-        var directSection = UI.el('div', { style: 'margin-top:20px;' });
-        directSection.appendChild(UI.el('h4', { style: 'margin-bottom:12px; font-size:15px; font-weight:700;' }, '⚡ ' + tr('সরাসরি ডাউনলোড অপশন (Direct Download)', 'Direct Stream Downloads')));
-
+      if (data.formats && data.formats.length > 0) {
         var streamGrid = UI.el('div', { style: 'display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;' });
         data.formats.forEach(function (fmt) {
           var fmtCard = UI.el('div', {
             style: 'padding:14px; border-radius:12px; background:var(--paper-2); border:1px solid var(--line); display:flex; flex-direction:column; gap:8px;'
           });
-          fmtCard.appendChild(UI.el('strong', { style: 'font-size:15px; color:var(--ink-1);' }, (fmt.hasVideo ? '🎬 ' : '🎵 ') + fmt.quality));
-          fmtCard.appendChild(UI.el('span', { style: 'font-size:12px; color:var(--ink-3);' }, fmt.container.toUpperCase() + ' • ' + (fmt.mimeType || 'media')));
+          fmtCard.appendChild(UI.el('strong', { style: 'font-size:15px; color:var(--ink-1);' }, (fmt.type === 'video' ? '🎬 ' : '🎵 ') + fmt.quality));
+          fmtCard.appendChild(UI.el('span', { style: 'font-size:12px; color:var(--ink-3);' }, fmt.container.toUpperCase() + ' • ' + (fmt.type === 'video' ? tr('ভিডিও ফাইল', 'Video File') : tr('অডিও ফাইল', 'Audio File'))));
 
           var dlDirectBtn = UI.el('button', {
             type: 'button',
@@ -505,46 +499,26 @@
           streamGrid.appendChild(fmtCard);
         });
         directSection.appendChild(streamGrid);
-        resultCard.appendChild(directSection);
-      }
 
-      // 4. Authorized Creator & Compliance Guide (When cloud IP is restricted by YouTube)
-      if (data.compliance && data.compliance.is_restricted) {
-        var compCard = UI.el('div', {
-          style: 'margin-top:20px; padding:18px 20px; border-radius:14px; background:color-mix(in srgb, #3b82f6 8%, var(--paper)); border:1px solid color-mix(in srgb, #3b82f6 28%, transparent);'
-        });
-
-        compCard.appendChild(UI.el('h4', {
-          style: 'margin:0 0 8px; font-size:15px; font-weight:700; color:#3b82f6; display:flex; align-items:center; gap:8px;'
-        }, 'ℹ️ ' + tr('অনুমোদিত ডাউনলোড বিকল্প ও ইউটিউব নির্দেশিকা', 'Authorized Download & Compliance Guide')));
-
-        compCard.appendChild(UI.el('p', {
-          style: 'font-size:13px; line-height:1.6; color:var(--ink-2); margin-bottom:14px;'
+        var hintBox = UI.el('p', {
+          style: 'margin-top:12px; font-size:12px; color:var(--ink-3); line-height:1.5;'
         }, tr(
-          'ইউটিউবের ক্লাউড বট-ডিটেকশন ও পলিসি অনুযায়ী সরাসরি সার্ভার থেকে থার্ড-পার্টি রিমোট ভিডিও স্ট্রিমিং সীমিত। আপনি যে ভিডিওর মালিক বা যার ডাউনলোড অনুমতি আপনার আছে, তা নিরাপদে পেতে নিচের অফিশিয়াল পদ্ধতি ব্যবহার করুন:',
-          'In compliance with YouTube Terms of Service and cloud bot-detection safeguards, arbitrary serverless stream ripping is restricted on shared cloud IPs. For videos you own or have permission to download, please use the authorized methods below:'
-        )));
-
-        var altList = UI.el('div', { style: 'display:flex; flex-direction:column; gap:10px;' });
-
-        if (data.compliance.alternatives && data.compliance.alternatives.length > 0) {
-          data.compliance.alternatives.forEach(function (alt) {
-            var item = UI.el('div', {
-              style: 'padding:12px 14px; border-radius:10px; background:var(--paper); border:1px solid var(--line);'
-            });
-            item.appendChild(UI.el('strong', {
-              style: 'font-size:13.5px; display:block; color:var(--ink-1); margin-bottom:4px;'
-            }, '✓ ' + (UI.lang === 'bn' ? alt.titleBn : alt.titleEn)));
-            item.appendChild(UI.el('span', {
-              style: 'font-size:12.5px; color:var(--ink-3); line-height:1.5;'
-            }, (UI.lang === 'bn' ? alt.descBn : alt.descEn)));
-            altList.appendChild(item);
-          });
-        }
-
-        compCard.appendChild(altList);
-        resultCard.appendChild(compCard);
+          '💡 পরামর্শ: ব্রাউজারে সরাসরি চালু হলে প্লেয়ারের ৩-ডট (⋮) এ ক্লিক করে "Download" চাপুন অথবা Ctrl+S দিয়ে ফাইল সেভ করুন।',
+          '💡 Tip: If video streams in browser tab, click the 3-dots (⋮) player menu → "Download" or press Ctrl+S to save.'
+        ));
+        directSection.appendChild(hintBox);
+      } else {
+        // Informative guidance
+        var note = UI.el('div', {
+          style: 'padding:14px; border-radius:10px; background:var(--paper-2); border:1px solid var(--line); font-size:13px; color:var(--ink-2);'
+        }, tr(
+          'ভিডিওটির নিজস্ব কপি পেতে YouTube Studio > Content এ গিয়ে মূল MP4 ফাইলটি নামিয়ে নিন। সম্পূর্ণ থাম্বনেইলটি ওপরের বাটন দিয়ে এক ক্লিকে ডাউনলোড করতে পারেন।',
+          'For videos you manage, use YouTube Studio > Content to download your original MP4. You can also download the full HD thumbnail above with 1 click.'
+        ));
+        directSection.appendChild(note);
       }
+
+      resultCard.appendChild(directSection);
     }
 
     container.appendChild(hero);
