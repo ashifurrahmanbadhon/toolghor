@@ -591,23 +591,16 @@ export async function GET(req: NextRequest) {
 
   // 3. Action: CONVERT (for YouTube formats)
   if (action === 'convert') {
-    const safeCheck = validateSafeUrl(rawUrl);
-    if (!safeCheck.safe) {
-      return NextResponse.json({ success: false, error: safeCheck.error }, { status: 403 });
+    const videoId = extractYouTubeId(rawUrl) || searchParams.get('id');
+    if (!videoId) {
+      return NextResponse.json({ success: false, error: 'Invalid YouTube video or URL.' }, { status: 400 });
     }
 
-    const platform = detectPlatform(rawUrl);
-    if (platform === 'youtube') {
-      const format = (searchParams.get('format') || '720').toLowerCase();
-      const videoId = extractYouTubeId(rawUrl);
-      if (!videoId) {
-        return NextResponse.json({ success: false, error: 'Invalid YouTube URL.' }, { status: 400 });
-      }
-
-      const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      const validFormats = ['4k', '1440', '1080', '720', '480', '360', 'mp3', 'm4a'];
-      let fmt = validFormats.includes(format) ? format : '720';
-      if (fmt === '480') fmt = '720';
+    const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const format = (searchParams.get('format') || '720').toLowerCase();
+    const validFormats = ['4k', '1440', '1080', '720', '480', '360', 'mp3', 'm4a'];
+    let fmt = validFormats.includes(format) ? format : '720';
+    if (fmt === '480') fmt = '720';
 
       try {
         const initUrl = `https://loader.to/ajax/download.php?button=1&start=1&end=1&format=${fmt}&url=${encodeURIComponent(
@@ -637,9 +630,6 @@ export async function GET(req: NextRequest) {
         const msg = err instanceof Error ? err.message : 'Conversion request failed';
         return NextResponse.json({ success: false, error: msg }, { status: 500 });
       }
-    }
-
-    return NextResponse.json({ success: false, error: 'Conversion is only applicable to YouTube streams.' }, { status: 400 });
   }
 
   // 4. Action: PROXY_DOWNLOAD (Safe browser attachment download)
