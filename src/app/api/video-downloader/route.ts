@@ -1056,10 +1056,9 @@ export async function GET(req: NextRequest) {
         qualityTag.toLowerCase() === 'm4a';
       const ext = createData.ext || (isAudio ? qualityTag.toLowerCase() : 'mp4');
       const outFilename = createData.filename || `ToolGhor-YouTube-${qualityTag}.${ext}`;
-      const sizeParam = createData.file_size ? `&size=${createData.file_size}` : '';
       const proxiedDlUrl = `/api/video-downloader?action=proxy_download&url=${encodeURIComponent(
         dlUrl
-      )}&filename=${encodeURIComponent(outFilename)}${sizeParam}`;
+      )}&filename=${encodeURIComponent(outFilename)}`;
 
       return NextResponse.json({
         success: true,
@@ -1199,54 +1198,13 @@ export async function GET(req: NextRequest) {
       headers.set('Content-Type', contentType);
       headers.set('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
 
-      const len = upstreamRes.headers.get('content-length') || explicitSize;
+      const len = upstreamRes.headers.get('content-length');
       if (len && len !== '0' && len !== 'null') {
         headers.set('Content-Length', String(len));
       }
       headers.set('Connection', 'close');
 
-      // Create bounded stream if expected size is known to prevent mobile download managers from looping or exceeding file size
-      const expectedBytes = explicitSize ? parseInt(explicitSize, 10) : 0;
-      let body: ReadableStream<Uint8Array> = upstreamRes.body;
-
-      if (expectedBytes > 0) {
-        let sentBytes = 0;
-        const reader = upstreamRes.body.getReader();
-        body = new ReadableStream<Uint8Array>({
-          async pull(controller) {
-            try {
-              const { done, value } = await reader.read();
-              if (done || sentBytes >= expectedBytes) {
-                controller.close();
-                reader.cancel();
-                return;
-              }
-              const remaining = expectedBytes - sentBytes;
-              if (value.length <= remaining) {
-                sentBytes += value.length;
-                controller.enqueue(value);
-              } else {
-                const slice = value.subarray(0, remaining);
-                sentBytes += slice.length;
-                controller.enqueue(slice);
-                controller.close();
-                reader.cancel();
-              }
-              if (sentBytes >= expectedBytes) {
-                controller.close();
-                reader.cancel();
-              }
-            } catch (e) {
-              controller.error(e);
-            }
-          },
-          cancel() {
-            reader.cancel();
-          },
-        });
-      }
-
-      return new NextResponse(body, {
+      return new NextResponse(upstreamRes.body, {
         status: 200,
         headers,
       });
