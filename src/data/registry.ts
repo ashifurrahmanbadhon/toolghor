@@ -437,43 +437,26 @@ export const TOOLS: ToolItem[] = [
   // --- Media Tools ---
   {
     slug: 'video-downloader',
-    bn: 'অল-ইন-ওয়ান ভিডিও ডাউনলোডার ও কনভার্টার',
-    en: 'All-in-One Video Downloader & Converter',
+    bn: 'ভিডিও ও অডিও ডাউনলোডার',
+    en: 'Video & Audio Downloader',
     icon: 'Video',
     cats: ['media'],
     group: 'media',
-    badge: 'All-in-One',
-    desc: 'ইউটিউব, ইনস্টাগ্রাম, ফেসবুক ও ডিরেক্ট ভিডিও ডাউনলোড এবং লোকাল ফাইল কনভার্ট করুন',
-    descEn: 'Download YouTube, Instagram, Facebook & direct videos or convert local files',
-    keywords: 'video downloader video converter all in one youtube reels shorts instagram facebook fb mp4 webm mp3 audio download ভিডিও ডাউনলোডার কনভার্টার',
+    desc: 'ইউটিউব, ইনস্টাগ্রাম, ফেসবুক ও সরাসরি যেকোনো ভিডিও বা অডিও এক ক্লিকে ডাউনলোড করুন',
+    descEn: 'Download YouTube, Instagram, Facebook & direct videos or audio with one click',
+    keywords: 'video downloader audio downloader youtube reels shorts instagram facebook fb mp4 webm mp3 audio download ভিডিও অডিও ডাউনলোডার কনভার্টার',
     intro: 'যেকোনো পাবলিক ভিডিও লিংক পেস্ট করে সাথে সাথে MP4 বা MP3 ডাউনলোড করুন, অথবা আপনার ভিডিও ফাইল ব্রাউজারেই কনভার্ট করুন।',
     introEn: 'Paste any public video link to download MP4/MP3 instantly, or convert your video files locally inside your browser.',
     steps: [
       'ইউটিউব, ইনস্টাগ্রাম, ফেসবুক বা সরাসরি কোনো ভিডিও লিংক পেস্ট করুন, অথবা ফাইল আপলোড করুন।',
-      '"ফরম্যাট খুঁজুন" চাপুন এবং পছন্দসই ভিডিও (MP4/WebM) বা অডিও (MP3/M4A/WAV) বেছে নিন।',
-      '"ডাউনলোড শুরু করুন" চাপুন এবং সরাসরি আপনার ব্রাউজারে ফাইল সংরক্ষণ করুন।'
+      '"ভিডিও আনুন" চাপুন এবং পছন্দসই ভিডিও (MP4) বা অডিও (MP3/M4A) বেছে নিন।',
+      '"ডাউনলোড" চাপুন এবং সাথে সাথে আপনার ব্রাউজারে ফাইল সংরক্ষণ করুন।'
     ],
     stepsEn: [
       'Paste a YouTube, Instagram, Facebook or direct video link, or upload a local file.',
-      'Click "Get Available Formats" and choose your video (MP4/WebM) or audio (MP3/M4A/WAV) format.',
-      'Click "Start Download" to save the file directly to your browser.'
+      'Click "Get Video" and choose your video (MP4) or audio (MP3/M4A) format.',
+      'Click "Download" to save the file directly to your browser.'
     ]
-  },
-  {
-    slug: 'youtube-downloader',
-    bn: 'ইউটিউব ডাউনলোডার',
-    en: 'YouTube Downloader',
-    icon: 'Video',
-    cats: ['media'],
-    group: 'media',
-    badge: 'HD Audio/Video',
-    desc: 'ইউটিউব ভিডিও (MP4) বা অডিও (MP3) উচ্চমানে ডাউনলোড করুন',
-    descEn: 'Download YouTube video (MP4) or audio (MP3) in high quality',
-    keywords: 'youtube download youtube video download youtube mp3 audio download youtube to mp3 yt video downloader shorts download ইউটিউব ভিডিও অডিও গান ডাউনলোড এমপিথ্রি এমপিফোর',
-    intro: 'যেকোনো ইউটিউব ভিডিও বা শর্টসের লিংক দিয়ে সরাসরি HD ভিডিও (MP4) অথবা স্পষ্ট অডিও (MP3/M4A) ডাউনলোড করুন।',
-    introEn: 'Paste any YouTube video or Shorts link to download HD video (MP4) or high-quality audio (MP3/M4A) directly.',
-    steps: ['ইউটিউব ভিডিও বা শর্টসের লিংক কপি করে পেস্ট করুন।', 'ভিডিও (১০৮০p, ৭২০p) নাকি অডিও (MP৩, M৪A) নামাবেন তা বেছে নিন।', '"ডাউনলোড করুন" চাপুন এবং ফাইল সেভ করুন।'],
-    stepsEn: ['Paste your YouTube video or Shorts link.', 'Choose whether to download video (1080p, 720p) or audio (MP3, M4A).', 'Click "Download" to save your file.']
   },
   {
     slug: 'audio-extractor',
