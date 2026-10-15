@@ -373,12 +373,13 @@
     function triggerBrowserDownload(downloadUrl, filename) {
       if (!downloadUrl) return;
 
-      // Direct, safe browser attachment download in detached target without navigating or reloading page
+      // Safe browser attachment download: uses _self on mobile to invoke system DownloadManager without blank tabs
       try {
         var a = document.createElement('a');
         a.href = downloadUrl;
         if (filename) a.download = filename;
-        a.target = '_blank';
+        var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+        a.target = isMobile ? '_self' : '_blank';
         a.rel = 'noopener noreferrer';
         a.style.display = 'none';
         document.body.appendChild(a);
@@ -387,7 +388,7 @@
           if (a && a.parentNode) a.parentNode.removeChild(a);
         }, 2000);
       } catch (e) {
-        window.open(downloadUrl, '_blank');
+        window.location.assign(downloadUrl);
       }
     }
 
@@ -415,12 +416,9 @@
         class: 'btn-pri sm',
         href: downloadUrl,
         download: filename || '',
-        target: '_blank',
+        target: '_self',
         rel: 'noopener noreferrer',
-        style: 'background:#10b981; border-color:#10b981; font-weight:700; color:#fff; text-decoration:none; display:inline-flex; align-items:center; gap:8px; padding:10px 18px; border-radius:8px; cursor:pointer;',
-        onclick: function () {
-          triggerBrowserDownload(downloadUrl, filename);
-        }
+        style: 'background:#10b981; border-color:#10b981; font-weight:700; color:#fff; text-decoration:none; display:inline-flex; align-items:center; gap:8px; padding:10px 18px; border-radius:8px; cursor:pointer;'
       }, '📥 ' + tr('সরাসরি ফাইল সেভ করুন (Save File Directly)', 'Save File Directly'));
 
       btnRow.appendChild(saveLinkBtn);
