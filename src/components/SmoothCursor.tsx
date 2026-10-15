@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 
 export default function SmoothCursor() {
+  const [enabled, setEnabled] = React.useState(false);
   const coreRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
   const rippleRef = useRef<HTMLDivElement>(null);
@@ -17,6 +18,7 @@ export default function SmoothCursor() {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const isDbDisabled = (window as any).UI_SETTINGS?.cursor_animation_active === false;
     if (!hasFinePointer || prefersReducedMotion || isDbDisabled) return;
+    setEnabled(true);
 
     const core = coreRef.current;
     const ring = ringRef.current;
@@ -184,6 +186,8 @@ export default function SmoothCursor() {
       document.removeEventListener('mouseenter', onMouseEnter);
     };
   }, []);
+
+  if (!enabled) return null;
 
   return (
     <div className="comet-cursor-wrap" aria-hidden="true">
