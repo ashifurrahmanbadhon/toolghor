@@ -405,10 +405,10 @@
         UI.el('strong', { style: 'color:var(--ink-1); font-size:16px;' }, tr('ডাউনলোড প্রস্তুত ও শুরু হয়েছে!', 'Download Ready & Started!'))
       );
 
-      var desc = UI.el('p', { style: 'margin:0 0 12px; font-size:13.5px; color:var(--ink-2); line-height:1.4;' },
-        tr('ফাইলটি আপনার ব্রাউজারে সেভ হচ্ছে: ', 'The file is now saving in your browser: ') +
-        UI.el('b', {}, (title || 'Video').slice(0, 65)) + ' (' + quality + ' ' + (container || 'mp4').toUpperCase() + ')'
-      );
+      var desc = UI.el('p', { style: 'margin:0 0 12px; font-size:13.5px; color:var(--ink-2); line-height:1.4;' });
+      desc.appendChild(document.createTextNode(tr('ফাইলটি আপনার ব্রাউজারে সেভ হচ্ছে: ', 'The file is now saving in your browser: ')));
+      desc.appendChild(UI.el('b', {}, (title || 'Video').slice(0, 65)));
+      desc.appendChild(document.createTextNode(' (' + quality + ' ' + (container || 'mp4').toUpperCase() + ')'));
 
       var btnRow = UI.el('div', { style: 'display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px;' });
 
@@ -455,8 +455,9 @@
             if (!sData || !sData.success || !sData.download_url) {
               throw new Error((sData && sData.error) || tr('ডাউনলোড লিঙ্ক তৈরি করা যায়নি।', 'Failed to generate download link.'));
             }
-            triggerBrowserDownload(sData.download_url, filename);
-            renderDownloadSuccess(curOnlineData ? curOnlineData.title : 'Video', fmt.qualityLabel || fmt.quality, fmt.container || 'mp4', sData.download_url, filename);
+            var targetFilename = sData.filename || filename;
+            triggerBrowserDownload(sData.download_url, targetFilename);
+            renderDownloadSuccess(curOnlineData ? curOnlineData.title : 'Video', fmt.qualityLabel || fmt.quality, sData.ext || fmt.container || 'mp4', sData.download_url, targetFilename);
             btn.innerHTML = '✓ ' + tr('শুরু হয়েছে', 'Started');
             UI.toast(tr('✓ ডাউনলোড ব্রাউজারে শুরু হয়েছে!', '✓ Download started in browser!'));
             setTimeout(function () {
