@@ -157,30 +157,52 @@ async function resolveSaveApi(rawUrl: string, apiKey: string) {
       };
     }
 
-    const ytId = data.id || extractYouTubeId(rawUrl) || 'yt-video';
-    const title = data.meta?.title || `YouTube Video (${ytId})`;
-    const author = data.meta?.author || 'YouTube Creator';
-    const thumb = data.meta?.thumbnail || `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
+    const ytId = data.video_id || data.id || extractYouTubeId(rawUrl) || 'yt-video';
+    const title = data.title || data.meta?.title || `YouTube Video (${ytId})`;
+    const author = data.author || data.meta?.author || 'YouTube Creator';
+    const thumb = data.thumbnail || data.meta?.thumbnail || `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
 
     const formats: NormalizedFormat[] = [];
     if (Array.isArray(data.formats) && data.formats.length > 0) {
       for (const f of data.formats) {
-        const isAudio = f.type === 'audio' || f.format === 'mp3' || f.format === 'm4a';
-        const qualityName = f.quality || f.format;
+        const qualityName = f.quality || f.format || '720p';
+        const sizeMb = typeof f.file_size === 'number' ? parseFloat((f.file_size / (1024 * 1024)).toFixed(1)) : null;
         formats.push({
-          formatKey: f.format,
+          formatKey: qualityName,
           quality: qualityName,
           qualityLabel: qualityName,
-          type: isAudio ? 'audio' : 'video',
-          container: f.ext || (isAudio ? 'mp3' : 'mp4'),
-          hasVideo: !isAudio,
+          type: 'video',
+          container: 'mp4',
+          hasVideo: true,
           hasAudio: true,
-          size_mb: typeof f.size_mb === 'number' ? f.size_mb : null,
-          isRecommended: f.format === '720' || f.format === 'mp3',
+          size_mb: sizeMb,
+          isRecommended: qualityName === '720p',
           downloadUrl: `/api/video-downloader?action=saveapi_yt_create&url=${encodeURIComponent(
             rawUrl
-          )}&format=${encodeURIComponent(f.format)}`,
-          note: isAudio ? 'হাই কোয়ালিটি অডিও ট্র্যাক' : `${qualityName} রেজোলিউশন`,
+          )}&format=${encodeURIComponent(qualityName)}`,
+          note: `${qualityName} রেজোলিউশন ভিডিও`,
+        });
+      }
+    }
+
+    if (Array.isArray(data.audio_formats) && data.audio_formats.length > 0) {
+      for (const af of data.audio_formats) {
+        const q = af.quality || 'mp3';
+        const sizeMb = typeof af.file_size === 'number' ? parseFloat((af.file_size / (1024 * 1024)).toFixed(1)) : null;
+        formats.push({
+          formatKey: q,
+          quality: `${q.toUpperCase()} Audio`,
+          qualityLabel: `${q.toUpperCase()} Audio`,
+          type: 'audio',
+          container: q,
+          hasVideo: false,
+          hasAudio: true,
+          size_mb: sizeMb,
+          isRecommended: q === 'mp3',
+          downloadUrl: `/api/video-downloader?action=saveapi_yt_create&url=${encodeURIComponent(
+            rawUrl
+          )}&format=${encodeURIComponent(q)}`,
+          note: 'হাই কোয়ালিটি স্টেরিও অডিও গান',
         });
       }
     }
@@ -188,7 +210,7 @@ async function resolveSaveApi(rawUrl: string, apiKey: string) {
     if (!formats.length) {
       formats.push(
         {
-          formatKey: '720',
+          formatKey: '720p',
           quality: '720p HD',
           qualityLabel: '720p HD (Fast)',
           type: 'video',
@@ -198,11 +220,11 @@ async function resolveSaveApi(rawUrl: string, apiKey: string) {
           isRecommended: true,
           downloadUrl: `/api/video-downloader?action=saveapi_yt_create&url=${encodeURIComponent(
             rawUrl
-          )}&format=720`,
+          )}&format=720p`,
           note: 'দ্রুত ডাউনলোড ও স্পষ্ট ভিডিও',
         },
         {
-          formatKey: '1080',
+          formatKey: '1080p',
           quality: '1080p Full HD',
           qualityLabel: '1080p Full HD',
           type: 'video',
@@ -211,7 +233,7 @@ async function resolveSaveApi(rawUrl: string, apiKey: string) {
           hasAudio: true,
           downloadUrl: `/api/video-downloader?action=saveapi_yt_create&url=${encodeURIComponent(
             rawUrl
-          )}&format=1080`,
+          )}&format=1080p`,
           note: 'উচ্চমানের ১০৮০p ভিডিও',
         },
         {
@@ -858,7 +880,8 @@ export async function GET(req: NextRequest) {
       }
 
       const createData = await createRes.json();
-      if (!createData.success || !createData.download_url) {
+      const dlUrl = createData.url || createData.download_url;
+      if (!createData.success || !dlUrl) {
         return NextResponse.json(
           {
             success: false,
@@ -870,8 +893,9 @@ export async function GET(req: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        download_url: createData.download_url,
-        expires_at: createData.expires_at || null,
+        download_url: dlUrl,
+        filename: createData.filename || null,
+        expires_at: createData.expires || createData.expires_at || null,
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'SaveAPI YouTube create failed';
