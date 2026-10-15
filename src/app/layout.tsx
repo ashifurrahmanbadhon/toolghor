@@ -4,6 +4,7 @@ import { AppProvider } from '@/context/AppContext';
 import { siteConfig } from '@/data/config';
 import BackgroundAnimation from '@/components/BackgroundAnimation';
 import SmoothCursor from '@/components/SmoothCursor';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   title: 'ToolGhor – Everyday tools, now on one platform',
@@ -65,6 +66,7 @@ export default function RootLayout({
         <SmoothCursor />
         <BackgroundAnimation />
         <AppProvider>{children}</AppProvider>
+        <Analytics />
       </body>
     </html>
   );
