@@ -179,7 +179,7 @@ async function resolveSaveApi(rawUrl: string, apiKey: string) {
           isRecommended: qualityName === '720p',
           downloadUrl: `/api/video-downloader?action=saveapi_yt_create&url=${encodeURIComponent(
             rawUrl
-          )}&format=${encodeURIComponent(qualityName)}`,
+          )}&quality=${encodeURIComponent(qualityName)}`,
           note: `${qualityName} রেজোলিউশন ভিডিও`,
         });
       }
@@ -201,7 +201,7 @@ async function resolveSaveApi(rawUrl: string, apiKey: string) {
           isRecommended: q === 'mp3',
           downloadUrl: `/api/video-downloader?action=saveapi_yt_create&url=${encodeURIComponent(
             rawUrl
-          )}&format=${encodeURIComponent(q)}`,
+          )}&quality=${encodeURIComponent(q)}`,
           note: 'হাই কোয়ালিটি স্টেরিও অডিও গান',
         });
       }
@@ -220,7 +220,7 @@ async function resolveSaveApi(rawUrl: string, apiKey: string) {
           isRecommended: true,
           downloadUrl: `/api/video-downloader?action=saveapi_yt_create&url=${encodeURIComponent(
             rawUrl
-          )}&format=720p`,
+          )}&quality=720p`,
           note: 'দ্রুত ডাউনলোড ও স্পষ্ট ভিডিও',
         },
         {
@@ -233,7 +233,7 @@ async function resolveSaveApi(rawUrl: string, apiKey: string) {
           hasAudio: true,
           downloadUrl: `/api/video-downloader?action=saveapi_yt_create&url=${encodeURIComponent(
             rawUrl
-          )}&format=1080p`,
+          )}&quality=1080p`,
           note: 'উচ্চমানের ১০৮০p ভিডিও',
         },
         {
@@ -247,7 +247,7 @@ async function resolveSaveApi(rawUrl: string, apiKey: string) {
           isRecommended: true,
           downloadUrl: `/api/video-downloader?action=saveapi_yt_create&url=${encodeURIComponent(
             rawUrl
-          )}&format=mp3`,
+          )}&quality=mp3`,
           note: 'হাই কোয়ালিটি স্টেরিও অডিও গান',
         }
       );
@@ -1011,7 +1011,7 @@ export async function GET(req: NextRequest) {
     }
 
     const targetUrl = searchParams.get('url') || '';
-    const format = searchParams.get('format') || '720';
+    const requestedQuality = searchParams.get('quality') || searchParams.get('format') || '720p';
     const safeCheck = validateSafeUrl(targetUrl);
     if (!safeCheck.safe) {
       return NextResponse.json({ success: false, error: safeCheck.error }, { status: 403 });
@@ -1020,7 +1020,7 @@ export async function GET(req: NextRequest) {
     try {
       const createUrl = `https://api.saveapi.org/v1/youtube/create?url=${encodeURIComponent(
         targetUrl
-      )}&format=${encodeURIComponent(format)}`;
+      )}&quality=${encodeURIComponent(requestedQuality)}`;
       const createRes = await fetch(createUrl, {
         headers: { Authorization: `Bearer ${apiKey}` },
         signal: AbortSignal.timeout(10000),
@@ -1049,7 +1049,13 @@ export async function GET(req: NextRequest) {
         );
       }
 
-      const outFilename = createData.filename || `ToolGhor-YouTube-${format}.mp4`;
+      const qualityTag = createData.quality || requestedQuality;
+      const isAudio =
+        createData.mode === 'audio' ||
+        qualityTag.toLowerCase() === 'mp3' ||
+        qualityTag.toLowerCase() === 'm4a';
+      const ext = createData.ext || (isAudio ? qualityTag.toLowerCase() : 'mp4');
+      const outFilename = createData.filename || `ToolGhor-YouTube-${qualityTag}.${ext}`;
       const sizeParam = createData.file_size ? `&size=${createData.file_size}` : '';
       const proxiedDlUrl = `/api/video-downloader?action=proxy_download&url=${encodeURIComponent(
         dlUrl
@@ -1060,6 +1066,9 @@ export async function GET(req: NextRequest) {
         download_url: proxiedDlUrl,
         direct_url: dlUrl,
         file_size: createData.file_size || null,
+        quality: qualityTag,
+        mode: createData.mode || (isAudio ? 'audio' : 'video'),
+        ext,
         filename: outFilename,
         expires_at: createData.expires || createData.expires_at || null,
       });
@@ -1178,7 +1187,16 @@ export async function GET(req: NextRequest) {
       }
 
       const headers = new Headers();
-      headers.set('Content-Type', upstreamRes.headers.get('content-type') || 'application/octet-stream');
+      let contentType = upstreamRes.headers.get('content-type');
+      if (!contentType || contentType === 'application/octet-stream') {
+        const lowerName = filename.toLowerCase();
+        if (lowerName.endsWith('.mp3')) contentType = 'audio/mpeg';
+        else if (lowerName.endsWith('.m4a')) contentType = 'audio/mp4';
+        else if (lowerName.endsWith('.mp4')) contentType = 'video/mp4';
+        else if (lowerName.endsWith('.webm')) contentType = 'video/webm';
+        else contentType = 'application/octet-stream';
+      }
+      headers.set('Content-Type', contentType);
       headers.set('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
 
       const len = upstreamRes.headers.get('content-length') || explicitSize;
