@@ -111,14 +111,14 @@ export async function GET(req: NextRequest) {
   let formats: any[] = [];
 
   const streamEndpoints = [
-    `https://invidious.f5.si/api/v1/videos/${videoId}`,
     `https://y.com.sb/api/v1/videos/${videoId}`,
+    `https://invidious.f5.si/api/v1/videos/${videoId}`,
   ];
 
   for (const endpoint of streamEndpoints) {
     try {
       const res = await fetch(endpoint, {
-        signal: AbortSignal.timeout(3000),
+        signal: AbortSignal.timeout(3500),
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           Accept: 'application/json',
@@ -135,57 +135,97 @@ export async function GET(req: NextRequest) {
         }
 
         const formatList: any[] = [];
+        const seenVideos = new Set<string>();
+        const seenAudios = new Set<string>();
 
-        // Direct combined video+audio formats (e.g. 720p, 360p MP4)
-        if (Array.isArray(data.formatStreams) && data.formatStreams.length > 0) {
+        // 1. Direct combined video+audio formats (e.g. 720p, 360p MP4)
+        if (Array.isArray(data.formatStreams)) {
           data.formatStreams.forEach((s: any) => {
             if (s.url) {
-              formatList.push({
-                quality: s.resolution || '720p (HD)',
-                type: 'video',
-                container: s.container || 'mp4',
-                hasVideo: true,
-                hasAudio: true,
-                url: s.url,
-                label: `${s.resolution || 'MP4'} Video`,
-              });
+              const res = s.resolution || '360p';
+              const key = `${res}-${s.container || 'mp4'}-combined`;
+              if (!seenVideos.has(key)) {
+                seenVideos.add(key);
+                formatList.push({
+                  quality: res,
+                  qualityLabel: `${res} (Video + Audio)`,
+                  type: 'video',
+                  container: s.container || 'mp4',
+                  hasVideo: true,
+                  hasAudio: true,
+                  url: s.url,
+                  label: `${res} MP4 (ভিডিও + অডিও)`,
+                  isRecommended: true,
+                });
+              }
             }
           });
         }
 
-        // Adaptive formats (high-res 1080p video and MP3/M4A audio)
+        // 2. Adaptive formats (1080p, 720p, 480p, 360p, 240p, 144p, 4K and MP3/M4A/Opus)
         if (Array.isArray(data.adaptiveFormats)) {
-          // Find best MP4 audio stream
-          const audioMp4 = data.adaptiveFormats.find(
-            (f: any) => f.url && (f.itag === '140' || f.type?.includes('audio/mp4'))
-          );
-          if (audioMp4) {
-            formatList.push({
-              quality: 'Audio M4A / MP3 (High Quality)',
-              type: 'audio',
-              container: 'm4a',
-              hasVideo: false,
-              hasAudio: true,
-              url: audioMp4.url,
-              label: 'Audio (M4A / MP3)',
-            });
-          }
+          // Audio streams first
+          data.adaptiveFormats.forEach((f: any) => {
+            if (!f.url) return;
+            if (f.type?.includes('audio/')) {
+              const isM4a = f.container === 'm4a' || f.type?.includes('audio/mp4');
+              const isOpusHigh = f.itag === '251' || f.type?.includes('opus');
+              const audioKey = isM4a ? 'm4a-140' : (f.itag || f.container);
+              if (!seenAudios.has(audioKey)) {
+                seenAudios.add(audioKey);
+                formatList.push({
+                  quality: isM4a
+                    ? 'Audio M4A / MP3 (High Quality)'
+                    : isOpusHigh
+                    ? 'Studio Quality (160kbps Opus)'
+                    : 'Standard Audio (Opus)',
+                  qualityLabel: isM4a ? 'MP3 / M4A (128kbps)' : 'WebM Opus',
+                  type: 'audio',
+                  container: isM4a ? 'm4a' : (f.container || 'webm'),
+                  hasVideo: false,
+                  hasAudio: true,
+                  bitrate: f.bitrate,
+                  url: f.url,
+                  label: isM4a ? 'Audio MP3 / M4A (উচ্চ মান)' : 'Audio WebM (Opus)',
+                  isRecommended: isM4a,
+                });
+              }
+            }
+          });
 
-          // Find 720p or 1080p if not already in formatStreams
-          const video1080 = data.adaptiveFormats.find(
-            (f: any) => f.url && f.resolution === '1080p' && f.type?.includes('video/mp4')
-          );
-          if (video1080 && !formatList.some((f) => f.quality?.includes('1080p'))) {
-            formatList.push({
-              quality: '1080p (Full HD)',
-              type: 'video',
-              container: 'mp4',
-              hasVideo: true,
-              hasAudio: false,
-              url: video1080.url,
-              label: '1080p Full HD Video',
-            });
-          }
+          // Video streams (deduplicated by resolution and container)
+          data.adaptiveFormats.forEach((f: any) => {
+            if (!f.url || !f.type?.includes('video/')) return;
+            const res = f.resolution || f.qualityLabel;
+            if (!res) return;
+
+            const isMp4 = f.container === 'mp4' || f.type?.includes('video/mp4');
+            const isHighWebm = f.container === 'webm' && (res.includes('1440') || res.includes('2160'));
+            if (!isMp4 && !isHighWebm) return; // Prioritize MP4, include WebM for 2K/4K
+
+            const cont = f.container || (isMp4 ? 'mp4' : 'webm');
+            const key = `${res}-${cont}`;
+            if (!seenVideos.has(key)) {
+              seenVideos.add(key);
+              formatList.push({
+                quality: res,
+                qualityLabel: res.includes('1080')
+                  ? `${res} (Full HD)`
+                  : res.includes('720')
+                  ? `${res} (HD)`
+                  : res.includes('2160')
+                  ? '4K Ultra HD'
+                  : res,
+                type: 'video',
+                container: cont,
+                hasVideo: true,
+                hasAudio: false,
+                url: f.url,
+                label: `${res} ${cont.toUpperCase()} Video`,
+                isRecommended: res.includes('1080') || res.includes('720'),
+              });
+            }
+          });
         }
 
         if (formatList.length > 0) {
