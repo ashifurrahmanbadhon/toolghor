@@ -62,6 +62,11 @@
     return k;
   }
 
+  // Expose on window for direct access / browser console verification
+  if (typeof window !== 'undefined') {
+    window.getILovePdfKey = getILovePdfKey;
+  }
+
   function isILovePdfEnabled() {
     if (typeof window !== 'undefined' && window.SITE_CONFIG && window.SITE_CONFIG.apis) {
       if (window.SITE_CONFIG.apis.ilovepdfActive === false) return false;
@@ -131,6 +136,14 @@
   }
 
   async function callILovePdf(toolName, files, extraParams, onProgress) {
+    var pubKey = getILovePdfKey();
+    if (!pubKey) {
+      throw new Error(tr(
+        'ক্লাউড কনফিগারেশন পাওয়া যায়নি।',
+        'Cloud configuration not found.'
+      ));
+    }
+
     if (!onProgress) onProgress = function () {};
 
     function fetchWithTimeout(url, opts, ms) {
@@ -147,38 +160,19 @@
     onProgress(15, tr('সার্ভারে সুরক্ষিত সংযোগ স্থাপন হচ্ছে…', 'Connecting to conversion server…'));
     await UI.yield();
 
-    // 1. Auth: Get JWT token from secure server backend, or fallback to public key
-    var token = '';
-    try {
-      var tokRes = await fetchWithTimeout('/api/ilovepdf/token', { method: 'POST' }, 8000);
-      if (tokRes.ok) {
-        var tJson = await tokRes.json();
-        if (tJson && tJson.token) token = tJson.token;
-      }
-    } catch (eToken) {}
-
-    if (!token) {
-      var pubKey = getILovePdfKey();
-      if (!pubKey) {
-        throw new Error(tr(
-          'ক্লাউড কনফিগারেশন পাওয়া যায়নি।',
-          'Cloud configuration not found.'
-        ));
-      }
-      var authRes = await fetchWithTimeout('https://api.ilovepdf.com/v1/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ public_key: pubKey })
-      }, 15000);
-      if (!authRes.ok) {
-        var errData = await authRes.json().catch(function () { return {}; });
-        var msg = (errData && errData.error && errData.error.message) || (authRes.status + ' ' + authRes.statusText);
-        throw new Error(tr('সার্ভার অথেন্টিকেশন ব্যর্থ: ', 'Server auth failed: ') + msg);
-      }
-      var authJson = await authRes.json();
-      token = authJson.token;
+    // 1. Auth: Get JWT token directly using iLovePDF public key
+    var authRes = await fetchWithTimeout('https://api.ilovepdf.com/v1/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ public_key: pubKey })
+    }, 20000);
+    if (!authRes.ok) {
+      var errData = await authRes.json().catch(function () { return {}; });
+      var msg = (errData && errData.error && errData.error.message) || (authRes.status + ' ' + authRes.statusText);
+      throw new Error(tr('সার্ভার অথেন্টিকেশন ব্যর্থ: ', 'Server auth failed: ') + msg);
     }
-
+    var authJson = await authRes.json();
+    var token = authJson.token;
     if (!token) throw new Error(tr('সার্ভার টোকেন পাওয়া যায়নি।', 'Failed to receive server token.'));
 
     // 2. Start Task
@@ -317,8 +311,8 @@
       var prog = UI.progress(); out.appendChild(prog); mergeBtn.disabled = true;
 
       // 1. Try iLovePDF Cloud API
-      var useCloud = isILovePdfEnabled();
-      if (useCloud && valid.length >= 2) {
+      var apiKey = getILovePdfKey();
+      if (apiKey && valid.length >= 2) {
         try {
           var rawFiles = valid.map(function (it) { return it.file; });
           var mBlob = await callILovePdf('merge', rawFiles, {}, function (pct, txt) {
@@ -379,8 +373,8 @@
         UI.clear(out); var prog = UI.progress(); out.appendChild(prog); go.disabled = true;
 
         // 1. Try iLovePDF Cloud API
-        var useCloud = isILovePdfEnabled();
-        if (useCloud && mode === 'range' && !sep.checked && rangeIn.value && rangeIn.value.trim()) {
+        var apiKey = getILovePdfKey();
+        if (apiKey && mode === 'range' && !sep.checked && rangeIn.value && rangeIn.value.trim()) {
           try {
             var splBlob = await callILovePdf('split', st.file, { split_mode: 'ranges', ranges: rangeIn.value.trim() }, function (pct, txt) {
               prog.set(pct, txt);
@@ -457,8 +451,8 @@
       var p = presets[level.get()];
       UI.clear(out); var prog = UI.progress(); out.appendChild(prog); go.disabled = true;
 
-      var useCloud = isILovePdfEnabled();
-      if (useCloud) {
+      var apiKey = getILovePdfKey();
+      if (apiKey) {
         try {
           var compBlob = await callILovePdf('compress', file, { compression_level: p.cloudLevel }, function (pct, txt) {
             prog.set(pct, txt);

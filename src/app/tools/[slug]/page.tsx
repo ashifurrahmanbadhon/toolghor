@@ -90,5 +90,5 @@ export default async function ToolPage({ params }: Props) {
       dbToolMap.get(t.slug) !== false
   ).slice(0, 4);
 
-  return <ToolPageClient tool={tool} relatedTools={relatedTools} />;
+  return <ToolPageClient tool={tool} relatedTools={relatedTools} apiKeys={siteData?.apiKeys} />;
 }

@@ -7,9 +7,10 @@ import { Loader2, AlertCircle } from 'lucide-react';
 
 interface ToolRunnerProps {
   tool: ToolItem;
+  apiKeys?: any;
 }
 
-export default function ToolRunner({ tool }: ToolRunnerProps) {
+export default function ToolRunner({ tool, apiKeys }: ToolRunnerProps) {
   const { lang } = useApp();
   const rootRef = useRef<HTMLDivElement>(null);
   const lastTrackedSlug = useRef<string | null>(null);
@@ -125,6 +126,18 @@ export default function ToolRunner({ tool }: ToolRunnerProps) {
           resume: '/assets/tools/resume.js',
         };
 
+        const applyApiConfig = (cfg: any) => {
+          if (!cfg || !cfg.is_active) return;
+          w.SITE_CONFIG = w.SITE_CONFIG || {};
+          w.SITE_CONFIG.apis = w.SITE_CONFIG.apis || {};
+          w.SITE_CONFIG.apis.ilovepdfActive = Boolean(cfg.ilovepdf_active);
+          if (cfg.ilovepdf_public_key) {
+            w.SITE_CONFIG.apis.ilovepdfPublicKey = cfg.ilovepdf_public_key.trim();
+          }
+        };
+
+        applyApiConfig(apiKeys);
+
         // All required scripts (core, vendor, tool group) loaded in PARALLEL
         const scriptPromises: Promise<void>[] = [];
         if (!w.SITE_CONFIG) scriptPromises.push(loadScript('/assets/config.js'));
@@ -150,6 +163,22 @@ export default function ToolRunner({ tool }: ToolRunnerProps) {
 
         if (scriptPromises.length > 0) {
           await Promise.all(scriptPromises);
+        }
+
+        // Apply API keys again so DB values take precedence over /assets/config.js defaults
+        applyApiConfig(apiKeys);
+
+        // Fallback: If iLovePDF public key is still placeholder or missing, fetch from /api/public/data
+        if (!w.SITE_CONFIG?.apis?.ilovepdfPublicKey || w.SITE_CONFIG.apis.ilovepdfPublicKey.startsWith('project_public_d3a21718')) {
+          try {
+            const pRes = await fetch('/api/public/data');
+            if (pRes.ok) {
+              const pData = await pRes.json();
+              if (pData?.apiKeys) {
+                applyApiConfig(pData.apiKeys);
+              }
+            }
+          } catch {}
         }
 
         if (isCancelled) return;
