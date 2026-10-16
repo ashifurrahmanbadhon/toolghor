@@ -1553,6 +1553,10 @@
 
     async function handleFileSelect(f) {
       if (!f) return;
+      if (f.size > 25 * 1024 * 1024) {
+        UI.toast(tr('ছবির সাইজ ২৫ মেগাবাইটের বেশি হতে পারবে না। অনুগ্রহ করে ছোট ছবি ব্যবহার করুন।', 'Image size cannot exceed 25MB. Please choose a smaller image.'), 'error');
+        return;
+      }
       file = f;
       sampleColor = null;
       try {

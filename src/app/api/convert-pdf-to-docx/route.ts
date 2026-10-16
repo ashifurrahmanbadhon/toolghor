@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import {
+  getCorsHeaders,
+  handleCorsPreflight,
+  checkPersistentRateLimit,
+  sanitizeContentDisposition,
+} from '@/lib/security';
 
 async function getConvertApiToken(): Promise<string> {
   const envToken = (process.env.CONVERTAPI_TOKEN || '').trim();
@@ -23,23 +29,27 @@ async function getConvertApiToken(): Promise<string> {
   return '';
 }
 
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
+export async function OPTIONS(req: NextRequest) {
+  return handleCorsPreflight(req, 'GET, POST, OPTIONS');
 }
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+
+  // 1. Persistent generous per-IP rate limit (100 conversions / day)
+  const rateLimit = await checkPersistentRateLimit(`p2d_${ip}`, 100, 86400);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Daily conversion quota reached. Please try again tomorrow.' },
+      { status: 429, headers: getCorsHeaders(req) }
+    );
+  }
+
   const token = await getConvertApiToken();
   if (!token) {
     return NextResponse.json(
       { error: 'ConvertAPI service is not configured on the server. Please set CONVERTAPI_TOKEN.' },
-      { status: 503 }
+      { status: 503, headers: getCorsHeaders(req) }
     );
   }
 
@@ -51,7 +61,7 @@ export async function POST(req: NextRequest) {
     if (!file) {
       return NextResponse.json(
         { error: 'No PDF file provided in request.' },
-        { status: 400 }
+        { status: 400, headers: getCorsHeaders(req) }
       );
     }
 
@@ -60,7 +70,7 @@ export async function POST(req: NextRequest) {
         {
           error: 'File size exceeds the allowed limit (50MB). Please try a smaller PDF.',
         },
-        { status: 413 }
+        { status: 413, headers: getCorsHeaders(req) }
       );
     }
 
@@ -78,6 +88,7 @@ export async function POST(req: NextRequest) {
         Authorization: `Bearer ${token}`,
       },
       body: convertForm,
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!convertApiResponse.ok) {
@@ -87,7 +98,7 @@ export async function POST(req: NextRequest) {
         {
           error: 'Your PDF could not be converted at the moment. Please try again with another PDF.',
         },
-        { status: 500 }
+        { status: 500, headers: getCorsHeaders(req) }
       );
     }
 
@@ -98,7 +109,7 @@ export async function POST(req: NextRequest) {
         {
           error: 'ConvertAPI returned an empty result.',
         },
-        { status: 500 }
+        { status: 500, headers: getCorsHeaders(req) }
       );
     }
 
@@ -108,7 +119,7 @@ export async function POST(req: NextRequest) {
     if (first.FileData) {
       docxBuffer = Buffer.from(first.FileData, 'base64');
     } else if (first.Url) {
-      const dl = await fetch(first.Url);
+      const dl = await fetch(first.Url, { signal: AbortSignal.timeout(15000) });
       docxBuffer = Buffer.from(await dl.arrayBuffer());
     }
 
@@ -117,19 +128,19 @@ export async function POST(req: NextRequest) {
         {
           error: 'Failed to extract DOCX data from conversion response.',
         },
-        { status: 500 }
+        { status: 500, headers: getCorsHeaders(req) }
       );
     }
 
-    const baseName = file.name.replace(/\.[^/.]+$/, '');
+    const baseName = (file.name || 'document').replace(/\.[^/.]+$/, '');
     const outName = `${baseName}.docx`;
 
     return new NextResponse(new Uint8Array(docxBuffer), {
       status: 200,
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        ...getCorsHeaders(req),
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `attachment; filename="${outName}"`,
+        'Content-Disposition': sanitizeContentDisposition(outName, 'converted.docx'),
         'X-Converted-By': 'ConvertAPI',
       },
     });
@@ -139,7 +150,7 @@ export async function POST(req: NextRequest) {
       {
         error: 'An internal error occurred during conversion.',
       },
-      { status: 500 }
+      { status: 500, headers: getCorsHeaders(req) }
     );
   }
 }

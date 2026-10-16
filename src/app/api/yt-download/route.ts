@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { validateSafeUrl, handleCorsPreflight, getCorsHeaders } from '@/lib/security';
 
-// In-memory sliding window rate limiter (max 120 requests per minute per IP to accommodate polling)
+// Sliding window rate limiter with polling tolerance
 const ipRequestMap = new Map<string, { count: number; expiresAt: number }>();
 
 function checkRateLimit(ip: string, isPolling = false): boolean {
@@ -18,15 +19,8 @@ function checkRateLimit(ip: string, isPolling = false): boolean {
   return true;
 }
 
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
+export async function OPTIONS(req: NextRequest) {
+  return handleCorsPreflight(req, 'GET, POST, OPTIONS');
 }
 
 function extractYouTubeId(rawUrl: string): string | null {
@@ -57,15 +51,19 @@ export async function GET(req: NextRequest) {
   if (!checkRateLimit(ip, action === 'progress')) {
     return NextResponse.json(
       { success: false, error: 'Rate limit exceeded. Please wait a moment before trying again.' },
-      { status: 429 }
+      { status: 429, headers: getCorsHeaders(req) }
     );
   }
 
   // 1. Action: PROGRESS (proxy status polling for direct download)
   if (action === 'progress') {
-    const progressUrl = searchParams.get('progress_url');
-    if (!progressUrl || !/^https?:\/\//i.test(progressUrl)) {
-      return NextResponse.json({ success: false, error: 'Invalid progress URL.' }, { status: 400 });
+    const progressUrl = (searchParams.get('progress_url') || '').trim();
+    const urlCheck = validateSafeUrl(progressUrl);
+    if (!urlCheck.safe || !urlCheck.urlObj) {
+      return NextResponse.json(
+        { success: false, error: urlCheck.error || 'Invalid or unsafe progress URL.' },
+        { status: 400, headers: getCorsHeaders(req) }
+      );
     }
 
     try {

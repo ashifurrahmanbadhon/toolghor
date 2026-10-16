@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getCorsHeaders, handleCorsPreflight, checkPersistentRateLimit } from '@/lib/security';
 
 async function getRemoveBgKey(): Promise<string> {
   const envKey = (process.env.REMOVE_BG_API_KEY || process.env.REMOVEBG_API_KEY || '').trim();
@@ -23,23 +24,27 @@ async function getRemoveBgKey(): Promise<string> {
   return '';
 }
 
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
+export async function OPTIONS(req: NextRequest) {
+  return handleCorsPreflight(req, 'GET, POST, OPTIONS');
 }
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+
+  // 1. Persistent generous per-IP rate limit (100 conversions / day)
+  const rateLimit = await checkPersistentRateLimit(`rbg_${ip}`, 100, 86400);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Daily conversion quota reached. Please try again tomorrow.' },
+      { status: 429, headers: getCorsHeaders(req) }
+    );
+  }
+
   const key = await getRemoveBgKey();
   if (!key) {
     return NextResponse.json(
       { error: 'remove.bg API service is not configured on the server. Please set REMOVE_BG_API_KEY.' },
-      { status: 503 }
+      { status: 503, headers: getCorsHeaders(req) }
     );
   }
 
@@ -48,7 +53,18 @@ export async function POST(req: NextRequest) {
     const imageFile = formData.get('image_file') as File | null;
 
     if (!imageFile) {
-      return NextResponse.json({ error: 'No image file provided' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'No image file provided' },
+        { status: 400, headers: getCorsHeaders(req) }
+      );
+    }
+
+    // 2. File size cap (25MB) to protect serverless memory and API quotas
+    if (imageFile.size > 25 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: 'Image file size exceeds the allowed limit (25MB).' },
+        { status: 413, headers: getCorsHeaders(req) }
+      );
     }
 
     const outForm = new FormData();
@@ -61,6 +77,7 @@ export async function POST(req: NextRequest) {
         'X-Api-Key': key,
       },
       body: outForm,
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!res.ok) {
@@ -68,7 +85,7 @@ export async function POST(req: NextRequest) {
       console.error('[remove.bg API Error]', res.status, errJson);
       return NextResponse.json(
         { error: (errJson && errJson.errors && errJson.errors[0]?.title) || 'Failed to remove background' },
-        { status: res.status }
+        { status: res.status, headers: getCorsHeaders(req) }
       );
     }
 
@@ -77,12 +94,15 @@ export async function POST(req: NextRequest) {
     return new NextResponse(new Uint8Array(imageBuffer), {
       status: 200,
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        ...getCorsHeaders(req),
         'Content-Type': 'image/png',
       },
     });
   } catch (err: any) {
     console.error('[remove.bg Proxy Exception]', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error processing background removal' },
+      { status: 500, headers: getCorsHeaders(req) }
+    );
   }
 }
