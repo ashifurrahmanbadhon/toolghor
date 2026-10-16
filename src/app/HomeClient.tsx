@@ -18,7 +18,7 @@ export default function HomeClient({ initialData }: HomeClientProps) {
   // Dynamic public data from database (pre-populated by server hydration to prevent any layout glitch)
   const [publicData, setPublicData] = useState<any>(initialData || null);
 
-  // Category expansion state: mapping of category id -> boolean
+  // Category expansion state: mapping of category id -> boolean (Default-expanded on desktop viewports)
   const [expandedCats, setExpandedCats] = useState<Record<string, boolean>>({
     documents: false,
     images: false,
@@ -34,6 +34,48 @@ export default function HomeClient({ initialData }: HomeClientProps) {
 
   // Notice Banner dismiss state
   const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  // Default-expand categories on desktop viewports (>= 1024px)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      setExpandedCats({
+        documents: true,
+        images: true,
+        calculators: true,
+        qr: true,
+        media: true,
+        resume: true,
+      });
+    }
+  }, []);
+
+  // Idle preloader for core tool scripts so first tool-page load is fast (<2s)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const preloadCoreTools = () => {
+      const coreScripts = [
+        '/assets/config.js',
+        '/assets/registry.js',
+        '/assets/icons.js',
+        '/assets/ui.js',
+      ];
+      coreScripts.forEach((src) => {
+        if (!document.querySelector(`link[href="${src}"]`)) {
+          const l = document.createElement('link');
+          l.rel = 'preload';
+          l.as = 'script';
+          l.href = src;
+          document.head.appendChild(l);
+        }
+      });
+    };
+
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(preloadCoreTools);
+    } else {
+      setTimeout(preloadCoreTools, 1200);
+    }
+  }, []);
 
   // Ensure that returning to Home from any tool starts at the very top (0, 0)
   useEffect(() => {
@@ -334,20 +376,51 @@ export default function HomeClient({ initialData }: HomeClientProps) {
 
   const announcementConfig = publicData?.announcement;
   const isAnnouncementActive = announcementConfig ? announcementConfig.is_active : false;
-  const announcementText = lang === 'bn' ? announcementConfig?.text_bn : announcementConfig?.text_en;
+  const rawAnnouncementText = lang === 'bn' ? announcementConfig?.text_bn : announcementConfig?.text_en;
+  // Check if announcement tells visitors to use desktop mode / PC
+  const isDesktopGuideBanner = !!(rawAnnouncementText && (
+    /desktop mode|desktop or a pc|use a pc/i.test(rawAnnouncementText) ||
+    /ডেস্কটপ মোড|পিসি ব্যবহার/i.test(rawAnnouncementText)
+  ));
+
+  // Clean redundant phrasing e.g. "Need a tool? Request it via Request a Tool"
+  const announcementText = rawAnnouncementText
+    ? rawAnnouncementText
+        .replace(/Need a tool\?\s*Request it via Request a Tool\.?/gi, 'Need a new tool? Suggest one at the top.')
+        .replace(/টুল দরকার\?\s*টুলের অনুরোধ দিয়ে জানান\.?/gi, 'নতুন টুলের জন্য ওপরে "টুলের অনুরোধ" বাটনে জানান।')
+    : '';
+
   const bannerStyle = getBannerStyle(announcementConfig?.type || 'info');
 
   const totalToolsCount = activeTools.length;
+
+  // Most popular tools for quick access
+  const popularTools = useMemo(() => {
+    const popularSlugs = [
+      'youtube-downloader',
+      'pdf-compress',
+      'pdf-merge',
+      'image-compress',
+      'resume-builder',
+      'bmi-calculator',
+      'percentage-calculator',
+      'qr-generator',
+    ];
+    return activeTools
+      .filter((t) => popularSlugs.includes(t.slug))
+      .sort((a, b) => popularSlugs.indexOf(a.slug) - popularSlugs.indexOf(b.slug));
+  }, [activeTools]);
 
   return (
     <>
       <Header />
 
-      {/* 1. Dynamic Live Announcement Banner (Controllable from Admin with dynamic Banner Type) */}
+      {/* 1. Dynamic Live Announcement Banner (Controllable from Admin, suppressed on >=1024px if desktop guide) */}
       {isAnnouncementActive && announcementText && !bannerDismissed && (
         <aside
           role="region"
           aria-label="Notice banner"
+          className={isDesktopGuideBanner ? 'banner-desktop-suppressed' : ''}
           style={{
             background: bannerStyle.bg,
             color: '#ffffff',
@@ -542,6 +615,26 @@ export default function HomeClient({ initialData }: HomeClientProps) {
                 </a>
               ))}
             </nav>
+          </div>
+        </section>
+      )}
+
+      {/* 2.5 Most Popular Tools Quick Access Grid */}
+      {!searchQuery.trim() && popularTools.length > 0 && (
+        <section className="wrap popular-section" aria-label={lang === 'bn' ? 'সবচেয়ে জনপ্রিয় টুলস' : 'Most Popular Tools'}>
+          <div className="popular-bar-header">
+            <div className="popular-bar-title">
+              <span className="popular-badge-fire" aria-hidden="true">🔥</span>
+              <h2>{lang === 'bn' ? 'সবচেয়ে জনপ্রিয় টুলস' : 'Most Popular Tools'}</h2>
+            </div>
+            <span className="popular-bar-sub">
+              {lang === 'bn' ? 'দৈনন্দিন কাজে বহুল ব্যবহৃত ৮টি দরকারি টুল' : 'Quick access to the most used tools'}
+            </span>
+          </div>
+          <div className="grid popular-tools-grid">
+            {popularTools.map((tool) => (
+              <ToolCard key={`pop-${tool.slug}`} tool={tool} category={tool.cats[0]} />
+            ))}
           </div>
         </section>
       )}

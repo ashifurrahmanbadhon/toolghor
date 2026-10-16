@@ -34,6 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const title = `${tool.en} (${tool.bn}) | ${siteConfig.name}`;
   const description = `${tool.descEn}. ${tool.desc} - Free, fast, and 100% private in-browser tool.`;
+  const toolUrl = `${siteConfig.url}/tools/${tool.slug}`;
 
   return {
     title,
@@ -43,10 +44,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
       type: 'website',
-      url: `${siteConfig.url}/tools/${tool.slug}`,
+      url: toolUrl,
+      images: [
+        {
+          url: `${siteConfig.url}/assets/logo-dark.png`,
+          width: 1200,
+          height: 630,
+          alt: `${tool.en} - ToolGhor`,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [`${siteConfig.url}/assets/logo-dark.png`],
     },
     alternates: {
-      canonical: `${siteConfig.url}/tools/${tool.slug}`,
+      canonical: toolUrl,
     },
   };
 }
@@ -90,5 +105,29 @@ export default async function ToolPage({ params }: Props) {
       dbToolMap.get(t.slug) !== false
   ).slice(0, 4);
 
-  return <ToolPageClient tool={tool} relatedTools={relatedTools} />;
+  const softwareJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: tool.en,
+    alternateName: tool.bn,
+    applicationCategory: 'UtilitiesApplication',
+    operatingSystem: 'Any',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+    description: tool.descEn,
+    url: `${siteConfig.url}/tools/${tool.slug}`,
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}
+      />
+      <ToolPageClient tool={tool} relatedTools={relatedTools} />
+    </>
+  );
 }
