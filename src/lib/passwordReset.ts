@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { getDb, initDatabase } from './db';
 import { sendOtpEmail } from './notifier';
 import { hashPassword } from './password';
+import { getAuthSecret } from './adminAuth';
 
 export const OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 export const RESET_TOKEN_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
@@ -49,10 +50,7 @@ export function resetRateLimits(): void {
  * Returns a SHA-256 hash of a string with a server secret pepper.
  */
 function hashSecret(val: string): string {
-  const secret = (process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || '').trim();
-  if (!secret) {
-    throw new Error('CRITICAL SECURITY ERROR: AUTH_SECRET environment variable is missing.');
-  }
+  const secret = getAuthSecret();
   return crypto.createHmac('sha256', secret).update(val).digest('hex');
 }
 

@@ -134,6 +134,7 @@ export default function AdminConsole() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState(false);
+  const [pinErrorMsg, setPinErrorMsg] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
@@ -412,6 +413,7 @@ export default function AdminConsole() {
     const cleanPin = pin.trim();
     if (!cleanPin) {
       setPinError(true);
+      setPinErrorMsg('Please enter your passcode.');
       return;
     }
     setLoginLoading(true);
@@ -421,7 +423,7 @@ export default function AdminConsole() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'login', passcode: cleanPin, remember: rememberMe }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
         try {
           sessionStorage.setItem('toolghor_admin_auth', 'true');
@@ -435,15 +437,18 @@ export default function AdminConsole() {
         } catch {}
         setIsAuthenticated(true);
         setPinError(false);
+        setPinErrorMsg('');
         if (data.admin) {
           setAdminProfile((prev) => ({ ...prev, ...data.admin }));
         }
         fetchAllSections();
       } else {
         setPinError(true);
+        setPinErrorMsg(data?.message || data?.error || 'Incorrect passcode. Please try again or use Forgot Password.');
       }
     } catch {
       setPinError(true);
+      setPinErrorMsg('Network connection error. Please try again.');
     } finally {
       setLoginLoading(false);
     }
@@ -878,7 +883,7 @@ export default function AdminConsole() {
             />
             {pinError && (
               <p style={{ color: '#ef4444', fontSize: '12.5px', margin: '-6px 0 12px', textAlign: 'left' }}>
-                Incorrect passcode. Please try again or use Forgot Password.
+                {pinErrorMsg || 'Incorrect passcode. Please try again or use Forgot Password.'}
               </p>
             )}
 
