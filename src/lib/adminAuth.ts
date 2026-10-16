@@ -4,8 +4,17 @@ import crypto from 'crypto';
 export const ADMIN_SESSION_COOKIE_NAME = 'toolghor_admin_session';
 
 /**
+ * Returns whether AUTH_SECRET is missing and a derived fallback is in use.
+ */
+export function isAuthSecretDerived(): boolean {
+  const secret = (process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || '').trim();
+  return !secret || secret === 'your_auth_secret_here';
+}
+
+/**
  * Returns the server authentication secret.
- * HARD FAILS if neither AUTH_SECRET nor NEXTAUTH_SECRET is configured.
+ * HARD FAILS if neither AUTH_SECRET nor DATABASE_URL is configured.
+ * Emits a loud server-side warning on every use when using the derived fallback.
  */
 export function getAuthSecret(): string {
   const secret = (process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || '').trim();
@@ -23,6 +32,7 @@ export function getAuthSecret(): string {
   ).trim();
 
   if (dbSecret) {
+    console.warn('[SECURITY WARNING] AUTH_SECRET is not set — using derived fallback. Set AUTH_SECRET in env vars.');
     return crypto.createHash('sha256').update(`toolghor_auth_secret_pepper_${dbSecret}`).digest('hex');
   }
 

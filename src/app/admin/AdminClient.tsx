@@ -163,6 +163,10 @@ export default function AdminConsole() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMsg, setForgotMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [forgotCooldown, setForgotCooldown] = useState(0);
+
+  // Auth Secret Fallback Warning State
+  const [isAuthSecretDerived, setIsAuthSecretDerived] = useState(false);
+  const [fallbackBannerDismissed, setFallbackBannerDismissed] = useState(false);
   const [forgotAttemptsRemaining, setForgotAttemptsRemaining] = useState<number | null>(null);
 
   // Resend cooldown timer in admin forgot modal
@@ -361,6 +365,9 @@ export default function AdminConsole() {
       if (res.ok) {
         const data = await res.json();
         setDbConnected(data.dbConnected);
+        if (typeof data.isAuthSecretDerived === 'boolean') {
+          setIsAuthSecretDerived(data.isAuthSecretDerived);
+        }
         if (data.sections) {
           if (data.sections.hero) setHero(data.sections.hero);
           if (data.sections.announcement) setAnnouncement(data.sections.announcement);
@@ -1453,6 +1460,55 @@ export default function AdminConsole() {
           </button>
         </div>
       </header>
+
+      {/* Fallback Auth Secret Warning Banner */}
+      {isAuthSecretDerived && !fallbackBannerDismissed && (
+        <div
+          role="alert"
+          style={{
+            background: 'rgba(234, 179, 8, 0.12)',
+            borderBottom: '1px solid rgba(234, 179, 8, 0.35)',
+            color: '#fef08a',
+            padding: '10px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            fontSize: '13px',
+            lineHeight: 1.4,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <AlertTriangle size={18} style={{ color: '#facc15', flexShrink: 0 }} />
+            <div>
+              <div style={{ fontWeight: 600 }}>
+                AUTH_SECRET is not set — admin sessions use a derived fallback. Set AUTH_SECRET in Vercel env vars for full security.
+              </div>
+              <div style={{ fontSize: '12px', color: '#fde047', opacity: 0.9, marginTop: '2px' }}>
+                AUTH_SECRET সেট করা নেই — অ্যাডমিন সেশনে ডিরাইভড ফলব্যাক ব্যবহার করা হচ্ছে। পূর্ণ নিরাপত্তার জন্য Vercel env vars-এ AUTH_SECRET সেট করুন।
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFallbackBannerDismissed(true)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#fef08a',
+              cursor: 'pointer',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              opacity: 0.8,
+            }}
+            title="Dismiss"
+            aria-label="Dismiss warning"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       {/* Save Notification Toast */}
       {saveToast && (

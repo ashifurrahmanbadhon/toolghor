@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb, initDatabase } from '@/lib/db';
 import { clearSiteDataCache } from '@/lib/siteData';
 import { revalidatePath } from 'next/cache';
-import { verifyAdminRequest } from '@/lib/adminAuth';
+import { verifyAdminRequest, isAuthSecretDerived } from '@/lib/adminAuth';
 
 export async function GET(req: NextRequest) {
   const session = verifyAdminRequest(req);
@@ -53,6 +53,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       dbConnected: true,
+      isAuthSecretDerived: isAuthSecretDerived(),
       sections: {
         hero: heroRows[0] || null,
         announcement: announcementRows[0] || null,
