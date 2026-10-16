@@ -62,6 +62,9 @@ test('Security Verification — Public Data & Configs', async (t) => {
       if (data.apiKeys.ilovepdf_active !== undefined) {
         assert.equal(typeof data.apiKeys.ilovepdf_active, 'boolean');
       }
+      if (data.apiKeys.ilovepdf_public_key !== undefined) {
+        assert.equal(typeof data.apiKeys.ilovepdf_public_key, 'string');
+      }
       assert.equal(data.apiKeys.gemini_key, undefined);
       assert.equal(data.apiKeys.openai_key, undefined);
       assert.equal(data.apiKeys.convertapi_token, undefined);

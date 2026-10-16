@@ -3554,37 +3554,64 @@ export default function AdminConsole() {
                         </div>
                       </div>
 
-                      {item.secondKey && (
-                        <div style={{ marginBottom: '12px' }}>
-                          <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>
-                            Project Public Key (public_key)
-                          </label>
-                          <input
-                            id={`api_key_token_${item.secondKey}`}
-                            name={`api_key_token_${item.secondKey}`}
-                            type="text"
-                            value={(apiKeys as any)[item.secondKey] || ''}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (val.trim() === '277226@Asif') return;
-                              setApiKeys({ ...apiKeys, [item.secondKey!]: val });
-                            }}
-                            placeholder={item.secondPlaceholder || 'project_public_...'}
-                            autoComplete="off"
-                            spellCheck={false}
-                            style={{
-                              width: '100%',
-                              padding: '11px 14px',
-                              borderRadius: '10px',
-                              background: '#0b0f19',
-                              border: '1px solid #334155',
-                              color: '#f8fafc',
-                              fontSize: '13.5px',
-                              fontFamily: 'monospace',
-                            }}
-                          />
-                        </div>
-                      )}
+                      {item.secondKey && (() => {
+                        const rawSecVal = (apiKeys as any)[item.secondKey] || '';
+                        const isSecRevealed = Boolean(showKey[item.secondKey]);
+                        const isSecFocused = Boolean(focusedKey[item.secondKey]);
+                        const secDisplayValue = isSecRevealed || isSecFocused ? rawSecVal : formatMaskedKey(rawSecVal);
+                        return (
+                          <div style={{ marginBottom: '12px' }}>
+                            <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>
+                              Project Public Key (public_key)
+                            </label>
+                            <div style={{ position: 'relative' }}>
+                              <input
+                                id={`api_key_token_${item.secondKey}`}
+                                name={`api_key_token_${item.secondKey}`}
+                                type={isSecRevealed ? 'text' : isSecFocused ? 'password' : 'text'}
+                                value={secDisplayValue}
+                                onFocus={() => setFocusedKey((p) => ({ ...p, [item.secondKey!]: true }))}
+                                onBlur={() => setFocusedKey((p) => ({ ...p, [item.secondKey!]: false }))}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (!isSecRevealed && !isSecFocused && val.startsWith('••••••••')) return;
+                                  if (val.trim() === '277226@Asif') return;
+                                  setApiKeys({ ...apiKeys, [item.secondKey!]: val });
+                                }}
+                                placeholder={item.secondPlaceholder || 'project_public_...'}
+                                autoComplete="new-password"
+                                spellCheck={false}
+                                style={{
+                                  width: '100%',
+                                  padding: '11px 44px 11px 14px',
+                                  borderRadius: '10px',
+                                  background: '#0b0f19',
+                                  border: '1px solid #334155',
+                                  color: '#f8fafc',
+                                  fontSize: '13.5px',
+                                  fontFamily: 'monospace',
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowKey((p) => ({ ...p, [item.secondKey!]: !p[item.secondKey!] }))}
+                                title={showKey[item.secondKey] ? 'Hide Key' : 'Reveal Key'}
+                                style={{
+                                  position: 'absolute',
+                                  right: '12px',
+                                  top: '11px',
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: '#64748b',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {showKey[item.secondKey] ? <EyeOff size={16} /> : <Eye size={16} />}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {item.secondKey && (
                         <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>

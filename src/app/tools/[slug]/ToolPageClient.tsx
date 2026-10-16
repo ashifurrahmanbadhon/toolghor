@@ -12,6 +12,7 @@ import ToolCard from '@/components/ToolCard';
 interface ToolPageClientProps {
   tool: ToolItem;
   relatedTools: ToolItem[];
+  apiKeys?: any;
 }
 
 const CAT_NAMES: Record<string, { bn: string; en: string }> = {
@@ -23,7 +24,7 @@ const CAT_NAMES: Record<string, { bn: string; en: string }> = {
   resume: { bn: 'রেজুমি ও সিভি', en: 'Resume' },
 };
 
-export default function ToolPageClient({ tool, relatedTools }: ToolPageClientProps) {
+export default function ToolPageClient({ tool, relatedTools, apiKeys }: ToolPageClientProps) {
   const { lang } = useApp();
 
   const title = lang === 'bn' ? tool.bn : tool.en;
@@ -102,7 +103,7 @@ export default function ToolPageClient({ tool, relatedTools }: ToolPageClientPro
 
         {/* Main Tool Runner Panel */}
         <div className="panel">
-          <ToolRunner tool={tool} />
+          <ToolRunner tool={tool} apiKeys={apiKeys} />
         </div>
 
         {/* How to use */}
