@@ -80,16 +80,27 @@
     await UI.yield();
 
     var res;
+    var ctrl = new AbortController();
+    var tid = setTimeout(function () { ctrl.abort(); }, 35000);
     try {
       res = await fetch('/api/convert-pdf-to-docx', {
         method: 'POST',
-        body: fd
+        body: fd,
+        signal: ctrl.signal
       });
     } catch (netErr) {
+      if (netErr && netErr.name === 'AbortError') {
+        throw new Error(tr(
+          'রূপান্তর প্রক্রিয়ার সময়সীমা পার হয়ে গেছে। অনুগ্রহ করে আবার চেষ্টা করুন।',
+          'Conversion timed out. Please try again.'
+        ));
+      }
       throw new Error(tr(
         'সার্ভার সংযোগ পাওয়া যায়নি।',
         'Backend server not reachable.'
       ));
+    } finally {
+      clearTimeout(tid);
     }
 
     if (!res.ok) {
@@ -1389,12 +1400,19 @@
           var fd = new FormData();
           fd.append('file', file);
           prog.set(15, tr('সার্ভারে রূপান্তর যাচাই করা হচ্ছে…', 'Connecting to conversion engine…'));
-          var res = await fetch('/api/convert-word-to-pdf', {
-            method: 'POST',
-            body: fd
-          });
-          if (res.ok) {
-            resultPdfBlob = await res.blob();
+          var wCtrl = new AbortController();
+          var wTid = setTimeout(function () { wCtrl.abort(); }, 35000);
+          try {
+            var res = await fetch('/api/convert-word-to-pdf', {
+              method: 'POST',
+              body: fd,
+              signal: wCtrl.signal
+            });
+            if (res.ok) {
+              resultPdfBlob = await res.blob();
+            }
+          } finally {
+            clearTimeout(wTid);
           }
         } catch (netErr) {
           console.warn('[ConvertAPI Word->PDF unavailable, using local browser engine]:', netErr);
