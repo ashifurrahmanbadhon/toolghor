@@ -8,6 +8,8 @@ import { OPTIONS as optionsAi, POST as postAi } from '../src/app/api/ai/route';
 import { POST as postRemoveBg } from '../src/app/api/remove-bg/route';
 import { POST as postWordToPdf } from '../src/app/api/convert-word-to-pdf/route';
 import { POST as postPdfToDocx } from '../src/app/api/convert-pdf-to-docx/route';
+import { POST as postTestKey } from '../src/app/api/admin/test-key/route';
+import { createAdminSessionToken, ADMIN_SESSION_COOKIE_NAME } from '../src/lib/adminAuth';
 import { siteConfig } from '../src/data/config';
 import { getConfigStatus, runConfigCheck } from '../src/lib/configCheck';
 import fs from 'node:fs';
@@ -345,3 +347,100 @@ test('Security Verification — Server Config Health Check & Bilingual Fail-Clos
     }
   });
 });
+
+test('Security & Key Hygiene Verification — Admin Test Key & Masking Flow', async (t) => {
+  const sessionToken = createAdminSessionToken({ id: 1, username: 'admin' });
+
+  await t.test('POST /api/admin/test-key returns 401 without valid admin session', async () => {
+    const req = new NextRequest('http://localhost:3000/api/admin/test-key', {
+      method: 'POST',
+      body: JSON.stringify({ provider: 'gemini', key: 'test' }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const res = await postTestKey(req);
+    assert.equal(res.status, 401);
+    const body = await res.json();
+    assert.equal(body.success, false);
+  });
+
+  await t.test('POST /api/admin/test-key rejects invalid provider with 400', async () => {
+    const req = new NextRequest('http://localhost:3000/api/admin/test-key', {
+      method: 'POST',
+      body: JSON.stringify({ provider: 'invalid_provider' }),
+      headers: {
+        'Content-Type': 'application/json',
+        cookie: `${ADMIN_SESSION_COOKIE_NAME}=${sessionToken}`,
+      },
+    });
+    const res = await postTestKey(req);
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.valid, false);
+    assert.ok(body.message_bn, 'Must return bilingual message');
+  });
+
+  await t.test('POST /api/admin/test-key validates remove.bg key format and returns bilingual note', async () => {
+    // Valid format check
+    const validReq = new NextRequest('http://localhost:3000/api/admin/test-key', {
+      method: 'POST',
+      body: JSON.stringify({ provider: 'removebg', key: 'a1b2c3d4e5f6g7h8i9j0k1l2' }),
+      headers: {
+        'Content-Type': 'application/json',
+        cookie: `${ADMIN_SESSION_COOKIE_NAME}=${sessionToken}`,
+      },
+    });
+    const validRes = await postTestKey(validReq);
+    assert.equal(validRes.status, 200);
+    const validBody = await validRes.json();
+    assert.equal(validBody.valid, true);
+    assert.ok(validBody.message.includes('Key format valid'));
+    assert.ok(validBody.message_bn.includes('কী ফরম্যাট সঠিক'));
+
+    // Invalid format check
+    const invalidReq = new NextRequest('http://localhost:3000/api/admin/test-key', {
+      method: 'POST',
+      body: JSON.stringify({ provider: 'removebg', key: 'too_short' }),
+      headers: {
+        'Content-Type': 'application/json',
+        cookie: `${ADMIN_SESSION_COOKIE_NAME}=${sessionToken}`,
+      },
+    });
+    const invalidRes = await postTestKey(invalidReq);
+    assert.equal(invalidRes.status, 200);
+    const invalidBody = await invalidRes.json();
+    assert.equal(invalidBody.valid, false);
+    assert.ok(invalidBody.message.includes('Invalid remove.bg API key format'));
+    assert.ok(invalidBody.message_bn, 'Must return Bengali error message');
+  });
+
+  await t.test('POST /api/admin/test-key returns bilingual message when key is missing or unconfigured', async () => {
+    const origGemini = process.env.GEMINI_API_KEY;
+    try {
+      delete process.env.GEMINI_API_KEY;
+      const req = new NextRequest('http://localhost:3000/api/admin/test-key', {
+        method: 'POST',
+        body: JSON.stringify({ provider: 'gemini', key: '' }),
+        headers: {
+          'Content-Type': 'application/json',
+          cookie: `${ADMIN_SESSION_COOKIE_NAME}=${sessionToken}`,
+        },
+      });
+      const res = await postTestKey(req);
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.valid, false);
+      assert.ok(body.message.includes('No API key provided or configured'));
+      assert.ok(body.message_bn.includes('কোনো API কী প্রদান করা হয়নি'));
+    } finally {
+      if (origGemini !== undefined) process.env.GEMINI_API_KEY = origGemini;
+    }
+  });
+
+  await t.test('Admin Client source hygiene: contains masked display and test button handlers', () => {
+    const adminClientSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/admin/AdminClient.tsx'), 'utf-8');
+    assert.ok(adminClientSrc.includes('formatMaskedKey'), 'Must implement formatMaskedKey');
+    assert.ok(adminClientSrc.includes('runTestKey'), 'Must implement runTestKey');
+    assert.ok(adminClientSrc.includes('/api/admin/test-key'), 'Must target /api/admin/test-key');
+  });
+});
+
