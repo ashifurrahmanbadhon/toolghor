@@ -133,39 +133,39 @@ export async function POST(req: NextRequest) {
     }
 
     if (cleanProvider === 'gemini') {
-      try {
-        const gUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(resolvedKey)}`;
-        const res = await fetch(gUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: 'hi' }] }],
-            generationConfig: { maxOutputTokens: 1 },
-          }),
-          signal: AbortSignal.timeout(10000),
-        });
-        if (res.ok) {
-          return NextResponse.json({
-            success: true,
-            valid: true,
-            message: 'Valid Google Gemini API key.',
-            message_bn: 'Google Gemini API কী সফলভাবে যাচাই হয়েছে।',
+      const candidateModels = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
+      let lastStatus = 0;
+      for (const modelName of candidateModels) {
+        try {
+          const gUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(resolvedKey)}`;
+          const res = await fetch(gUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: 'hi' }] }],
+              generationConfig: { maxOutputTokens: 1 },
+            }),
+            signal: AbortSignal.timeout(10000),
           });
+          lastStatus = res.status;
+          if (res.ok) {
+            return NextResponse.json({
+              success: true,
+              valid: true,
+              message: 'Valid Google Gemini API key.',
+              message_bn: 'Google Gemini API কী সফলভাবে যাচাই হয়েছে।',
+            });
+          }
+        } catch {
+          // try next model
         }
-        return NextResponse.json({
-          success: true,
-          valid: false,
-          message: `Invalid Gemini API key (HTTP ${res.status}).`,
-          message_bn: `Gemini API কী সঠিক নয় (HTTP ${res.status})।`,
-        });
-      } catch (err: any) {
-        return NextResponse.json({
-          success: true,
-          valid: false,
-          message: `Gemini connection error: ${err?.message || 'timeout'}`,
-          message_bn: 'Gemini সংযোগ ব্যর্থ হয়েছে বা সময় শেষ হয়েছে।',
-        });
       }
+      return NextResponse.json({
+        success: true,
+        valid: false,
+        message: `Invalid Gemini API key (HTTP ${lastStatus || 'error'}).`,
+        message_bn: `Gemini API কী সঠিক নয় (HTTP ${lastStatus || 'ত্রুটি'})।`,
+      });
     }
 
     if (cleanProvider === 'removebg') {

@@ -209,51 +209,78 @@ test('Security Verification — AI Proxy Hardening (/api/ai)', async (t) => {
   });
 
   await t.test('POST /api/ai fails closed with 503 no_api_key when no server keys configured', async () => {
-    const req = new NextRequest('http://localhost:3000/api/ai', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Origin: 'https://toolghor.vercel.app',
-        'x-forwarded-for': '127.0.0.99',
-      },
-      body: JSON.stringify({
-        prompt: 'Calculate BMI recommendation',
-        options: {
-          maxTokens: 50000, // Should be clamped to <= 1500
-          temperature: 99,  // Should be clamped to <= 1.0
-          systemInstruction: 'Custom instruction',
-        },
-      }),
-    });
-    const res = await postAi(req);
-    assert.equal(res.status, 503);
-    const body = await res.json();
-    assert.equal(body.success, false);
-    assert.equal(body.error, 'no_api_key');
-    assert.ok(body.message_bn, 'Must include bilingual message');
-  });
+    const origGemini = process.env.GEMINI_API_KEY;
+    const origOpenai = process.env.OPENAI_API_KEY;
+    const sql = getDb();
+    let origDb: any = null;
+    try {
+      origDb = (await sql`SELECT gemini_active, openai_active FROM section_api_keys WHERE id = 1`)[0];
+      await sql`UPDATE section_api_keys SET gemini_active = false, openai_active = false WHERE id = 1`;
+      delete process.env.GEMINI_API_KEY;
+      delete process.env.OPENAI_API_KEY;
 
-  await t.test('POST /api/ai enforces per-IP persistent rate limit when hammered', async () => {
-    const testIp = '198.51.100.42';
-    let throttled = false;
-    for (let i = 0; i < 65; i++) {
       const req = new NextRequest('http://localhost:3000/api/ai', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Origin: 'http://localhost:3000',
-          'x-forwarded-for': testIp,
+          Origin: 'https://toolghor.vercel.app',
+          'x-forwarded-for': '127.0.0.99',
         },
-        body: JSON.stringify({ prompt: 'Hammer test ' + i }),
+        body: JSON.stringify({
+          prompt: 'Calculate BMI recommendation',
+          options: {
+            maxTokens: 50000, // Should be clamped to <= 1500
+            temperature: 99,  // Should be clamped to <= 1.0
+            systemInstruction: 'Custom instruction',
+          },
+        }),
       });
       const res = await postAi(req);
-      if (res.status === 429) {
-        throttled = true;
-        const body = await res.json();
-        assert.equal(body.success, false);
-        assert.ok(body.error.includes('Rate limit'));
-        assert.ok(body.error_bn, 'Must include Bengali message');
-        break;
+      assert.equal(res.status, 503);
+      const body = await res.json();
+      assert.equal(body.success, false);
+      assert.equal(body.error, 'no_api_key');
+      assert.ok(body.message_bn, 'Must include bilingual message');
+    } finally {
+      if (origGemini !== undefined) process.env.GEMINI_API_KEY = origGemini;
+      if (origOpenai !== undefined) process.env.OPENAI_API_KEY = origOpenai;
+      if (origDb) {
+        await sql`UPDATE section_api_keys SET gemini_active = ${origDb.gemini_active}, openai_active = ${origDb.openai_active} WHERE id = 1`;
+      }
+    }
+  });
+
+  await t.test('POST /api/ai enforces per-IP persistent rate limit when hammered', async () => {
+    const testIp = '198.51.100.42';
+    const sql = getDb();
+    let origDb: any = null;
+    let throttled = false;
+    try {
+      origDb = (await sql`SELECT gemini_active, openai_active FROM section_api_keys WHERE id = 1`)[0];
+      await sql`UPDATE section_api_keys SET gemini_active = false, openai_active = false WHERE id = 1`;
+      for (let i = 0; i < 65; i++) {
+        const req = new NextRequest('http://localhost:3000/api/ai', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Origin: 'http://localhost:3000',
+            'x-forwarded-for': testIp,
+          },
+          body: JSON.stringify({ prompt: 'Hammer test ' + i }),
+        });
+        const res = await postAi(req);
+        if (res.status === 429) {
+          throttled = true;
+          const body = await res.json();
+          assert.equal(body.success, false);
+          assert.ok(body.error.includes('Rate limit'));
+          assert.ok(body.error_bn, 'Must include Bengali message');
+          break;
+        }
+      }
+    } finally {
+      if (origDb) {
+        await sql`UPDATE section_api_keys SET gemini_active = ${origDb.gemini_active}, openai_active = ${origDb.openai_active} WHERE id = 1`;
       }
     }
     assert.ok(throttled, 'Expected IP hammering to trigger 429 rate limit');
@@ -437,7 +464,11 @@ test('Security & Key Hygiene Verification — Admin Test Key & Masking Flow', as
 
   await t.test('POST /api/admin/test-key returns bilingual message when key is missing or unconfigured', async () => {
     const origGemini = process.env.GEMINI_API_KEY;
+    const sql = getDb();
+    let origDbKey: any = null;
     try {
+      origDbKey = (await sql`SELECT gemini_key FROM section_api_keys WHERE id = 1`)[0]?.gemini_key;
+      await sql`UPDATE section_api_keys SET gemini_key = '' WHERE id = 1`;
       delete process.env.GEMINI_API_KEY;
       const req = new NextRequest('http://localhost:3000/api/admin/test-key', {
         method: 'POST',
@@ -455,6 +486,9 @@ test('Security & Key Hygiene Verification — Admin Test Key & Masking Flow', as
       assert.ok(body.message_bn.includes('কোনো API কী প্রদান করা হয়নি'));
     } finally {
       if (origGemini !== undefined) process.env.GEMINI_API_KEY = origGemini;
+      if (origDbKey !== null && origDbKey !== undefined) {
+        await sql`UPDATE section_api_keys SET gemini_key = ${origDbKey} WHERE id = 1`;
+      }
     }
   });
 
