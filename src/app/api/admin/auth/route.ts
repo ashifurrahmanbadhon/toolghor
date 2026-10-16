@@ -13,8 +13,10 @@ import {
   verifyPasswordResetOtp,
   completePasswordReset,
 } from '@/lib/passwordReset';
+import { runConfigCheck } from '@/lib/configCheck';
 
 export async function POST(req: NextRequest) {
+  runConfigCheck();
   try {
     const sql = getDb();
     const body = await req.json().catch(() => ({}));
@@ -109,7 +111,11 @@ export async function POST(req: NextRequest) {
       const session = verifyAdminRequest(req);
       if (!session) {
         return NextResponse.json(
-          { success: false, message: 'Unauthorized. Admin session required.' },
+          {
+            success: false,
+            message: 'Unauthorized. Admin session required.',
+            message_bn: 'অননুমোদিত। অ্যাডমিন সেশন প্রয়োজন।'
+          },
           { status: 401 }
         );
       }
@@ -130,7 +136,11 @@ export async function POST(req: NextRequest) {
       const session = verifyAdminRequest(req);
       if (!session) {
         return NextResponse.json(
-          { success: false, message: 'Unauthorized. Admin session required.' },
+          {
+            success: false,
+            message: 'Unauthorized. Admin session required.',
+            message_bn: 'অননুমোদিত। অ্যাডমিন সেশন প্রয়োজন।'
+          },
           { status: 401 }
         );
       }
@@ -142,7 +152,11 @@ export async function POST(req: NextRequest) {
 
       if (!isCurrentValid) {
         return NextResponse.json(
-          { success: false, message: 'Current password does not match.' },
+          {
+            success: false,
+            message: 'Current password does not match.',
+            message_bn: 'বর্তমান পাসওয়ার্ড সঠিক নয়।'
+          },
           { status: 400 }
         );
       }
@@ -151,7 +165,11 @@ export async function POST(req: NextRequest) {
       if (new_passcode && new_passcode.trim()) {
         if (new_passcode.trim().length < 8) {
           return NextResponse.json(
-            { success: false, message: 'New password must be at least 8 characters.' },
+            {
+              success: false,
+              message: 'New password must be at least 8 characters.',
+              message_bn: 'নতুন পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।'
+            },
             { status: 400 }
           );
         }
@@ -174,6 +192,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'Profile and password updated successfully in database.',
+        message_bn: 'প্রোফাইল ও পাসওয়ার্ড সফলভাবে ডাটাবেজে আপডেট হয়েছে।',
         profile: {
           username: account.username,
           email: updatedEmail,

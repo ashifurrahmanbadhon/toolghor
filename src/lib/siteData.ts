@@ -13,9 +13,9 @@ export async function getPublicSiteData() {
   try {
     const sql = getDb();
 
-    // Query all sections in parallel with reliable 1800ms timeout fallback for instant page loads
+    // Query all sections in parallel with reliable 4000ms timeout fallback for instant page loads
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('DB Query Timeout')), 1800)
+      setTimeout(() => reject(new Error('DB Query Timeout')), 4000)
     );
 
     const queryPromise = Promise.all([

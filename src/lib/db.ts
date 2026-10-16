@@ -25,8 +25,19 @@ export async function initDatabase() {
   if (isInitialized) return;
   const sql = getDb();
 
+  const exec = async (query: any) => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await query;
+      } catch (err: any) {
+        if (attempt === 2) throw err;
+        await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+      }
+    }
+  };
+
   // 1. Section: Hero (Header Tagline, Search Placeholders)
-  await sql`
+  await exec(sql`
     CREATE TABLE IF NOT EXISTS section_hero (
       id INT PRIMARY KEY DEFAULT 1,
       is_active BOOLEAN NOT NULL DEFAULT true,
@@ -36,7 +47,7 @@ export async function initDatabase() {
       search_placeholder_en TEXT NOT NULL,
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
-  `;
+  `);
 
   // Seed default hero if empty
   await sql`
