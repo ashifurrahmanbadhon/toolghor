@@ -9,7 +9,7 @@ import { POST as postRemoveBg } from '../src/app/api/remove-bg/route';
 import { POST as postWordToPdf } from '../src/app/api/convert-word-to-pdf/route';
 import { POST as postPdfToDocx } from '../src/app/api/convert-pdf-to-docx/route';
 import { POST as postTestKey } from '../src/app/api/admin/test-key/route';
-import { createAdminSessionToken, ADMIN_SESSION_COOKIE_NAME } from '../src/lib/adminAuth';
+import { createAdminSessionToken, ADMIN_SESSION_COOKIE_NAME, getAuthSecret, isAuthSecretDerived } from '../src/lib/adminAuth';
 import { getDb } from '../src/lib/db';
 import { siteConfig } from '../src/data/config';
 import { getConfigStatus, runConfigCheck } from '../src/lib/configCheck';
@@ -463,6 +463,92 @@ test('Security & Key Hygiene Verification — Admin Test Key & Masking Flow', as
     assert.ok(adminClientSrc.includes('formatMaskedKey'), 'Must implement formatMaskedKey');
     assert.ok(adminClientSrc.includes('runTestKey'), 'Must implement runTestKey');
     assert.ok(adminClientSrc.includes('/api/admin/test-key'), 'Must target /api/admin/test-key');
+  });
+
+  await t.test('Auth secret: getAuthSecret() behavior across all 3 configuration states', () => {
+    const origAuthSecret = process.env.AUTH_SECRET;
+    const origNextAuthSecret = process.env.NEXTAUTH_SECRET;
+    const origDbUrl = process.env.DATABASE_URL;
+    const origDbUnpooled = process.env.DATABASE_URL_UNPOOLED;
+    const origPostgresUrl = process.env.POSTGRES_URL;
+    const origPostgresPw = process.env.POSTGRES_PASSWORD;
+
+    const origConsoleWarn = console.warn;
+    const capturedWarnings: string[] = [];
+    console.warn = (...args: any[]) => {
+      capturedWarnings.push(args.join(' '));
+    };
+
+    try {
+      // 1. With AUTH_SECRET set: returns configured secret, no warning emitted
+      process.env.AUTH_SECRET = 'explicit_test_auth_secret_value_12345';
+      delete process.env.NEXTAUTH_SECRET;
+      capturedWarnings.length = 0;
+
+      const secretExplicit = getAuthSecret();
+      assert.equal(secretExplicit, 'explicit_test_auth_secret_value_12345');
+      assert.equal(isAuthSecretDerived(), false);
+      assert.equal(capturedWarnings.length, 0);
+
+      // 2. With AUTH_SECRET unset and DATABASE_URL set: returns derived value AND emits loud warning
+      delete process.env.AUTH_SECRET;
+      delete process.env.NEXTAUTH_SECRET;
+      process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/toolghordb';
+      capturedWarnings.length = 0;
+
+      const secretDerived = getAuthSecret();
+      assert.ok(secretDerived && secretDerived.length > 0, 'Must return non-empty derived secret');
+      assert.equal(isAuthSecretDerived(), true);
+      assert.equal(capturedWarnings.length, 1);
+      assert.ok(
+        capturedWarnings[0].includes('[SECURITY WARNING] AUTH_SECRET is not set — using derived fallback. Set AUTH_SECRET in env vars.'),
+        'Must emit exact security warning'
+      );
+      assert.ok(!capturedWarnings[0].includes(secretDerived), 'Must never log secret value');
+      assert.ok(!capturedWarnings[0].includes(process.env.DATABASE_URL!), 'Must never log DB credentials');
+
+      // 3. With neither set: it throws
+      delete process.env.AUTH_SECRET;
+      delete process.env.NEXTAUTH_SECRET;
+      delete process.env.DATABASE_URL;
+      delete process.env.DATABASE_URL_UNPOOLED;
+      delete process.env.POSTGRES_URL;
+      delete process.env.POSTGRES_PASSWORD;
+
+      assert.throws(
+        () => {
+          getAuthSecret();
+        },
+        /CRITICAL SECURITY ERROR: Neither AUTH_SECRET nor DATABASE_URL environment variable is configured/
+      );
+    } finally {
+      console.warn = origConsoleWarn;
+      if (origAuthSecret !== undefined) process.env.AUTH_SECRET = origAuthSecret;
+      else delete process.env.AUTH_SECRET;
+      if (origNextAuthSecret !== undefined) process.env.NEXTAUTH_SECRET = origNextAuthSecret;
+      else delete process.env.NEXTAUTH_SECRET;
+      if (origDbUrl !== undefined) process.env.DATABASE_URL = origDbUrl;
+      else delete process.env.DATABASE_URL;
+      if (origDbUnpooled !== undefined) process.env.DATABASE_URL_UNPOOLED = origDbUnpooled;
+      else delete process.env.DATABASE_URL_UNPOOLED;
+      if (origPostgresUrl !== undefined) process.env.POSTGRES_URL = origPostgresUrl;
+      else delete process.env.POSTGRES_URL;
+      if (origPostgresPw !== undefined) process.env.POSTGRES_PASSWORD = origPostgresPw;
+      else delete process.env.POSTGRES_PASSWORD;
+    }
+  });
+
+  await t.test('Admin Client banner: surfaces warning banner for derived auth secret', () => {
+    const adminClientSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/admin/AdminClient.tsx'), 'utf-8');
+    assert.ok(adminClientSrc.includes('isAuthSecretDerived'), 'Must check isAuthSecretDerived state');
+    assert.ok(
+      adminClientSrc.includes('AUTH_SECRET is not set — admin sessions use a derived fallback'),
+      'Must contain English warning message'
+    );
+    assert.ok(
+      adminClientSrc.includes('AUTH_SECRET সেট করা নেই'),
+      'Must contain Bengali warning message'
+    );
   });
 });
 
