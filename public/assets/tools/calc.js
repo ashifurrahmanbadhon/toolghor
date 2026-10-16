@@ -702,6 +702,7 @@
       var ts = zonedToUtc(+m[1], +m[2], +m[3], +m[4], +m[5], src);
       var sp = parts(ts, src);
       var srcOff = offMin(ts, src);
+      var baseCityName = (zlabel(src) || src).split('(')[0].trim();
 
       targets.forEach(function (z) {
         var p = parts(ts, z);
