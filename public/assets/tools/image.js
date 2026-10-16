@@ -1295,7 +1295,7 @@
 
     var downloadBtn = UI.btn(tr('ডাউনলোড (PNG)', "Download (PNG)"), function () {
       if (!processedBlob || !file) return;
-      var ext = (activeBg === 'transparent') ? 'png' : 'jpg';
+      var ext = (activeTab === 'original' || activeBg !== 'transparent') ? 'jpg' : 'png';
       var outName = 'ToolGhor(remove-background).' + ext;
       UI.download(processedBlob, outName);
     }, { icon: 'download' });
@@ -1458,7 +1458,7 @@
 
       if (activeTab === 'original' && originalCanvas) {
         pctx.drawImage(originalCanvas, 0, 0);
-        downloadBtn.textContent = tr('আসল ছবি ডাউনলোড', "Download Original");
+        downloadBtn.textContent = tr('আসল ছবি ডাউনলোড (JPG)', "Download Original (JPG)");
         processedBlob = await UI.toBlob(previewCanvas, 'image/jpeg', 0.95);
         resBadge.textContent = '✓ ' + w + ' × ' + h + ' px • ' + tr('আসল ছবি', "Original");
         return;

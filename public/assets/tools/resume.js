@@ -58,7 +58,7 @@
     var l = lines(t); if (!l.length) return '';
     return l.length === 1 ? '<p>' + esc(l[0]) + '</p>' : '<ul>' + l.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
   }
-  function chips(t) { return String(t || '').split(/[,،\\n]+/).map(function (x) { return x.trim(); }).filter(Boolean); }
+  function chips(t) { return String(t || '').split(/[,،\n]+/).map(function (x) { return x.trim(); }).filter(Boolean); }
   function filled(arr, keys) { return (arr || []).filter(function (it) { return keys.some(function (k) { return (it[k] || '').trim(); }); }); }
   function contacts(d) { return [d.phone, d.email, d.address, d.links].filter(function (x) { return (x || '').trim(); }); }
   function photoImg(d, cls) { return d.photo ? '<img class="photo ' + (cls || '') + '" src="' + d.photo + '" alt="">' : ''; }
@@ -287,7 +287,7 @@
     var list = isBn ? p.summaries_bn : p.summaries_en;
     if (role && role.trim()) {
       return list.map(function (s) {
-        return s.replace(/Engineer|Software Developer|Digital Marketer|Sales & Business Development Executive|Accounting & Finance Professional/gi, role.trim());
+        return s.replace(/\b(?:Sales & Business Development Executive|Accounting & Finance Professional|Full-Stack Developer|Software Developer|Digital Marketer|Web Developer|Developer|Engineer)\b/gi, role.trim());
       });
     }
     return list;

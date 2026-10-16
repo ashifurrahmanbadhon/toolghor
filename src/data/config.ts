@@ -41,7 +41,7 @@ export const siteConfig: SiteConfig = {
   nameAccent: '',
   tagline: 'দৈনন্দিন কাজের সব টুল, এখন এক প্ল্যাটফর্মে',
   taglineEn: 'Everyday tools, now on one modern platform',
-  url: process.env.NEXT_PUBLIC_SITE_URL || 'https://toolghor.com',
+  url: process.env.NEXT_PUBLIC_SITE_URL || 'https://toolghor.vercel.app',
   logo: '/assets/logo.png',
   logoDark: '/assets/logo-dark.png',
   logoIcon: '/assets/logo-icon.png',

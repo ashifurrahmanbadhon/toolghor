@@ -1054,7 +1054,7 @@
           try {
             var pdfObj = await openPdfJs(file);
             var parts = [];
-            for (var pi = 1; pi <= Math.min(pdfObj.numPages, 10); pi++) {
+            for (var pi = 1; pi <= pdfObj.numPages; pi++) {
               var p = await pdfObj.getPage(pi);
               var tc = await p.getTextContent();
               var pt = (tc.items || []).map(function (it) { return it.str; }).join(' ');
@@ -1264,6 +1264,7 @@
 
     var currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
     var cursorY = pageHeight - marginY;
+    var hadUnicodeFallback = false;
 
     function addPageIfNeeded(neededHeight) {
       if (cursorY - neededHeight < marginY) {
@@ -1345,6 +1346,7 @@
             color: PDFLib.rgb(0.12, 0.12, 0.12)
           });
         } catch (drawErr) {
+          hadUnicodeFallback = true;
           var safeAscii = lineText.replace(/[^\x20-\x7E]/g, ' ');
           currentPage.drawText(safeAscii, {
             x: drawX,
@@ -1365,7 +1367,9 @@
     await UI.yield();
 
     var pdfBytes = await pdfDoc.save();
-    return pdfBlob(pdfBytes);
+    var finalBlob = pdfBlob(pdfBytes);
+    finalBlob.hadUnicode = hadUnicodeFallback;
+    return finalBlob;
   }
 
   T['word-to-pdf'] = function (root) {
@@ -1428,6 +1432,12 @@
         prog.set(100, tr('✓ সফলভাবে পিডিএফে রূপান্তর সম্পন্ন হয়েছে!', '✓ Converted to PDF successfully!'));
         await UI.yield();
         UI.done(out, resultPdfBlob, outName, tr('✓ সফলভাবে পিডিএফে রূপান্তর সম্পন্ন হয়েছে!', '✓ Converted to PDF successfully!'));
+        if (resultPdfBlob && resultPdfBlob.hadUnicode) {
+          out.appendChild(UI.notice('info', tr(
+            '⚠️ নোটিশ: ডকুমেন্টে বাংলা বা ইউনিকোড অক্ষর রয়েছে। শতভাগ সঠিক ফন্ট রেন্ডারিংয়ের জন্য সার্ভার কনভার্সন প্রেফার করা হয়।',
+            '⚠️ Notice: Document contains Bengali or Unicode text. For complete font rendering, server conversion is recommended.'
+          )));
+        }
       } catch (err) {
         UI.clear(out);
         out.appendChild(UI.notice('err', tr('রূপান্তর ব্যর্থ হয়েছে: ', 'Conversion failed: ') + UI.err(err)));
