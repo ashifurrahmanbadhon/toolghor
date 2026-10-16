@@ -305,18 +305,32 @@ export async function POST(req: NextRequest) {
     // 7. Update API Keys section independently
     if (action === 'update_api_keys') {
       const { is_active, gemini_active, gemini_key, convertapi_active, convertapi_token, removebg_active, removebg_key, openai_active, openai_key } = payload;
+      
+      // Safety guard: never save masked strings (e.g. ••••••••3f9a) to the database
+      const sanitizeKey = (keyVal: any) => {
+        if (typeof keyVal !== 'string') return keyVal;
+        const trimmed = keyVal.trim();
+        if (trimmed.startsWith('••') || trimmed.includes('••••')) return undefined;
+        return trimmed;
+      };
+
+      const safeGeminiKey = sanitizeKey(gemini_key);
+      const safeConvertApiToken = sanitizeKey(convertapi_token);
+      const safeRemoveBgKey = sanitizeKey(removebg_key);
+      const safeOpenAiKey = sanitizeKey(openai_key);
+
       await sql`
         UPDATE section_api_keys
         SET
           is_active = COALESCE(${is_active}, is_active),
           gemini_active = COALESCE(${gemini_active}, gemini_active),
-          gemini_key = COALESCE(${gemini_key}, gemini_key),
+          gemini_key = COALESCE(${safeGeminiKey}, gemini_key),
           convertapi_active = COALESCE(${convertapi_active}, convertapi_active),
-          convertapi_token = COALESCE(${convertapi_token}, convertapi_token),
+          convertapi_token = COALESCE(${safeConvertApiToken}, convertapi_token),
           removebg_active = COALESCE(${removebg_active}, removebg_active),
-          removebg_key = COALESCE(${removebg_key}, removebg_key),
+          removebg_key = COALESCE(${safeRemoveBgKey}, removebg_key),
           openai_active = COALESCE(${openai_active}, openai_active),
-          openai_key = COALESCE(${openai_key}, openai_key),
+          openai_key = COALESCE(${safeOpenAiKey}, openai_key),
           updated_at = CURRENT_TIMESTAMP
         WHERE id = 1;
       `;

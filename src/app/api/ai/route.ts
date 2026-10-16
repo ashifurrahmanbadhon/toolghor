@@ -65,10 +65,20 @@ function resolveSystemInstruction(toolSlug?: string, clientInstruction?: string)
 }
 
 async function getServerAiKeys() {
-  let geminiKey = (process.env.GEMINI_API_KEY || '').trim();
-  let openaiKey = (process.env.OPENAI_API_KEY || '').trim();
+  const envGemini = (process.env.GEMINI_API_KEY || '').trim();
+  const envOpenai = (process.env.OPENAI_API_KEY || '').trim();
+  const validEnvGemini = envGemini && envGemini !== 'your_gemini_key_here' && envGemini !== 'your_key_here';
+  const validEnvOpenai = envOpenai && envOpenai !== 'your_openai_key_here' && envOpenai !== 'your_key_here';
+
+  let geminiKey = validEnvGemini ? envGemini : '';
+  let openaiKey = validEnvOpenai ? envOpenai : '';
   let geminiActive = Boolean(geminiKey);
   let openaiActive = Boolean(openaiKey);
+
+  // If both keys are satisfied by env vars, env var wins unconditionally
+  if (geminiKey && openaiKey) {
+    return { geminiKey, openaiKey, geminiActive: true, openaiActive: true };
+  }
 
   try {
     const sql = getDb();
@@ -79,14 +89,22 @@ async function getServerAiKeys() {
       LIMIT 1
     `;
     const row = rows[0];
-    if (row) {
-      if (!row.is_active) {
-        return { geminiKey: '', openaiKey: '', geminiActive: false, openaiActive: false };
+    if (row && row.is_active) {
+      // Env always wins over DB. Only fallback to DB if env var is missing:
+      if (!geminiKey && row.gemini_active && row.gemini_key) {
+        const dbGemini = row.gemini_key.trim();
+        if (dbGemini) {
+          geminiKey = dbGemini;
+          geminiActive = true;
+        }
       }
-      if (row.gemini_active !== undefined) geminiActive = Boolean(row.gemini_active);
-      if (row.openai_active !== undefined) openaiActive = Boolean(row.openai_active);
-      if (row.gemini_key && row.gemini_key.trim()) geminiKey = row.gemini_key.trim();
-      if (row.openai_key && row.openai_key.trim()) openaiKey = row.openai_key.trim();
+      if (!openaiKey && row.openai_active && row.openai_key) {
+        const dbOpenai = row.openai_key.trim();
+        if (dbOpenai) {
+          openaiKey = dbOpenai;
+          openaiActive = true;
+        }
+      }
     }
   } catch (err: any) {
     console.warn('[AI Proxy Warning]: Failed to fetch DB keys, using environment variables:', err?.message || err);

@@ -33,6 +33,7 @@ import {
   Mail,
   Phone,
   KeyRound,
+  Zap,
 } from 'lucide-react';
 
 interface HeroSection {
@@ -278,8 +279,69 @@ export default function AdminConsole() {
     title: string;
   } | null>(null);
 
-  // API Key Visibility Toggles
+  // API Key Visibility, Focus, Testing, and Result States
   const [showKey, setShowKey] = useState<Record<string, boolean>>({});
+  const [focusedKey, setFocusedKey] = useState<Record<string, boolean>>({});
+  const [testingKey, setTestingKey] = useState<Record<string, boolean>>({});
+  const [testResult, setTestResult] = useState<
+    Record<string, { valid: boolean; message: string; message_bn: string } | null>
+  >({});
+
+  const formatMaskedKey = (val: string) => {
+    if (!val) return '';
+    const trimmed = val.trim();
+    if (trimmed.length <= 4) return '••••••••';
+    return '••••••••' + trimmed.slice(-4);
+  };
+
+  const runTestKey = async (provider: string, keyField: string) => {
+    setTestingKey((p) => ({ ...p, [provider]: true }));
+    setTestResult((p) => ({ ...p, [provider]: null }));
+
+    try {
+      const currentKey = ((apiKeys as any)[keyField] || '').trim();
+      const res = await fetch('/api/admin/test-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider,
+          key: currentKey.startsWith('••') ? '' : currentKey,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (data && typeof data.valid === 'boolean') {
+        setTestResult((p) => ({
+          ...p,
+          [provider]: {
+            valid: data.valid,
+            message: data.message || (data.valid ? 'Valid API Key' : 'Invalid API Key'),
+            message_bn: data.message_bn || (data.valid ? 'সঠিক API কী' : 'ভুল API কী'),
+          },
+        }));
+      } else {
+        setTestResult((p) => ({
+          ...p,
+          [provider]: {
+            valid: false,
+            message: data?.error || data?.message || 'Test request failed',
+            message_bn: data?.message_bn || 'টেস্ট রিকোয়েস্ট ব্যর্থ হয়েছে',
+          },
+        }));
+      }
+    } catch (e: any) {
+      setTestResult((p) => ({
+        ...p,
+        [provider]: {
+          valid: false,
+          message: e?.message || 'Network error while testing key',
+          message_bn: 'কী পরীক্ষা করার সময় নেটওয়ার্ক ত্রুটি ঘটেছে',
+        },
+      }));
+    } finally {
+      setTestingKey((p) => ({ ...p, [provider]: false }));
+    }
+  };
 
   const showNotification = (msg: string) => {
     setSaveToast(msg);
@@ -712,8 +774,15 @@ export default function AdminConsole() {
 
   // 7. API Keys Updates
   const saveApiKeys = async (updated: ApiKeysSection) => {
-    setApiKeys(updated);
-    await postApi('update_api_keys', updated, 'API Credentials saved!');
+    // Safety guard: ensure no masked display strings are saved
+    const safePayload: any = { ...updated };
+    ['gemini_key', 'convertapi_token', 'removebg_key', 'openai_key'].forEach((k) => {
+      if (typeof safePayload[k] === 'string' && (safePayload[k].startsWith('••') || safePayload[k].includes('••••'))) {
+        safePayload[k] = undefined;
+      }
+    });
+    setApiKeys(safePayload);
+    await postApi('update_api_keys', safePayload, 'API Credentials saved!');
   };
 
   // Tool Filter Logic
@@ -3276,6 +3345,7 @@ export default function AdminConsole() {
                   {
                     key: 'gemini_key',
                     activeKey: 'gemini_active',
+                    provider: 'gemini',
                     label: 'Google Gemini AI API',
                     desc: 'Powers AI text rewriting, summarize, OCR reading, and Bengali-English intelligence',
                     placeholder: 'AIzaSy...',
@@ -3284,6 +3354,7 @@ export default function AdminConsole() {
                   {
                     key: 'convertapi_token',
                     activeKey: 'convertapi_active',
+                    provider: 'convertapi',
                     label: 'ConvertAPI Document Engine',
                     desc: 'Server-side engine for high-fidelity DOCX to PDF, Word conversions, and PDF flattening',
                     placeholder: 'sec_...',
@@ -3292,6 +3363,7 @@ export default function AdminConsole() {
                   {
                     key: 'removebg_key',
                     activeKey: 'removebg_active',
+                    provider: 'removebg',
                     label: 'Remove.bg API',
                     desc: 'High-precision portrait cutout and passport photo background eraser',
                     placeholder: 'rmbg_...',
@@ -3300,6 +3372,7 @@ export default function AdminConsole() {
                   {
                     key: 'openai_key',
                     activeKey: 'openai_active',
+                    provider: 'openai',
                     label: 'OpenAI API (GPT-4o & Whisper)',
                     desc: 'Optional fallback engine for OpenAI tasks and speech-to-text transcription',
                     placeholder: 'sk-proj-...',
@@ -3307,7 +3380,11 @@ export default function AdminConsole() {
                   },
                 ].map((item) => {
                   const isActive = (apiKeys as any)[item.activeKey];
-                  const hasKey = Boolean(((apiKeys as any)[item.key] || '').trim());
+                  const rawVal = (apiKeys as any)[item.key] || '';
+                  const hasKey = Boolean(rawVal.trim());
+                  const isRevealed = Boolean(showKey[item.key]);
+                  const isFocused = Boolean(focusedKey[item.key]);
+                  const displayValue = isRevealed || isFocused ? rawVal : formatMaskedKey(rawVal);
                   return (
                     <div key={item.key} style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '24px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
@@ -3331,31 +3408,68 @@ export default function AdminConsole() {
                           <div style={{ fontSize: '12.5px', color: '#94a3b8', marginTop: '3px' }}>{item.desc}</div>
                         </div>
 
-                        {/* Individual Provider Active Toggle */}
-                        <button
-                          type="button"
-                          onClick={() => saveApiKeys({ ...apiKeys, [item.activeKey]: !isActive })}
-                          style={{
-                            padding: '6px 14px',
-                            borderRadius: '8px',
-                            border: 'none',
-                            fontSize: '12.5px',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            background: isActive ? '#10b981' : '#374151',
-                            color: '#ffffff',
-                            transition: 'background 0.2s',
-                          }}
-                        >
-                          {isActive ? 'Active' : 'Inactive'}
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {/* Minimal Test Button */}
+                          <button
+                            type="button"
+                            onClick={() => runTestKey(item.provider, item.key)}
+                            disabled={testingKey[item.provider]}
+                            style={{
+                              padding: '6px 14px',
+                              borderRadius: '8px',
+                              border: '1px solid #334155',
+                              fontSize: '12.5px',
+                              fontWeight: 600,
+                              cursor: testingKey[item.provider] ? 'not-allowed' : 'pointer',
+                              background: '#1e293b',
+                              color: '#f8fafc',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              transition: 'all 0.2s',
+                              opacity: testingKey[item.provider] ? 0.7 : 1,
+                            }}
+                          >
+                            {testingKey[item.provider] ? (
+                              <RefreshCw size={13} className="animate-spin" />
+                            ) : (
+                              <Zap size={13} />
+                            )}
+                            {testingKey[item.provider] ? 'Testing...' : 'Test'}
+                          </button>
+
+                          {/* Individual Provider Active Toggle */}
+                          <button
+                            type="button"
+                            onClick={() => saveApiKeys({ ...apiKeys, [item.activeKey]: !isActive })}
+                            style={{
+                              padding: '6px 14px',
+                              borderRadius: '8px',
+                              border: 'none',
+                              fontSize: '12.5px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              background: isActive ? '#10b981' : '#374151',
+                              color: '#ffffff',
+                              transition: 'background 0.2s',
+                            }}
+                          >
+                            {isActive ? 'Active' : 'Inactive'}
+                          </button>
+                        </div>
                       </div>
 
                       <div style={{ position: 'relative' }}>
                         <input
-                          type={showKey[item.key] ? 'text' : 'password'}
-                          value={(apiKeys as any)[item.key] || ''}
-                          onChange={(e) => setApiKeys({ ...apiKeys, [item.key]: e.target.value })}
+                          type={isRevealed ? 'text' : isFocused ? 'password' : 'text'}
+                          value={displayValue}
+                          onFocus={() => setFocusedKey((p) => ({ ...p, [item.key]: true }))}
+                          onBlur={() => setFocusedKey((p) => ({ ...p, [item.key]: false }))}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (!isRevealed && !isFocused && val.startsWith('••••••••')) return;
+                            setApiKeys({ ...apiKeys, [item.key]: val });
+                          }}
                           placeholder={item.placeholder}
                           style={{
                             width: '100%',
@@ -3371,6 +3485,7 @@ export default function AdminConsole() {
                         <button
                           type="button"
                           onClick={() => setShowKey((p) => ({ ...p, [item.key]: !p[item.key] }))}
+                          title={showKey[item.key] ? 'Hide Key' : 'Reveal Key'}
                           style={{
                             position: 'absolute',
                             right: '12px',
@@ -3384,6 +3499,30 @@ export default function AdminConsole() {
                           {showKey[item.key] ? <EyeOff size={16} /> : <Eye size={16} />}
                         </button>
                       </div>
+
+                      {/* Bilingual Test Feedback */}
+                      {testResult[item.provider] && (
+                        <div
+                          style={{
+                            marginTop: '10px',
+                            padding: '9px 12px',
+                            borderRadius: '8px',
+                            fontSize: '12.5px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            background: testResult[item.provider]!.valid ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                            border: `1px solid ${testResult[item.provider]!.valid ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                            color: testResult[item.provider]!.valid ? '#34d399' : '#f87171',
+                          }}
+                        >
+                          {testResult[item.provider]!.valid ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontWeight: 600 }}>{testResult[item.provider]!.message}</span>
+                            <span style={{ fontSize: '11.5px', opacity: 0.85 }}>{testResult[item.provider]!.message_bn}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
