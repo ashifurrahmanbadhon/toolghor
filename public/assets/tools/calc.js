@@ -37,9 +37,9 @@
         UI.el('div', {}, UI.el('div', { class: 'big-num' }, UI.num(bmi, 1)), UI.el('div', { class: 'lbl' }, tr('আপনার বিএমআই: ', "Your BMI: ") + cat)),
         UI.el('div', {}, UI.el('div', { class: 'gauge-pin' }, UI.el('i', { style: { left: pos + '%' } })),
           UI.el('div', { class: 'gauge', 'aria-hidden': 'true' }, segs.map(function (s) { return UI.el('span', { style: { width: (s[0] / 30 * 100) + '%', background: s[1] } }); })),
-          UI.el('div', { class: 'row', style: { justifyContent: 'space-between', fontSize: '13px', color: 'var(--ink-3)', marginTop: '6px' } },
-            UI.el('span', {}, tr('কম ওজন', "Underweight")), UI.el('span', {}, tr('স্বাভাবিক ওজন', "Normal")), UI.el('span', {}, tr('অতিরিক্ত ওজন', "Overweight")), UI.el('span', {}, tr('স্থূলতা', "Obese")))),
-        UI.el('p', { style: { margin: 0 } }, tr('আপনার উচ্চতায় স্বাভাবিক ওজনের পরিসীমা (বিএমআই ১৮.৫–২৪.৯): ', "Healthy weight range for your height (BMI 18.5–24.9): "), UI.el('b', {}, rng), tr('।', '.')),
+          UI.el('div', { class: 'row', style: { justifyContent: 'space-between', fontSize: '13.5px', color: 'var(--ink-3)', marginTop: '4px' } },
+            UI.el('span', {}, tr('কম', "Low")), UI.el('span', {}, tr('স্বাভাবিক', "Normal")), UI.el('span', {}, tr('বেশি', "High")), UI.el('span', {}, tr('স্থূলতা', "Obesity")))),
+        UI.el('p', { style: { margin: 0 } }, tr('আপনার উচ্চতায় স্বাভাবিক ওজনের পরিসীমা (বিএমআই ১৮.৫–২৪.৯): ', "Healthy weight range for your height (BMI 18.5–24.9): "), UI.el('b', {}, rng), '।'),
         UI.notice('info', tr('এশীয়দের ক্ষেত্রে এশিয়া-প্যাসিফিক নির্দেশিকায় বিএমআই ২৩ থেকে ওজন বেশি এবং ২৫ থেকে স্থূলতা ধরা হয়। বিএমআই একটি মোটামুটি সূচক মাত্র, পেশি, বয়স ও শরীরের গড়ন হিসাবে আসে না। স্বাস্থ্য নিয়ে সিদ্ধান্তের আগে চিকিৎসকের পরামর্শ নিন।', "For Asian populations, Asia-Pacific guidelines treat a BMI from 23 as overweight and from 25 as obese. BMI is only a rough indicator: it does not account for muscle, age or body build. Please consult a doctor before making health decisions."))));
 
       // AI Health & Diet Planner Card
@@ -92,29 +92,11 @@
       });
       res.appendChild(aiBox.el);
     }
-
-    var inputsPanel = UI.el('div', { class: 'calc-inputs-panel stack' },
-      UI.el('div', { class: 'stack' },
-        UI.el('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' } },
-          UI.el('label', { class: 'lbl' }, tr('ওজন', "Weight")),
-          wSeg
-        ),
-        w
-      ),
-      UI.el('div', { class: 'stack' },
-        UI.el('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' } },
-          UI.el('label', { class: 'lbl' }, tr('উচ্চতা', "Height")),
-          hSeg
-        ),
-        cmF,
-        ftRow
-      )
-    );
-
-    root.appendChild(UI.el('div', { class: 'calc-workspace-2col' },
-      inputsPanel,
-      UI.el('div', { class: 'calc-results-panel' }, res)
-    ));
+    root.appendChild(UI.el('div', { class: 'stack' },
+      UI.el('div', { class: 'two' },
+        UI.el('div', { class: 'stack' }, UI.el('span', { class: 'lbl' }, tr('ওজন', "Weight")), wSeg, UI.field(tr('ওজন', "Weight"), w)),
+        UI.el('div', { class: 'stack' }, UI.el('span', { class: 'lbl' }, tr('উচ্চতা', "Height")), hSeg, cmF, ftRow)),
+      res));
     calc();
   };
 
