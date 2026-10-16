@@ -311,6 +311,7 @@
           bImg.crossOrigin = 'anonymous';
           bImg.onload = function () { bImg._url = blobUrl; res(bImg); };
           bImg.onerror = function () {
+            URL.revokeObjectURL(blobUrl);
             rej(new Error(tr('ছবিটি খোলা যায়নি: ', "Could not open the image: ") + (file.name || '')));
           };
           bImg.src = blobUrl;
@@ -323,6 +324,7 @@
         bImg.crossOrigin = 'anonymous';
         bImg.onload = function () { bImg._url = blobUrl; res(bImg); };
         bImg.onerror = function () {
+          URL.revokeObjectURL(blobUrl);
           rej(new Error(tr('ছবিটি খোলা যায়নি: ', "Could not open the image: ") + (file.name || '')));
         };
         bImg.src = blobUrl;
@@ -938,7 +940,7 @@
             else if (idx > 0 && it.row) it.row.remove();
           });
           if (items.length > 1) items.splice(1);
-          if (items[0] && items[0].idxSpan) items[0].idxSpan.textContent = '#১';
+          if (items[0] && items[0].idxSpan) items[0].idxSpan.textContent = '#' + UI.n(1);
         });
         body.querySelectorAll('.ai-provider-card').forEach(function (c) { c.classList.remove('is-active'); });
         body.querySelectorAll('.ai-status-pill').forEach(function (p) {
