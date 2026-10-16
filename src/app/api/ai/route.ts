@@ -177,34 +177,40 @@ export async function POST(req: NextRequest) {
 
     // 1. Try Google Gemini if configured and active
     if (geminiActive && geminiKey) {
-      try {
-        const gUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(geminiKey)}`;
-        const payload = {
-          contents: [{ role: 'user', parts: [{ text: (systemInstruction ? (systemInstruction + '\n\n') : '') + cleanPrompt }] }],
-          generationConfig: { temperature, maxOutputTokens: maxTokens },
-        };
+      const candidateModels = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
+      for (const modelName of candidateModels) {
+        try {
+          const gUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(geminiKey)}`;
+          const payload = {
+            contents: [{ role: 'user', parts: [{ text: (systemInstruction ? (systemInstruction + '\n\n') : '') + cleanPrompt }] }],
+            generationConfig: { temperature, maxOutputTokens: maxTokens },
+          };
 
-        const res = await fetch(gUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(15000),
-        });
+          const res = await fetch(gUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(15000),
+          });
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data.candidates && data.candidates[0]?.content?.parts) {
-            const text = data.candidates[0].content.parts.map((p: any) => p.text || '').join('').trim();
-            if (text) {
-              return NextResponse.json(
-                { success: true, text, provider: 'Google Gemini' },
-                { headers: corsHeaders }
-              );
+          if (!res.ok) {
+            console.warn(`[AI Proxy]: Gemini model ${modelName} returned status ${res.status}`);
+          }
+          if (res.ok) {
+            const data = await res.json();
+            if (data.candidates && data.candidates[0]?.content?.parts) {
+              const text = data.candidates[0].content.parts.map((p: any) => p.text || '').join('').trim();
+              if (text) {
+                return NextResponse.json(
+                  { success: true, text, provider: 'Google Gemini' },
+                  { headers: corsHeaders }
+                );
+              }
             }
           }
+        } catch (geminiErr: any) {
+          console.warn(`[AI Proxy]: Gemini request failed on model ${modelName}:`, geminiErr?.message);
         }
-      } catch (geminiErr: any) {
-        console.warn('[AI Proxy]: Gemini request failed, trying fallback provider:', geminiErr?.message);
       }
     }
 
