@@ -6,6 +6,7 @@ import {
   checkPersistentRateLimit,
   sanitizeContentDisposition,
 } from '@/lib/security';
+import { runConfigCheck } from '@/lib/configCheck';
 
 async function getConvertApiToken(): Promise<string> {
   const envToken = (process.env.CONVERTAPI_TOKEN || '').trim();
@@ -34,13 +35,17 @@ export async function OPTIONS(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  runConfigCheck();
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
 
   // 1. Persistent generous per-IP rate limit (100 conversions / day)
   const rateLimit = await checkPersistentRateLimit(`w2p_${ip}`, 100, 86400);
   if (!rateLimit.allowed) {
     return NextResponse.json(
-      { error: 'Daily conversion quota reached. Please try again tomorrow.' },
+      {
+        error: 'Daily conversion quota reached. Please try again tomorrow.',
+        error_bn: 'দৈনিক কনভার্সন সীমা শেষ হয়েছে। অনুগ্রহ করে আগামীকাল আবার চেষ্টা করুন।'
+      },
       { status: 429, headers: getCorsHeaders(req) }
     );
   }
@@ -48,7 +53,10 @@ export async function POST(req: NextRequest) {
   const token = await getConvertApiToken();
   if (!token) {
     return NextResponse.json(
-      { error: 'ConvertAPI service is not configured on the server. Please set CONVERTAPI_TOKEN.' },
+      {
+        error: 'ConvertAPI service is not configured on the server. Please set CONVERTAPI_TOKEN.',
+        error_bn: 'সার্ভারে ConvertAPI সার্ভিস কনফিগার করা নেই। অনুগ্রহ করে CONVERTAPI_TOKEN সেট করুন।'
+      },
       { status: 503, headers: getCorsHeaders(req) }
     );
   }
@@ -59,14 +67,20 @@ export async function POST(req: NextRequest) {
 
     if (!file) {
       return NextResponse.json(
-        { error: 'No Word file provided in request.' },
+        {
+          error: 'No Word file provided in request.',
+          error_bn: 'অনুরোধে কোনো ওয়ার্ড ফাইল প্রদান করা হয়নি।'
+        },
         { status: 400, headers: getCorsHeaders(req) }
       );
     }
 
     if (file.size > 50 * 1024 * 1024) {
       return NextResponse.json(
-        { error: 'File size exceeds 50MB limit.' },
+        {
+          error: 'File size exceeds 50MB limit.',
+          error_bn: 'ফাইলের সাইজ ৫০MB সীমা অতিক্রম করেছে।'
+        },
         { status: 413, headers: getCorsHeaders(req) }
       );
     }
@@ -120,7 +134,10 @@ export async function POST(req: NextRequest) {
 
     if (!pdfBuffer) {
       return NextResponse.json(
-        { error: 'Failed to extract PDF data from conversion response.' },
+        {
+          error: 'Failed to extract PDF data from conversion response.',
+          error_bn: 'কনভার্সন ফলাফল থেকে পিডিএফ ফাইল তৈরি করা সম্ভব হয়নি।'
+        },
         { status: 500, headers: getCorsHeaders(req) }
       );
     }
@@ -140,7 +157,10 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('[ConvertAPI Word->PDF Exception]', error);
     return NextResponse.json(
-      { error: 'An internal error occurred.' },
+      {
+        error: 'An internal error occurred.',
+        error_bn: 'অভ্যন্তরীণ সার্ভার ত্রুটি ঘটেছে।'
+      },
       { status: 500, headers: getCorsHeaders(req) }
     );
   }

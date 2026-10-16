@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getCorsHeaders, handleCorsPreflight, checkPersistentRateLimit } from '@/lib/security';
+import { runConfigCheck } from '@/lib/configCheck';
 
 async function getRemoveBgKey(): Promise<string> {
   const envKey = (process.env.REMOVE_BG_API_KEY || process.env.REMOVEBG_API_KEY || '').trim();
@@ -29,6 +30,7 @@ export async function OPTIONS(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  runConfigCheck();
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
 
   // 1. Persistent generous per-IP rate limit (100 conversions / day)

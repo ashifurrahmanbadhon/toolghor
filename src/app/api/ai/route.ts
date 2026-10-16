@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getCorsHeaders, handleCorsPreflight, checkPersistentRateLimit } from '@/lib/security';
+import { runConfigCheck } from '@/lib/configCheck';
 
 const ALLOWED_ORIGINS = new Set([
   'https://toolghor.vercel.app',
@@ -99,6 +100,7 @@ export async function OPTIONS(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  runConfigCheck();
   const corsHeaders = getCorsHeaders(req, 'POST, OPTIONS');
   const origin = req.headers.get('origin');
 

@@ -3,10 +3,33 @@ import assert from 'node:assert/strict';
 import { NextRequest } from 'next/server';
 import { GET as getPublicData } from '../src/app/api/public/data/route';
 import { GET as getAdminData, POST as postAdminData } from '../src/app/api/admin/data/route';
+import { POST as postAdminAuth } from '../src/app/api/admin/auth/route';
 import { OPTIONS as optionsAi, POST as postAi } from '../src/app/api/ai/route';
+import { POST as postRemoveBg } from '../src/app/api/remove-bg/route';
+import { POST as postWordToPdf } from '../src/app/api/convert-word-to-pdf/route';
+import { POST as postPdfToDocx } from '../src/app/api/convert-pdf-to-docx/route';
 import { siteConfig } from '../src/data/config';
+import { getConfigStatus, runConfigCheck } from '../src/lib/configCheck';
 import fs from 'node:fs';
 import path from 'node:path';
+
+// Helper to recursively collect files
+function getFilesRecursively(dir: string, extensions: string[]): string[] {
+  let results: string[] = [];
+  if (!fs.existsSync(dir)) return results;
+  const list = fs.readdirSync(dir, { withFileTypes: true });
+  for (const dirent of list) {
+    const fullPath = path.join(dir, dirent.name);
+    if (dirent.isDirectory()) {
+      if (dirent.name !== 'node_modules' && dirent.name !== '.next') {
+        results = results.concat(getFilesRecursively(fullPath, extensions));
+      }
+    } else if (extensions.some((ext) => dirent.name.endsWith(ext))) {
+      results.push(fullPath);
+    }
+  }
+  return results;
+}
 
 test('Security Verification — Public Data & Configs', async (t) => {
   await t.test('siteConfig.apis contains no hardcoded secret values', () => {
@@ -39,9 +62,33 @@ test('Security Verification — Public Data & Configs', async (t) => {
       assert.equal(data.apiKeys.removebg_key, undefined);
     }
   });
+
+  await t.test('Repository scan: zero hardcoded secret tokens in src/ and public/', () => {
+    const targets = [
+      ...getFilesRecursively(path.join(process.cwd(), 'src'), ['.ts', '.tsx']),
+      ...getFilesRecursively(path.join(process.cwd(), 'public'), ['.js', '.json']),
+    ];
+
+    const forbiddenPatterns = [
+      /\badmin123\b/i,
+      /\bDEFAULT_CONVERTAPI_TOKEN\b/,
+      /\bsk-[a-zA-Z0-9]{32,}\b/, // Generic OpenAI live key
+      /\bAIzaSy[a-zA-Z0-9_-]{33}\b/, // Generic Google live key
+    ];
+
+    for (const filePath of targets) {
+      const content = fs.readFileSync(filePath, 'utf-8');
+      for (const pattern of forbiddenPatterns) {
+        assert.ok(
+          !pattern.test(content),
+          `Hardcoded secret pattern ${pattern} detected in file: ${filePath}`
+        );
+      }
+    }
+  });
 });
 
-test('Security Verification — Admin Data Authorization', async (t) => {
+test('Security Verification — Admin Auth & Action Session Gating', async (t) => {
   await t.test('GET /api/admin/data returns 401 without valid session cookie', async () => {
     const req = new NextRequest('http://localhost:3000/api/admin/data');
     const res = await getAdminData(req);
@@ -51,7 +98,7 @@ test('Security Verification — Admin Data Authorization', async (t) => {
     assert.match(body.error, /Unauthorized/);
   });
 
-  await t.test('POST /api/admin/data returns 401 without valid session cookie', async () => {
+  await t.test('POST /api/admin/data (update_hero) returns 401 without valid session cookie', async () => {
     const req = new NextRequest('http://localhost:3000/api/admin/data', {
       method: 'POST',
       body: JSON.stringify({ action: 'update_hero', payload: {} }),
@@ -59,6 +106,61 @@ test('Security Verification — Admin Data Authorization', async (t) => {
     });
     const res = await postAdminData(req);
     assert.equal(res.status, 401);
+  });
+
+  await t.test('POST /api/admin/data (update_api_keys) returns 401 without valid session cookie', async () => {
+    const req = new NextRequest('http://localhost:3000/api/admin/data', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'update_api_keys', payload: {} }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const res = await postAdminData(req);
+    assert.equal(res.status, 401);
+  });
+
+  await t.test('POST /api/admin/auth (get_profile) returns 401 without valid session cookie', async () => {
+    const req = new NextRequest('http://localhost:3000/api/admin/auth', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'get_profile' }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const res = await postAdminAuth(req);
+    assert.equal(res.status, 401);
+    const body = await res.json();
+    assert.equal(body.success, false);
+    assert.match(body.message, /Unauthorized/);
+    assert.ok(body.message_bn, 'Must include Bengali message');
+  });
+
+  await t.test('POST /api/admin/auth (update_profile) returns 401 without valid session cookie', async () => {
+    const req = new NextRequest('http://localhost:3000/api/admin/auth', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'update_profile',
+        current_passcode: 'wrong',
+        new_passcode: 'testPass1234',
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const res = await postAdminAuth(req);
+    assert.equal(res.status, 401);
+    const body = await res.json();
+    assert.equal(body.success, false);
+    assert.match(body.message, /Unauthorized/);
+    assert.ok(body.message_bn, 'Must include Bengali message');
+  });
+
+  await t.test('POST /api/admin/auth (login) with wrong passcode returns 401', async () => {
+    const req = new NextRequest('http://localhost:3000/api/admin/auth', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'login', passcode: 'wrong_passcode_9999' }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const res = await postAdminAuth(req);
+    assert.equal(res.status, 401);
+    const body = await res.json();
+    assert.equal(body.success, false);
+    assert.match(body.message, /Incorrect admin passcode/);
   });
 });
 
@@ -121,7 +223,6 @@ test('Security Verification — AI Proxy Hardening (/api/ai)', async (t) => {
       }),
     });
     const res = await postAi(req);
-    // When no external API keys are active, fail-closed with 503
     assert.equal(res.status, 503);
     const body = await res.json();
     assert.equal(body.success, false);
@@ -131,7 +232,6 @@ test('Security Verification — AI Proxy Hardening (/api/ai)', async (t) => {
 
   await t.test('POST /api/ai enforces per-IP persistent rate limit when hammered', async () => {
     const testIp = '198.51.100.42';
-    // Send requests with the same IP until throttled
     let throttled = false;
     for (let i = 0; i < 65; i++) {
       const req = new NextRequest('http://localhost:3000/api/ai', {
@@ -154,5 +254,94 @@ test('Security Verification — AI Proxy Hardening (/api/ai)', async (t) => {
       }
     }
     assert.ok(throttled, 'Expected IP hammering to trigger 429 rate limit');
+  });
+});
+
+test('Security Verification — Server Config Health Check & Bilingual Fail-Closed', async (t) => {
+  await t.test('runConfigCheck logs only PRESENT / MISSING without leaking values', () => {
+    const logs: string[] = [];
+    const origLog = console.log;
+    try {
+      console.log = (...args: any[]) => {
+        logs.push(args.join(' '));
+      };
+      const status = runConfigCheck(true);
+      assert.ok(status.AUTH_SECRET === 'PRESENT' || status.AUTH_SECRET === 'MISSING');
+      assert.ok(status.DATABASE_URL === 'PRESENT' || status.DATABASE_URL === 'MISSING');
+      assert.ok(status.REMOVE_BG_API_KEY === 'PRESENT' || status.REMOVE_BG_API_KEY === 'MISSING');
+      assert.ok(status.CONVERTAPI_TOKEN === 'PRESENT' || status.CONVERTAPI_TOKEN === 'MISSING');
+      assert.ok(status.RESEND_API_KEY_OR_SMTP === 'PRESENT' || status.RESEND_API_KEY_OR_SMTP === 'MISSING');
+
+      // Verify that every config check log line matches [CONFIG] KEY: (PRESENT|MISSING)
+      const configLines = logs.filter((l) => l.startsWith('[CONFIG]'));
+      assert.ok(configLines.length >= 5, 'Should log at least 5 config check lines');
+      for (const line of configLines) {
+        assert.match(line, /^\[CONFIG\] [A-Z_]+: (PRESENT|MISSING)$/);
+      }
+    } finally {
+      console.log = origLog;
+    }
+  });
+
+  await t.test('getConfigStatus correctly reports MISSING when an environment variable is absent', () => {
+    const origAuth = process.env.AUTH_SECRET;
+    try {
+      delete process.env.AUTH_SECRET;
+      const status = getConfigStatus();
+      assert.equal(status.AUTH_SECRET, 'MISSING');
+    } finally {
+      if (origAuth !== undefined) process.env.AUTH_SECRET = origAuth;
+    }
+  });
+
+  await t.test('POST /api/remove-bg fails closed with bilingual error when key is unconfigured', async () => {
+    const origKey = process.env.REMOVE_BG_API_KEY;
+    try {
+      delete process.env.REMOVE_BG_API_KEY;
+      const req = new NextRequest('http://localhost:3000/api/remove-bg', {
+        method: 'POST',
+      });
+      const res = await postRemoveBg(req);
+      assert.equal(res.status, 503);
+      const body = await res.json();
+      assert.ok(body.error.includes('remove.bg API service is not configured'));
+      assert.ok(body.error_bn, 'Must include Bengali error message');
+    } finally {
+      if (origKey !== undefined) process.env.REMOVE_BG_API_KEY = origKey;
+    }
+  });
+
+  await t.test('POST /api/convert-word-to-pdf fails closed with bilingual error when token is unconfigured', async () => {
+    const origToken = process.env.CONVERTAPI_TOKEN;
+    try {
+      delete process.env.CONVERTAPI_TOKEN;
+      const req = new NextRequest('http://localhost:3000/api/convert-word-to-pdf', {
+        method: 'POST',
+      });
+      const res = await postWordToPdf(req);
+      assert.equal(res.status, 503);
+      const body = await res.json();
+      assert.ok(body.error.includes('ConvertAPI service is not configured'));
+      assert.ok(body.error_bn, 'Must include Bengali error message');
+    } finally {
+      if (origToken !== undefined) process.env.CONVERTAPI_TOKEN = origToken;
+    }
+  });
+
+  await t.test('POST /api/convert-pdf-to-docx fails closed with bilingual error when token is unconfigured', async () => {
+    const origToken = process.env.CONVERTAPI_TOKEN;
+    try {
+      delete process.env.CONVERTAPI_TOKEN;
+      const req = new NextRequest('http://localhost:3000/api/convert-pdf-to-docx', {
+        method: 'POST',
+      });
+      const res = await postPdfToDocx(req);
+      assert.equal(res.status, 503);
+      const body = await res.json();
+      assert.ok(body.error.includes('ConvertAPI service is not configured'));
+      assert.ok(body.error_bn, 'Must include Bengali error message');
+    } finally {
+      if (origToken !== undefined) process.env.CONVERTAPI_TOKEN = origToken;
+    }
   });
 });

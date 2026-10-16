@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPublicSiteData } from '@/lib/siteData';
+import { runConfigCheck } from '@/lib/configCheck';
 
 export async function GET(req: NextRequest) {
+  runConfigCheck();
   try {
     const data = await getPublicSiteData();
     if (!data) {
