@@ -6,7 +6,8 @@
     var l = window.pdfjsLib || window['pdfjs-dist/build/pdf'];
     if (!l) throw new Error(tr('পিডিএফ ইঞ্জিন লোড হয়নি। পেজ রিফ্রেশ করুন।', "The PDF engine did not load. Please refresh the page."));
     var origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
-    l.GlobalWorkerOptions.workerSrc = origin + '/assets/vendor/pdf.worker.min.js';
+    var workerPath = (typeof UI !== 'undefined' && UI.ROOT) ? (UI.ROOT + 'assets/vendor/pdf.worker.min.js') : (origin + '/assets/vendor/pdf.worker.min.js');
+    l.GlobalWorkerOptions.workerSrc = workerPath;
     return l;
   }
   async function openPdfJs(file) {
@@ -390,7 +391,7 @@
             }
           } else {
             var parts = parseRanges(rangeIn.value, st.n);
-            if (sep.checked && parts.length > 1) {
+            if (sep.checked && parts.length >= 1) {
               for (var k = 0; k < parts.length; k++) {
                 prog.set(k / parts.length * 100, '');
                 await UI.yield();
@@ -504,33 +505,36 @@
         var pdf = await openPdfJs(file), n = pdf.numPages, pages = [];
         if (range.value.trim()) {
           var seen = {}; parseRanges(range.value, n).forEach(function (p) { p.idx.forEach(function (i) { if (!seen[i]) { seen[i] = 1; pages.push(i + 1); } }); });
-          pages.sort(function (a, b) { return a - b; });
         } else for (var q = 1; q <= n; q++) pages.push(q);
         var jpg = fixedJpg || fmt.get() === 'jpg', ext = jpg ? 'jpg' : 'png', base = UI.baseName(file.name);
         out.appendChild(grid);
-        for (var i = 0; i < pages.length; i++) {
-          prog.set(i / pages.length * 100, tr('পৃষ্ঠা ', "Page ") + UI.n(pages[i]) + ' (' + UI.n(i + 1) + '/' + UI.n(pages.length) + ')');
-          await UI.yield();
-          var page = await pdf.getPage(pages[i]);
-          var s = +dpi.value / 72, v0 = page.getViewport({ scale: 1 });
-          s = Math.min(s, 8000 / Math.max(v0.width, v0.height));
-          var v = page.getViewport({ scale: s });
-          var c = UI.canvas(v.width, v.height), ctx = c.getContext('2d');
-          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
-          await page.render({ canvasContext: ctx, viewport: v }).promise;
-          var blob = await UI.toBlob(c, jpg ? 'image/jpeg' : 'image/png', 0.92);
-          var singlePage = pages.length === 1;
-          var pageSuffix = singlePage ? '' : ('-page-' + pad(pages[i], n));
-          var toolName = fixedJpg ? 'pdf-to-jpg' : 'pdf-to-image';
-          var it = { name: 'ToolGhor(' + toolName + pageSuffix + ').' + ext, blob: blob, url: URL.createObjectURL(blob) };
-          items.push(it);
-          (function (it, pageNo) {
-            grid.appendChild(UI.el('div', { class: 'pv' },
-              UI.el('img', { src: it.url, alt: tr('পৃষ্ঠা ', "Page ") + pageNo }),
-              UI.el('small', {}, tr('পৃষ্ঠা ', "Page ") + UI.n(pageNo) + ' · ' + UI.fmtSize(it.blob.size)),
-              UI.btn(tr('ডাউনলোড', "Download"), function () { UI.download(it.blob, it.name); }, { cls: 'sm', icon: 'download', iconSize: 16 })));
-          })(it, pages[i]);
-          page.cleanup(); c.width = c.height = 0;
+        try {
+          for (var i = 0; i < pages.length; i++) {
+            prog.set(i / pages.length * 100, tr('পৃষ্ঠা ', "Page ") + UI.n(pages[i]) + ' (' + UI.n(i + 1) + '/' + UI.n(pages.length) + ')');
+            await UI.yield();
+            var page = await pdf.getPage(pages[i]);
+            var s = +dpi.value / 72, v0 = page.getViewport({ scale: 1 });
+            s = Math.min(s, 8000 / Math.max(v0.width, v0.height));
+            var v = page.getViewport({ scale: s });
+            var c = UI.canvas(v.width, v.height), ctx = c.getContext('2d');
+            ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+            await page.render({ canvasContext: ctx, viewport: v }).promise;
+            var blob = await UI.toBlob(c, jpg ? 'image/jpeg' : 'image/png', 0.92);
+            var singlePage = pages.length === 1;
+            var pageSuffix = singlePage ? '' : ('-page-' + pad(pages[i], n));
+            var toolName = fixedJpg ? 'pdf-to-jpg' : 'pdf-to-image';
+            var it = { name: 'ToolGhor(' + toolName + pageSuffix + ').' + ext, blob: blob, url: URL.createObjectURL(blob) };
+            items.push(it);
+            (function (it, pageNo) {
+              grid.appendChild(UI.el('div', { class: 'pv' },
+                UI.el('img', { src: it.url, alt: tr('পৃষ্ঠা ', "Page ") + pageNo }),
+                UI.el('small', {}, tr('পৃষ্ঠা ', "Page ") + UI.n(pageNo) + ' · ' + UI.fmtSize(it.blob.size)),
+                UI.btn(tr('ডাউনলোড', "Download"), function () { UI.download(it.blob, it.name); }, { cls: 'sm', icon: 'download', iconSize: 16 })));
+            })(it, pages[i]);
+            page.cleanup(); c.width = c.height = 0;
+          }
+        } finally {
+          try { if (pdf && typeof pdf.destroy === 'function') pdf.destroy(); } catch (errDestroy) {}
         }
         prog.set(100, '✓ ' + UI.n(items.length) + tr('টি ছবি তৈরি হয়েছে', " images created"));
         if (items.length > 1) {

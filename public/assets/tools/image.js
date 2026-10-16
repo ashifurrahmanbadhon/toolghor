@@ -99,7 +99,13 @@
             if (blob.size > tbytes) note = tr('(টার্গেটে পৌঁছানো যায়নি)', "(could not reach the target)"); else if (r.w !== c.width) note = '(' + UI.n(r.w) + '×' + UI.n(r.h) + ' px)';
           } else {
             blob = await UI.toBlob(c, mime, +q.value / 100);
-            if (ext === 'png') note = tr('(PNG-তে মান স্লাইডার কাজ করে না; JPG/WebP বেছে নিন)', "(the quality slider does not work on PNG; choose JPG/WebP)");
+            if (ext === 'png') {
+              if (tbytes) {
+                note = tr('(PNG ফরম্যাটে টার্গেট KB প্রযোজ্য নয়; সাইজ কমাতে JPG বা WebP বেছে নিন)', "(Target KB does not apply to lossless PNG; select JPG or WebP to reach target size)");
+              } else {
+                note = tr('(PNG-তে মান স্লাইডার কাজ করে না; JPG/WebP বেছে নিন)', "(the quality slider does not work on PNG; choose JPG/WebP)");
+              }
+            }
           }
           rows.push({ name: outName(f, ext, i, activeFiles.length), before: f.size, blob: blob, url: URL.createObjectURL(blob), note: note });
           URL.revokeObjectURL(img._url);
@@ -1319,8 +1325,9 @@
       '✓ ' + tr('রেডি', "Ready")
     );
 
+    var isRenderingBg = false;
     var downloadBtn = UI.btn(tr('ডাউনলোড (PNG)', "Download (PNG)"), function () {
-      if (!processedBlob || !file) return;
+      if (isRenderingBg || !processedBlob || !file) return;
       var ext = (activeTab === 'original' || activeBg !== 'transparent') ? 'jpg' : 'png';
       var outName = 'ToolGhor(remove-background).' + ext;
       UI.download(processedBlob, outName);
@@ -1476,6 +1483,8 @@
     // Render current active tab and background to previewCanvas
     async function renderPreview() {
       if (!img) return;
+      isRenderingBg = true;
+      downloadBtn.disabled = true;
       var w = img.naturalWidth, h = img.naturalHeight;
       previewCanvas.width = w;
       previewCanvas.height = h;
@@ -1487,6 +1496,8 @@
         downloadBtn.textContent = tr('আসল ছবি ডাউনলোড (JPG)', "Download Original (JPG)");
         processedBlob = await UI.toBlob(previewCanvas, 'image/jpeg', 0.95);
         resBadge.textContent = '✓ ' + w + ' × ' + h + ' px • ' + tr('আসল ছবি', "Original");
+        isRenderingBg = false;
+        downloadBtn.disabled = false;
         return;
       }
 

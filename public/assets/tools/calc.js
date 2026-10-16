@@ -142,6 +142,13 @@
       UI.clear(res); UI.clear(tbl);
       var v = UI.parseNum(val.value);
       if (isNaN(v)) { res.appendChild(UI.notice('info', tr('একটি সংখ্যা লিখুন।', "Enter a number."))); return; }
+      if (cat.temp) {
+        var k = fromS.value === 'c' ? v + 273.15 : fromS.value === 'f' ? (v - 32) * 5 / 9 + 273.15 : v;
+        if (k < 0) {
+          res.appendChild(UI.notice('err', tr('তাপমাত্রা পরম শূন্য (০ K / -২৭৩.১৫ °C / -৪৫৯.৬৭ °F) এর নিচে হতে পারে না।', 'Temperature cannot be below absolute zero (0 K / -273.15 °C / -459.67 °F).')));
+          return;
+        }
+      }
       var r = convert(cat, v, fromS.value, toS.value);
       res.appendChild(UI.el('div', { class: 'result' }, UI.el('div', { class: 'lbl' }, fmtBig(v) + ' ' + label(fromS.value) + ' ='), UI.el('div', { class: 'big-num' }, fmtBig(r) + ' ', UI.el('span', { style: { fontSize: '.5em', fontWeight: 600 } }, label(toS.value)))));
       var rows = cat.units.map(function (u) { return UI.el('tr', {}, UI.el('td', {}, u[1]), UI.el('td', {}, fmtBig(convert(cat, v, fromS.value, u[0])))); });
@@ -252,7 +259,7 @@
           var price = UI.parseNum(priceIn.value), disc = UI.parseNum(discIn.value);
           UI.clear(out);
           if (isNaN(price) || isNaN(disc)) { out.appendChild(UI.notice('info', tr('মূল দাম এবং ডিসকাউন্টের শতকরা লিখুন।', "Enter original price and discount percentage."))); return; }
-          var saved = (price * disc) / 100;
+          var saved = Math.min(price, Math.max(0, (price * disc) / 100));
           var finalPrice = Math.max(0, price - saved);
           out.appendChild(resCard(
             tr('ফাইনাল দাম: ', "Final Price: ") + N(finalPrice) + tr(' টাকা', ""),
@@ -900,10 +907,11 @@
       var cached = localStorage.getItem(CACHE_KEY);
       if (cached) {
         var parsed = JSON.parse(cached);
+        var isFresh = parsed && parsed.ts && (Date.now() - parsed.ts < 24 * 60 * 60 * 1000);
         if (parsed && parsed.rates) {
           Object.assign(rates, parsed.rates);
           if (parsed.dateText) lastUpdateText = parsed.dateText;
-          isLiveApi = true;
+          isLiveApi = !!isFresh;
         }
       }
     } catch (e) {}
@@ -1035,26 +1043,36 @@
         }
 
         // Realistic fallback if AI key is not connected
+        var isBdtPair = (toCode === 'BDT' || fromCode === 'BDT');
         if (UI.lang === 'bn') {
-          var incentiveBDT = (toCode === 'BDT') ? (converted * 0.025) : (val * unitRate * 0.025);
+          var incentivePoint = '';
+          if (toCode === 'BDT') {
+            var incentiveBDT = converted * 0.025;
+            incentivePoint = '**২. বৈধ চ্যানেলে অতিরিক্ত ২.৫% সরকারি প্রণোদনা:**\n' +
+              '- বৈধ ব্যাংকিং বা অনুমোদিত রেমিট্যান্স চ্যানেলে পাঠালে আপনি পাবেন অতিরিক্ত **' + UI.num(incentiveBDT, 2) + ' ৳** নগদ সরকারি বোনাস।\n' +
+              '- এটি সরাসরি প্রাপকের ব্যাংক অ্যাকাউন্টে মূল টাকার সাথে জমা হয়।\n\n';
+          } else {
+            incentivePoint = '**২. আন্তর্জাতিক মুদ্রা বিনিময়ে সতর্কতা:**\n' +
+              '- অনুমোদিত ব্যাংক বা অথোরাইজড এক্সচেঞ্জ সার্ভিস ব্যবহার করলে অনাকাঙ্ক্ষিত হিডেন চার্জ ও কমিশন থেকে বাঁচা যায়।\n\n';
+          }
           return '### 💡 ' + fromCode + ' থেকে ' + toCode + ' রেমিট্যান্স ও মুদ্রা পরামর্শ\n\n' +
             '**১. বর্তমান এক্সচেঞ্জ রেট ও হিসাব:**\n' +
             '- বর্তমান লাইভ রেট: **১ ' + fromCode + ' = ' + UI.num(unitRate, 4) + ' ' + toCode + '**।\n' +
             '- মোট প্রত্যাশিত বিনিময় মূল্য: **' + UI.num(converted, 2) + ' ' + toCode + '**।\n\n' +
-            '**২. বৈধ চ্যানেলে অতিরিক্ত ২.৫% সরকারি প্রণোদনা:**\n' +
-            '- বৈধ ব্যাংকিং বা অনুমোদিত রেমিট্যান্স চ্যানেলে পাঠালে আপনি পাবেন অতিরিক্ত **' + UI.num(incentiveBDT, 2) + ' ৳** নগদ সরকারি বোনাস।\n' +
-            '- এটি সরাসরি প্রাপকের ব্যাংক অ্যাকাউন্টে মূল টাকার সাথে জমা হয়।\n\n' +
-            '**৩. প্রবাসীদের জন্য জরুরি টিপস:**\n' +
-            '- হুন্ডি বা অবৈধ পথে টাকা পাঠালে যেকোনো সময় অর্থ খোয়া যেতে পারে এবং কোনো আইনি সুরক্ষা থাকে না।\n' +
-            '- ছুটির দিন বা সপ্তাহের শেষে ব্যাংকিং স্প্রেড সামান্য বেশি থাকে; তাই সপ্তাহের কর্মদিবসে (সোমবার–বৃহস্পতিবার) রেমিট্যান্স পাঠানো সবচেয়ে লাভজনক।\n\n' +
+            incentivePoint +
+            '**৩. মুদ্রা লেনদেনের জরুরি টিপস:**\n' +
+            '- ছুটির দিন বা সপ্তাহের শেষে ব্যাংকিং স্প্রেড সামান্য বেশি থাকে; তাই সপ্তাহের কর্মদিবসে (সোমবার–বৃহস্পতিবার) লেনদেন করা সবচেয়ে লাভজনক।\n' +
+            '- যেকোনো অনানুষ্ঠানিক চ্যানেলে অর্থ পাঠালে ঝুঁকি থাকে এবং কোনো আইনি সুরক্ষা পাওয়া যায় না।\n\n' +
             '> 💡 *পরামর্শ:* আপনার Google Gemini বা OpenAI API Key কানেক্ট করলে নির্দিষ্ট ব্যাংক ও রিয়েল-টাইম বাজারের পূর্বাভাসসহ সম্পূর্ণ কাস্টমাইজড রিপোর্ট পাবেন।';
         } else {
+          var incentivePointEn = isBdtPair
+            ? '**2. Legal Banking Channel Benefits:**\n- If converting to Bangladeshi Taka via legal channels, recipients receive an additional **2.5% Bangladesh Government Cash Incentive** directly into their account.\n\n'
+            : '**2. Best Exchange Practices:**\n- Use authorized financial institutions to avoid hidden spread markups and transfer commissions.\n\n';
           return '### 💡 ' + fromCode + ' to ' + toCode + ' Exchange & Remittance Insights\n\n' +
             '**1. Exchange Overview:**\n' +
             '- Real-time Rate: **1 ' + fromCode + ' = ' + unitRate.toFixed(4) + ' ' + toCode + '**\n' +
             '- Estimated total converted: **' + converted.toFixed(2) + ' ' + toCode + '**\n\n' +
-            '**2. Legal Banking Channel Benefits:**\n' +
-            '- If converting to Bangladeshi Taka via legal channels, recipients receive an additional **2.5% Bangladesh Government Cash Incentive** directly into their account.\n\n' +
+            incentivePointEn +
             '**3. Timing & Transfer Tips:**\n' +
             '- Mid-week days (Tuesday through Thursday) typically offer the tightest interbank spreads.\n' +
             '- Compare direct wire transfers vs authorized money service operators to maximize net funds received.\n\n' +

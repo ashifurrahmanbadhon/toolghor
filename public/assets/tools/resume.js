@@ -322,7 +322,7 @@
     var nameOk = !!(d.name && d.name.trim());
     var contactOk = !!(d.phone && d.email);
     var titleOk = !!(d.title && d.title.trim());
-    var pScore = (nameOk ? 10 : 0) + (contactOk ? 12 : 4) + (titleOk ? 8 : 0);
+    var pScore = (nameOk ? 10 : 0) + (contactOk ? 12 : 0) + (titleOk ? 8 : 0);
     score += pScore;
     checks.push({
       label: tr('নাম, পদবি ও যোগাযোগের তথ্য', "Name, title & contact details"),
@@ -333,11 +333,11 @@
 
     // 2. Career Summary (20 pts)
     var sumLen = (d.summary || '').trim().length;
-    var sScore = sumLen > 60 ? 20 : (sumLen > 20 ? 12 : 0);
+    var sScore = sumLen >= 50 ? 20 : (sumLen >= 20 ? 10 : 0);
     score += sScore;
     checks.push({
       label: tr('ক্যারিয়ার অবজেক্টিভ / সংক্ষিপ্ত পরিচিতি', "Career objective / summary"),
-      pass: sumLen > 50,
+      pass: sumLen >= 50,
       pts: sScore + '/20',
       tip: (sumLen < 50 ? tr('২–৩ বাক্যে একটি শক্তিশালী ক্যারিয়ার উদ্দেশ্য লিখুন।', "Write a 2-3 sentence impactful objective.") : '')
     });
@@ -345,7 +345,7 @@
     // 3. Work Experience (25 pts)
     var exps = (d.exp || []).filter(function (e) { return (e.role || '').trim(); });
     var hasExpDetails = exps.some(function (e) { return (e.details || '').trim().length > 30; });
-    var eScore = exps.length >= 2 ? (hasExpDetails ? 25 : 20) : (exps.length === 1 ? 15 : 5);
+    var eScore = exps.length >= 2 ? (hasExpDetails ? 25 : 18) : (exps.length === 1 ? (hasExpDetails ? 15 : 10) : 0);
     score += eScore;
     checks.push({
       label: tr('কাজের অভিজ্ঞতা ও বিবরণী', "Work experience & details"),
@@ -367,7 +367,7 @@
 
     // 5. Skills (10 pts)
     var skillsCount = (d.skills || '').split(/[,،\n]+/).filter(function (s) { return s.trim(); }).length;
-    var skScore = skillsCount >= 6 ? 10 : (skillsCount >= 3 ? 6 : (skillsCount > 0 ? 3 : 0));
+    var skScore = skillsCount >= 5 ? 10 : (skillsCount >= 3 ? 6 : (skillsCount > 0 ? 3 : 0));
     score += skScore;
     checks.push({
       label: tr('দক্ষতা ও স্কিলস', "Key skills"),
@@ -381,7 +381,18 @@
 
   function build(root, defTpl, gallery) {
     var d = blank(), had = false;
-    try { var raw = localStorage.getItem(KEY); if (raw) { var saved = JSON.parse(raw); if (saved && typeof saved === 'object') { d = Object.assign(d, saved); had = true; } } } catch (e) { }
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var saved = JSON.parse(raw);
+        if (saved && typeof saved === 'object') {
+          d = Object.assign(d, saved);
+          if (!Array.isArray(d.exp)) d.exp = [];
+          if (!Array.isArray(d.edu)) d.edu = [];
+          had = true;
+        }
+      }
+    } catch (e) { }
     if (!had || !RENDER[d.tpl]) d.tpl = defTpl;
     var persist = UI.debounce(function () { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) { } }, 400);
 
@@ -582,9 +593,17 @@
               UI.el('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
                 UI.el('strong', { style: { fontSize: '13px', color: 'var(--paddy-d)' } }, tr('এআই সাজেস্টেড বুলেট পয়েন্টসমূহ:', "AI Suggested Bullet Points:")),
                 UI.btn(tr('✓ সিভিতে নতুন অভিজ্ঞতা হিসেবে যোগ করুন', "✓ Add as Experience to CV"), function () {
+                  var compName = expCompanyInput.value.trim() || (d.lang === 'bn' ? 'প্রতিষ্ঠান' : 'Company Name');
+                  var alreadyExists = (d.exp || []).some(function (e) {
+                    return e.role === curRole && e.company === compName && e.details === combinedBullets;
+                  });
+                  if (alreadyExists) {
+                    UI.toast(tr('এই অভিজ্ঞতাটি আগেই সিভিতে যোগ করা হয়েছে', 'This experience is already added to CV'));
+                    return;
+                  }
                   d.exp.push({
                     role: curRole,
-                    company: expCompanyInput.value.trim() || (d.lang === 'bn' ? 'প্রতিষ্ঠান' : 'Company Name'),
+                    company: compName,
                     period: d.lang === 'bn' ? '২০২৩ – এখন' : '2023 – Present',
                     details: combinedBullets
                   });

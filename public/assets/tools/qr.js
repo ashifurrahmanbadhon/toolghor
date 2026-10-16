@@ -186,9 +186,10 @@
         var trimNotice = UI.el('div', { class: 'notice warn stack', style: { gap: '8px', marginBottom: '10px' } },
           UI.el('div', {}, tr('⚠️ লেখাটি কিউআর কোডের সর্বোচ্চ আন্তর্জাতিক সীমা (' + UI.n(curByteCount) + ' বাইট) অতিক্রম করায় প্রথম অংশ দিয়ে স্বয়ংক্রিয়ভাবে কিউআর কোড তৈরি করা হয়েছে।', '⚠️ The text exceeded QR capacity (' + curByteCount + ' bytes). Auto-trimmed to fit the maximum possible QR capacity.')),
           UI.btn(tr('✂️ ইনপুট বক্সের লেখাও ট্রিম করুন', '✂️ Trim input text as well'), function () {
-            if (inputEls['v']) {
-              inputEls['v'].value = trimmedText;
-              vals['v'] = trimmedText;
+            var targetInputKey = inputEls['v'] ? 'v' : (inputEls['url'] ? 'url' : (inputEls['body'] ? 'body' : (inputEls['msg'] ? 'msg' : Object.keys(inputEls)[0])));
+            if (targetInputKey && inputEls[targetInputKey]) {
+              inputEls[targetInputKey].value = trimmedText;
+              vals[targetInputKey] = trimmedText;
               draw();
             }
           }, { cls: 'alt sm' })
