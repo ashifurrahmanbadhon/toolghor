@@ -291,6 +291,10 @@ export default function AdminConsole() {
     try {
       setLoadingData(true);
       const res = await fetch('/api/admin/data');
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setDbConnected(data.dbConnected);
@@ -353,7 +357,7 @@ export default function AdminConsole() {
       const res = await fetch('/api/admin/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'login', passcode: cleanPin }),
+        body: JSON.stringify({ action: 'login', passcode: cleanPin, remember: rememberMe }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -590,6 +594,11 @@ export default function AdminConsole() {
   const handleLogout = () => {
     setIsAuthenticated(false);
     try {
+      fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'logout' }),
+      }).catch(() => {});
       sessionStorage.removeItem('toolghor_admin_auth');
       localStorage.removeItem('toolghor_admin_auth');
       localStorage.removeItem('toolghor_admin_remember');
@@ -604,6 +613,10 @@ export default function AdminConsole() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, payload }),
       });
+      if (res.status === 401) {
+        handleLogout();
+        return false;
+      }
       if (res.ok) {
         showNotification(successMessage);
         return true;

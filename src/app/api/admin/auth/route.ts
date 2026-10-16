@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb, initDatabase } from '@/lib/db';
 import { verifyPassword, hashPassword, needsRehash } from '@/lib/password';
 import {
+  createAdminSessionToken,
+  verifyAdminRequest,
+  setAdminSessionCookie,
+  clearAdminSessionCookie,
+} from '@/lib/adminAuth';
+import {
   requestPasswordReset,
   resendPasswordResetOtp,
   verifyPasswordResetOtp,
@@ -27,16 +33,28 @@ export async function POST(req: NextRequest) {
     }
 
     if (!account) {
-      await sql`
-        INSERT INTO admin_account (id, username, passcode, email, phone)
-        VALUES (1, 'admin', 'admin123', 'ashifur.badhon@gmail.com', '+8801521417284')
-        ON CONFLICT (id) DO NOTHING;
-      `;
-      const fresh = await sql`SELECT * FROM admin_account WHERE id = 1 LIMIT 1`;
-      account = fresh[0];
+      const initialPass = (process.env.ADMIN_SETUP_PASSCODE || process.env.ADMIN_INITIAL_PASSWORD || '').trim();
+      if (initialPass) {
+        const initialHash = await hashPassword(initialPass);
+        await sql`
+          INSERT INTO admin_account (id, username, passcode, email, phone)
+          VALUES (1, 'admin', ${initialHash}, 'ashifur.badhon@gmail.com', '+8801521417284')
+          ON CONFLICT (id) DO NOTHING;
+        `;
+        const fresh = await sql`SELECT * FROM admin_account WHERE id = 1 LIMIT 1`;
+        account = fresh[0];
+      } else {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Admin account is not initialized. Please configure ADMIN_SETUP_PASSCODE environment variable.',
+          },
+          { status: 503 }
+        );
+      }
     }
 
-    // 1. LOGIN (Timing-safe verification + Ultra-fast response)
+    // 1. LOGIN (Timing-safe verification + signed httpOnly cookie)
     if (action === 'login') {
       const cleanPass = (body.passcode || '').trim();
       const isValid = await verifyPassword(cleanPass, account.passcode);
@@ -53,7 +71,13 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        return NextResponse.json({
+        const remember = body.remember !== false;
+        const sessionToken = createAdminSessionToken(
+          { id: account.id, username: account.username },
+          remember
+        );
+
+        const res = NextResponse.json({
           success: true,
           message: 'Authenticated successfully',
           admin: {
@@ -62,6 +86,9 @@ export async function POST(req: NextRequest) {
             phone: account.phone,
           },
         });
+
+        setAdminSessionCookie(res, sessionToken, remember);
+        return res;
       } else {
         return NextResponse.json(
           { success: false, message: 'Incorrect admin passcode. Please try again.' },
@@ -70,8 +97,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. GET PROFILE
+    // LOGOUT
+    if (action === 'logout') {
+      const res = NextResponse.json({ success: true, message: 'Logged out successfully' });
+      clearAdminSessionCookie(res);
+      return res;
+    }
+
+    // 2. GET PROFILE (Requires verified admin session)
     if (action === 'get_profile') {
+      const session = verifyAdminRequest(req);
+      if (!session) {
+        return NextResponse.json(
+          { success: false, message: 'Unauthorized. Admin session required.' },
+          { status: 401 }
+        );
+      }
+
       return NextResponse.json({
         success: true,
         profile: {
@@ -83,8 +125,16 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 3. UPDATE PROFILE & CHANGE PASSWORD (Always hashes new password)
+    // 3. UPDATE PROFILE & CHANGE PASSWORD (Requires verified admin session)
     if (action === 'update_profile') {
+      const session = verifyAdminRequest(req);
+      if (!session) {
+        return NextResponse.json(
+          { success: false, message: 'Unauthorized. Admin session required.' },
+          { status: 401 }
+        );
+      }
+
       const { email, phone, current_passcode, new_passcode } = body;
 
       const cleanCurrent = (current_passcode || '').trim();

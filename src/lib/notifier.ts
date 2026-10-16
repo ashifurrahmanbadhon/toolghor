@@ -80,21 +80,21 @@ export async function sendOtpEmail(toEmail: string, otpCode: string): Promise<Se
   }
 
   // 3. SMTP Provider support (Nodemailer / Gmail / custom SMTP)
-  const user = process.env.SMTP_USER || process.env.GMAIL_USER || 'ashifur.badhon@gmail.com';
-  const rawPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || 'jedyruaevwhrqkyx';
+  const user = (process.env.SMTP_USER || process.env.GMAIL_USER || '').trim();
+  const rawPass = (process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || '').trim();
   const pass = (rawPass || '').replace(/["']/g, '').replace(/\s+/g, '');
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
   const port = Number(process.env.SMTP_PORT) || 587;
   const isSecure = process.env.SMTP_SECURE != null ? process.env.SMTP_SECURE === 'true' : port === 465;
-  const from = process.env.EMAIL_FROM || `"ToolGhor Security" <${user}>`;
+  const from = process.env.EMAIL_FROM || (user ? `"ToolGhor Security" <${user}>` : '"ToolGhor Security" <noreply@toolghor.vercel.app>');
 
   if (!user || !pass) {
     const isDev = process.env.NODE_ENV !== 'production';
     console.warn(`\n================================================================================`);
-    console.warn(`[NOTIFIER] 📧 No email provider configured in .env.local.`);
+    console.warn(`[NOTIFIER] 📧 No email provider configured in environment variables.`);
     console.warn(`[NOTIFIER] Target recipient: ${normalizedEmail}`);
     console.warn(`[NOTIFIER] 🔑 6-Digit OTP Code: ${otpCode}`);
-    console.warn(`[NOTIFIER] To receive real emails in ashifur.badhon@gmail.com, set RESEND_API_KEY or SMTP_USER & SMTP_PASS in .env.local.`);
+    console.warn(`[NOTIFIER] To receive real emails, set RESEND_API_KEY or SMTP_USER & SMTP_PASS in environment variables.`);
     console.warn(`================================================================================\n`);
 
     if (isDev) {

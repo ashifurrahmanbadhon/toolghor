@@ -70,18 +70,10 @@ export default function HomeClient({ initialData }: HomeClientProps) {
       if (data.apiKeys && data.apiKeys.is_active) {
         w.SITE_CONFIG = w.SITE_CONFIG || {};
         w.SITE_CONFIG.apis = w.SITE_CONFIG.apis || {};
-        if (data.apiKeys.gemini_active && data.apiKeys.gemini_key) {
-          w.SITE_CONFIG.apis.geminiKey = data.apiKeys.gemini_key;
-        }
-        if (data.apiKeys.openai_active && data.apiKeys.openai_key) {
-          w.SITE_CONFIG.apis.openaiKey = data.apiKeys.openai_key;
-        }
-        if (data.apiKeys.convertapi_active && data.apiKeys.convertapi_token) {
-          w.SITE_CONFIG.apis.convertApiToken = data.apiKeys.convertapi_token;
-        }
-        if (data.apiKeys.removebg_active && data.apiKeys.removebg_key) {
-          w.SITE_CONFIG.apis.removeBgKey = data.apiKeys.removebg_key;
-        }
+        w.SITE_CONFIG.apis.geminiActive = Boolean(data.apiKeys.gemini_active);
+        w.SITE_CONFIG.apis.openaiActive = Boolean(data.apiKeys.openai_active);
+        w.SITE_CONFIG.apis.convertApiActive = Boolean(data.apiKeys.convertapi_active);
+        w.SITE_CONFIG.apis.removeBgActive = Boolean(data.apiKeys.removebg_active);
       }
       if (data.uiSettings) {
         w.UI_SETTINGS = data.uiSettings;

@@ -25,12 +25,23 @@ export async function getPublicSiteData() {
       sql`SELECT slug, category_slug, is_active, title_bn, title_en, desc_bn, desc_en, badge FROM section_tools ORDER BY display_order ASC`,
       sql`SELECT * FROM section_footer_social WHERE id = 1 LIMIT 1`,
       sql`SELECT * FROM section_creator_about WHERE id = 1 LIMIT 1`,
-      sql`SELECT * FROM section_api_keys WHERE id = 1 LIMIT 1`,
+      sql`SELECT is_active, gemini_active, openai_active, convertapi_active, removebg_active FROM section_api_keys WHERE id = 1 LIMIT 1`,
       sql`SELECT * FROM section_ui_settings WHERE id = 1 LIMIT 1`,
     ]);
 
     const [heroRows, announcementRows, categoryRows, toolRows, footerRows, creatorRows, apiKeysRows, uiSettingsRows] =
       (await Promise.race([queryPromise, timeoutPromise])) as any;
+
+    const rawApi = apiKeysRows[0] || null;
+    const safeApiKeys = rawApi
+      ? {
+          is_active: Boolean(rawApi.is_active),
+          gemini_active: Boolean(rawApi.gemini_active),
+          openai_active: Boolean(rawApi.openai_active),
+          convertapi_active: Boolean(rawApi.convertapi_active),
+          removebg_active: Boolean(rawApi.removebg_active),
+        }
+      : null;
 
     const data = {
       success: true,
@@ -40,7 +51,7 @@ export async function getPublicSiteData() {
       tools: toolRows || [],
       footerSocial: footerRows[0] || null,
       creatorAbout: creatorRows[0] || null,
-      apiKeys: apiKeysRows[0] || null,
+      apiKeys: safeApiKeys,
       uiSettings: uiSettingsRows[0] || null,
     };
 

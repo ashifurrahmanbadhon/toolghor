@@ -490,8 +490,9 @@
 
   UI.getActiveAIProviders = function () {
     var list = [];
-    if (UI.getApiKeys('gemini').length) list.push('Google Gemini');
-    if (UI.getApiKeys('openai').length) list.push('OpenAI');
+    var cfg = (typeof window !== 'undefined' && window.SITE_CONFIG && window.SITE_CONFIG.apis) || {};
+    if (UI.getApiKeys('gemini').length || cfg.geminiActive) list.push('Google Gemini');
+    if (UI.getApiKeys('openai').length || cfg.openaiActive) list.push('OpenAI');
     return list;
   };
 
@@ -503,7 +504,7 @@
     var temperature = options.temperature != null ? options.temperature : 0.7;
     var maxTokens = options.maxTokens || 1200;
 
-    // 1. Try Google Gemini API
+    // 1. Try Google Gemini API if user configured their personal key
     var geminiKeys = UI.getApiKeys('gemini');
     for (var i = 0; i < geminiKeys.length; i++) {
       var gk = geminiKeys[i];
@@ -532,7 +533,7 @@
       }
     }
 
-    // 2. Try OpenAI API
+    // 2. Try OpenAI API if user configured their personal key
     var openaiKeys = UI.getApiKeys('openai');
     for (var j = 0; j < openaiKeys.length; j++) {
       var ok = openaiKeys[j];
@@ -562,6 +563,30 @@
       } catch (e) {
         console.warn('OpenAI request failed:', e);
       }
+    }
+
+    // 3. Fallback to server-side AI proxy (securely uses server/database keys without leaking them)
+    try {
+      var proxyRes = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: prompt,
+          options: {
+            systemInstruction: systemInstruction,
+            temperature: temperature,
+            maxTokens: maxTokens
+          }
+        })
+      });
+      if (proxyRes.ok) {
+        var proxyData = await proxyRes.json();
+        if (proxyData && proxyData.success && proxyData.text) {
+          return { success: true, text: proxyData.text, provider: proxyData.provider || 'ToolGhor AI' };
+        }
+      }
+    } catch (proxyErr) {
+      console.warn('Server AI proxy fallback error:', proxyErr);
     }
 
     return { success: false, text: null, error: 'no_api_key' };
