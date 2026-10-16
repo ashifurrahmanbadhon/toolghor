@@ -305,7 +305,20 @@ export async function POST(req: NextRequest) {
 
     // 7. Update API Keys section independently
     if (action === 'update_api_keys') {
-      const { is_active, gemini_active, gemini_key, convertapi_active, convertapi_token, removebg_active, removebg_key, openai_active, openai_key } = payload;
+      const {
+        is_active,
+        gemini_active,
+        gemini_key,
+        convertapi_active,
+        convertapi_token,
+        removebg_active,
+        removebg_key,
+        openai_active,
+        openai_key,
+        ilovepdf_active,
+        ilovepdf_public_key,
+        ilovepdf_secret_key,
+      } = payload;
       
       // Safety guard: never save masked strings (e.g. ••••••••3f9a) to the database
       const sanitizeKey = (keyVal: any) => {
@@ -319,6 +332,8 @@ export async function POST(req: NextRequest) {
       const safeConvertApiToken = sanitizeKey(convertapi_token);
       const safeRemoveBgKey = sanitizeKey(removebg_key);
       const safeOpenAiKey = sanitizeKey(openai_key);
+      const safeILovePdfPublicKey = sanitizeKey(ilovepdf_public_key);
+      const safeILovePdfSecretKey = sanitizeKey(ilovepdf_secret_key);
 
       await sql`
         UPDATE section_api_keys
@@ -332,6 +347,9 @@ export async function POST(req: NextRequest) {
           removebg_key = COALESCE(${safeRemoveBgKey}, removebg_key),
           openai_active = COALESCE(${openai_active}, openai_active),
           openai_key = COALESCE(${safeOpenAiKey}, openai_key),
+          ilovepdf_active = COALESCE(${ilovepdf_active}, ilovepdf_active),
+          ilovepdf_public_key = COALESCE(${safeILovePdfPublicKey}, ilovepdf_public_key),
+          ilovepdf_secret_key = COALESCE(${safeILovePdfSecretKey}, ilovepdf_secret_key),
           updated_at = CURRENT_TIMESTAMP
         WHERE id = 1;
       `;
