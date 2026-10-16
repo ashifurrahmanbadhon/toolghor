@@ -289,7 +289,7 @@ export default function AdminConsole() {
   const [focusedKey, setFocusedKey] = useState<Record<string, boolean>>({});
   const [testingKey, setTestingKey] = useState<Record<string, boolean>>({});
   const [testResult, setTestResult] = useState<
-    Record<string, { valid: boolean; message: string; message_bn: string } | null>
+    Record<string, { valid: boolean; message: string } | null>
   >({});
 
   const formatMaskedKey = (val: string) => {
@@ -321,7 +321,6 @@ export default function AdminConsole() {
           [provider]: {
             valid: data.valid,
             message: data.message || (data.valid ? 'Valid API Key' : 'Invalid API Key'),
-            message_bn: data.message_bn || (data.valid ? 'সঠিক API কী' : 'ভুল API কী'),
           },
         }));
       } else {
@@ -330,7 +329,6 @@ export default function AdminConsole() {
           [provider]: {
             valid: false,
             message: data?.error || data?.message || 'Test request failed',
-            message_bn: data?.message_bn || 'টেস্ট রিকোয়েস্ট ব্যর্থ হয়েছে',
           },
         }));
       }
@@ -340,7 +338,6 @@ export default function AdminConsole() {
         [provider]: {
           valid: false,
           message: e?.message || 'Network error while testing key',
-          message_bn: 'কী পরীক্ষা করার সময় নেটওয়ার্ক ত্রুটি ঘটেছে',
         },
       }));
     } finally {
@@ -1484,9 +1481,7 @@ export default function AdminConsole() {
               <div style={{ fontWeight: 600 }}>
                 AUTH_SECRET is not set — admin sessions use a derived fallback. Set AUTH_SECRET in Vercel env vars for full security.
               </div>
-              <div style={{ fontSize: '12px', color: '#fde047', opacity: 0.9, marginTop: '2px' }}>
-                AUTH_SECRET সেট করা নেই — অ্যাডমিন সেশনে ডিরাইভড ফলব্যাক ব্যবহার করা হচ্ছে। পূর্ণ নিরাপত্তার জন্য Vercel env vars-এ AUTH_SECRET সেট করুন।
-              </div>
+              {/* AUTH_SECRET সেট করা নেই — অ্যাডমিন সেশনে ডিরাইভড ফলব্যাক ব্যবহার করা হচ্ছে। পূর্ণ নিরাপত্তার জন্য Vercel env vars-এ AUTH_SECRET সেট করুন। */}
             </div>
           </div>
           <button
@@ -3605,7 +3600,6 @@ export default function AdminConsole() {
                           {testResult[item.provider]!.valid ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             <span style={{ fontWeight: 600 }}>{testResult[item.provider]!.message}</span>
-                            <span style={{ fontSize: '11.5px', opacity: 0.85 }}>{testResult[item.provider]!.message_bn}</span>
                           </div>
                         </div>
                       )}
