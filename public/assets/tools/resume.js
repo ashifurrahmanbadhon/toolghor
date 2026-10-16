@@ -124,8 +124,18 @@
   /* ============ AI Resume Assistant Engine ============ */
   async function callResumeAI(prompt, systemInstruction) {
     if (UI.callAI) {
-      var res = await UI.callAI(prompt, { systemInstruction: systemInstruction });
-      if (res && res.success && res.text) return res.text;
+      try {
+        var timeoutPromise = new Promise(function (resolve) {
+          setTimeout(function () { resolve(null); }, 45000);
+        });
+        var res = await Promise.race([
+          UI.callAI(prompt, { systemInstruction: systemInstruction }),
+          timeoutPromise
+        ]);
+        if (res && res.success && res.text) return res.text;
+      } catch (e) {
+        console.warn('callResumeAI error:', e);
+      }
     }
     return null;
   }
@@ -475,21 +485,26 @@
             UI.clear(resultsBox);
 
             var generatedList = [];
-            var onlinePrompt = "Write 3 distinct, high-impact career objective summaries (2-3 sentences each) for a resume for the role: '" + curRole + "' at " + levelSel.value + " level. Language: " + (d.lang === 'bn' ? 'Bengali' : 'English') + ". Provide them as 3 numbered points.";
-            var aiText = await callResumeAI(onlinePrompt, "You are an expert resume writer.");
+            try {
+              var onlinePrompt = "Write 3 distinct, high-impact career objective summaries (2-3 sentences each) for a resume for the role: '" + curRole + "' at " + levelSel.value + " level. Language: " + (d.lang === 'bn' ? 'Bengali' : 'English') + ". Provide them as 3 numbered points.";
+              var aiText = await callResumeAI(onlinePrompt, "You are an expert resume writer.");
 
-            if (aiText) {
-              generatedList = aiText.split(/\n(?=\d+[.)]|Option \d+:)/).map(function (s) {
-                return s.replace(/^\d+[.)]\s*|^Option \d+:\s*/i, '').trim();
-              }).filter(Boolean);
-            }
+              if (aiText) {
+                generatedList = aiText.split(/\n(?=\d+[.)]|Option \d+:)/).map(function (s) {
+                  return s.replace(/^\d+[.)]\s*|^Option \d+:\s*/i, '').trim();
+                }).filter(Boolean);
+              }
 
-            if (!generatedList.length) {
+              if (!generatedList.length) {
+                generatedList = getLocalSummaries(curRole, d.lang, levelSel.value);
+              }
+            } catch (err) {
+              console.warn(err);
               generatedList = getLocalSummaries(curRole, d.lang, levelSel.value);
+            } finally {
+              genBtn.disabled = false;
+              genBtn.textContent = tr('✨ অবজেক্টিভ লিখুন', "✨ Generate Career Objectives");
             }
-
-            genBtn.disabled = false;
-            genBtn.textContent = tr('✨ অবজেক্টিভ লিখুন', "✨ Generate Career Objectives");
 
             generatedList.slice(0, 3).forEach(function (optText, idx) {
               var card = UI.el('div', { class: 'ai-card' },
@@ -541,21 +556,26 @@
             UI.clear(bulletsResults);
 
             var bulletsList = [];
-            var onlinePrompt = "Write 4 strong, action-verb driven, measurable resume job description bullet points for the position: '" + curRole + "'. Language: " + (d.lang === 'bn' ? 'Bengali' : 'English') + ". List each bullet point on a new line starting with a dash or bullet.";
-            var aiText = await callResumeAI(onlinePrompt, "You are an ATS resume optimization expert.");
+            try {
+              var onlinePrompt = "Write 4 strong, action-verb driven, measurable resume job description bullet points for the position: '" + curRole + "'. Language: " + (d.lang === 'bn' ? 'Bengali' : 'English') + ". List each bullet point on a new line starting with a dash or bullet.";
+              var aiText = await callResumeAI(onlinePrompt, "You are an ATS resume optimization expert.");
 
-            if (aiText) {
-              bulletsList = aiText.split(/\r?\n/).map(function (s) {
-                return s.replace(/^[-•*\d.)]+\s*/, '').trim();
-              }).filter(Boolean);
-            }
+              if (aiText) {
+                bulletsList = aiText.split(/\r?\n/).map(function (s) {
+                  return s.replace(/^\s*(?:[-•*]|\d{1,2}[.)])\s+/, '').trim();
+                }).filter(Boolean);
+              }
 
-            if (!bulletsList.length) {
+              if (!bulletsList.length) {
+                bulletsList = getLocalBullets(curRole, d.lang);
+              }
+            } catch (err) {
+              console.warn(err);
               bulletsList = getLocalBullets(curRole, d.lang);
+            } finally {
+              genBulletsBtn.disabled = false;
+              genBulletsBtn.textContent = tr('✨ কাজের বিবরণী (Bullets) লিখুন', "✨ Generate Job Description Bullets");
             }
-
-            genBulletsBtn.disabled = false;
-            genBulletsBtn.textContent = tr('✨ কাজের বিবরণী (Bullets) লিখুন', "✨ Generate Job Description Bullets");
 
             var combinedBullets = bulletsList.join('\n');
             var card = UI.el('div', { class: 'ai-card' },

@@ -81,13 +81,16 @@
     var drop = UI.dropzone({ accept: 'image/*', multiple: true, label: tr('ছবি বেছে নিন', "Choose images"), onFiles: function (fs) { files = fs; UI.clear(out); showList(); } });
     async function run() {
       UI.clear(out); var prog = UI.progress(); out.appendChild(prog); go.disabled = true;
+      var activeFiles = files.slice();
+      var dropInput = drop.querySelector('input');
+      if (dropInput) dropInput.disabled = true;
       var rows = [];
       try {
         var tkb = UI.parseNum(target.value), tbytes = tkb > 0 ? tkb * 1024 : 0;
-        for (var i = 0; i < files.length; i++) {
-          prog.set(i / files.length * 100, UI.n(i + 1) + '/' + UI.n(files.length));
+        for (var i = 0; i < activeFiles.length; i++) {
+          prog.set(i / activeFiles.length * 100, UI.n(i + 1) + '/' + UI.n(activeFiles.length));
           await UI.yield();
-          var f = files[i], img = await UI.readImage(f), w = img.naturalWidth, h = img.naturalHeight, mw = +maxw.value;
+          var f = activeFiles[i], img = await UI.readImage(f), w = img.naturalWidth, h = img.naturalHeight, mw = +maxw.value;
           if (mw && w > mw) { h = h * mw / w; w = mw; }
           var ext = typeFor(f, fmt.value), mime = MIME[ext];
           var c = drawToCanvas(img, w, h, ext === 'jpg' ? '#fff' : null), blob, note = '';
@@ -98,13 +101,16 @@
             blob = await UI.toBlob(c, mime, +q.value / 100);
             if (ext === 'png') note = tr('(PNG-তে মান স্লাইডার কাজ করে না; JPG/WebP বেছে নিন)', "(the quality slider does not work on PNG; choose JPG/WebP)");
           }
-          rows.push({ name: outName(f, ext, i, files.length), before: f.size, blob: blob, url: URL.createObjectURL(blob), note: note });
+          rows.push({ name: outName(f, ext, i, activeFiles.length), before: f.size, blob: blob, url: URL.createObjectURL(blob), note: note });
           URL.revokeObjectURL(img._url);
         }
         UI.clear(out);
         out.appendChild(UI.el('div', { class: 'result stack' }, UI.notice('ok', tr('✓ কমপ্রেস শেষ।', "✓ Compression finished.")), resultTable(rows, 'ToolGhor(compress-image).zip')));
       } catch (e) { UI.clear(out); out.appendChild(UI.notice('err', UI.err(e))); }
-      go.disabled = !files.length;
+      finally {
+        if (dropInput) dropInput.disabled = false;
+        go.disabled = !files.length;
+      }
     }
     root.appendChild(UI.el('div', { class: 'stack' }, drop, listBox,
       UI.el('div', { class: 'row' },
@@ -348,9 +354,12 @@
     var drop = UI.dropzone({ accept: 'image/*', multiple: true, label: tr('ছবি বেছে নিন (২টি বা বেশি)', "Choose images (2 or more)"), onFiles: function (fs) { fs.forEach(function (f) { items.push({ file: f, url: URL.createObjectURL(f) }); }); UI.clear(out); list.redraw(); } });
     async function run() {
       UI.clear(out); var prog = UI.progress(); out.appendChild(prog); go.disabled = true;
+      var activeItems = items.slice();
+      var dropInput = drop.querySelector('input');
+      if (dropInput) dropInput.disabled = true;
       try {
         var imgs = [];
-        for (var i = 0; i < items.length; i++) { prog.set(i / items.length * 50, tr('ছবি পড়া হচ্ছে…', "Reading images…")); imgs.push(await UI.readImage(items[i].file)); }
+        for (var i = 0; i < activeItems.length; i++) { prog.set(i / activeItems.length * 50, tr('ছবি পড়া হচ্ছে…', "Reading images…")); imgs.push(await UI.readImage(activeItems[i].file)); }
         var g = +gap.value, mode = layout.get(), cols = mode === 'g2' ? 2 : mode === 'g3' ? 3 : 0;
         var pos = [], W, H;
         if (mode === 'v') {
@@ -382,7 +391,10 @@
         UI.done(out, blob, 'merged-image.' + ext, tr('✓ ছবি জোড়া হয়েছে: ', "✓ Images joined: ") + UI.n(c.width) + '×' + UI.n(c.height) + ' px');
         out.firstChild.appendChild(UI.el('img', { src: URL.createObjectURL(blob), alt: tr('প্রিভিউ', "Preview"), style: { maxWidth: '100%', maxHeight: '360px', borderRadius: '8px', marginTop: '12px' } }));
       } catch (e) { UI.clear(out); out.appendChild(UI.notice('err', UI.err(e))); }
-      go.disabled = items.length < 2;
+      finally {
+        if (dropInput) dropInput.disabled = false;
+        go.disabled = items.length < 2;
+      }
     }
     root.appendChild(UI.el('div', { class: 'stack' }, drop, list,
       UI.el('div', { class: 'stack' }, UI.el('span', { class: 'lbl' }, tr('সাজানোর ধরন', "Layout")), layout),
@@ -678,7 +690,7 @@
       { value: '1', label: tr('১ কপি (ডিজিটাল ফাইল - ৪১৩×৫৩১ px)', "1 Copy (Digital Photo - 413×531 px)") },
       { value: '4', label: tr('৪ কপি প্রিন্ট শিট (৪×৬ পেপার)', "4 Copies Sheet (4×6 photo paper)") },
       { value: '6', label: tr('৬ কপি প্রিন্ট শিট (৪×৬ পেপার)', "6 Copies Sheet (4×6 photo paper)") },
-      { value: '8', label: tr('৮ কপি প্রিন্ট শিট (A4/৪×৬ পেপার)', "8 Copies Sheet (A4/4×6 paper)") }
+      { value: '8', label: tr('৮ কপি প্রিন্ট শিট (৪×৬ পেপার)', "8 Copies Sheet (4×6 photo paper)") }
     ], '1');
 
     // Target KB File Size Reducer (ImResizer signature feature)
@@ -749,8 +761,10 @@
     // AI Auto Face Alignment (ICAO 75% Head Height Standard)
     async function applyAutoFace(silent) {
       if (!imgEl) return;
+      var myImg = imgEl;
       if (!silent) UI.toast(tr('🔍 এআই দিয়ে মুখ শনাক্ত ও অ্যালাইন করা হচ্ছে…', "🔍 AI detecting & centering face…"));
-      var fbox = await detectFaceBox(imgEl);
+      var fbox = await detectFaceBox(myImg);
+      if (imgEl !== myImg) return; // Stale detection mid-flight
       var curW = W(), curH = H();
       if (fbox && curW && curH) {
         var faceH = fbox.h * curH;
@@ -831,12 +845,15 @@
     // Binary search for target KB compression (ImResizer signature feature)
     async function exportWithTargetKb(canvas, mime, maxKb) {
       if (!maxKb || maxKb <= 0 || mime === 'image/png') {
-        return await UI.toBlob(canvas, mime, 0.95);
+        return { blob: await UI.toBlob(canvas, mime, 0.95), targetReached: true };
       }
-      var minQ = 0.15, maxQ = 0.95, bestBlob = null;
+      var minQ = 0.15, maxQ = 0.95, bestBlob = null, smallestBlob = null;
       for (var i = 0; i < 7; i++) {
         var q = (minQ + maxQ) / 2;
         var b = await UI.toBlob(canvas, 'image/jpeg', q);
+        if (!smallestBlob || b.size < smallestBlob.size) {
+          smallestBlob = b;
+        }
         var kb = b.size / 1024;
         if (kb <= maxKb) {
           bestBlob = b;
@@ -845,7 +862,10 @@
           maxQ = q; // Must lower quality
         }
       }
-      return bestBlob || (await UI.toBlob(canvas, 'image/jpeg', 0.45));
+      if (bestBlob) {
+        return { blob: bestBlob, targetReached: true };
+      }
+      return { blob: smallestBlob || (await UI.toBlob(canvas, 'image/jpeg', 0.15)), targetReached: false };
     }
 
     async function runDownload() {
@@ -909,11 +929,11 @@
           finalCanvas = sc;
           fileName = 'ToolGhor(passport-photo-6copies).' + outFormat;
         } else if (copies === 8) {
-          var swSheet = 1800, shSheet = 1350;
+          var swSheet = 1800, shSheet = 1200; // True 4x6 inch @ 300 DPI landscape
           var sc = UI.canvas(swSheet, shSheet), sctx = sc.getContext('2d');
           sctx.fillStyle = '#ffffff'; sctx.fillRect(0, 0, swSheet, shSheet);
-          var gw = PW * 0.8, gh = PH * 0.8;
-          var gapX = 35, gapY = 35;
+          var gw = PW * 0.75, gh = PH * 0.75;
+          var gapX = 35, gapY = 30;
           var totalW = 4 * gw + 3 * gapX;
           var totalH = 2 * gh + gapY;
           var startX = (swSheet - totalW) / 2;
@@ -933,11 +953,17 @@
 
         var maxKb = +kbLimitSel.value;
         var mime = (outFormat === 'png') ? 'image/png' : 'image/jpeg';
-        var blob = await exportWithTargetKb(finalCanvas, mime, maxKb);
+        var exportRes = await exportWithTargetKb(finalCanvas, mime, maxKb);
+        var blob = exportRes.blob;
 
         UI.download(blob, fileName);
-        downloadStatus.textContent = '✓ ' + fileName + ' (' + UI.fmtSize(blob.size) + ') ' + tr('সফলভাবে ডাউনলোড হয়েছে!', "Downloaded successfully!");
-        UI.toast(tr('✓ পাসপোর্ট সাইজ ছবি সফলভাবে তৈরি ও ডাউনলোড হয়েছে!', "✓ Passport photo created & downloaded!"));
+        if (!exportRes.targetReached) {
+          downloadStatus.textContent = '✓ ' + fileName + ' (' + UI.fmtSize(blob.size) + ') · ' + tr('টার্গেট সাইজ (' + maxKb + ' KB) এ পৌঁছানো সম্ভব হয়নি, তবে সর্বনিম্ন সাইজে তৈরি হয়েছে।', 'Could not reach target size (' + maxKb + ' KB); exported at smallest possible size.');
+          UI.toast(tr('টার্গেট সাইজ (' + maxKb + ' KB) এ পৌঁছানো সম্ভব হয়নি, সর্বনিম্ন সাইজে ডাউনলোড হয়েছে।', 'Target (' + maxKb + ' KB) unreachable; downloaded at smallest size.'));
+        } else {
+          downloadStatus.textContent = '✓ ' + fileName + ' (' + UI.fmtSize(blob.size) + ') ' + tr('সফলভাবে ডাউনলোড হয়েছে!', "Downloaded successfully!");
+          UI.toast(tr('✓ পাসপোর্ট সাইজ ছবি সফলভাবে তৈরি ও ডাউনলোড হয়েছে!', "✓ Passport photo created & downloaded!"));
+        }
       } catch (err) {
         console.error(err);
         downloadStatus.textContent = tr('ডাউনলোডে সমস্যা হয়েছে।', "Download failed.");

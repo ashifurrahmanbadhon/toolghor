@@ -132,15 +132,26 @@
 
     if (!onProgress) onProgress = function () {};
 
+    function fetchWithTimeout(url, opts, ms) {
+      ms = ms || 25000;
+      var ctrl = new AbortController();
+      var tid = setTimeout(function () { ctrl.abort(); }, ms);
+      opts = opts || {};
+      opts.signal = ctrl.signal;
+      return fetch(url, opts).finally(function () {
+        clearTimeout(tid);
+      });
+    }
+
     onProgress(15, tr('সার্ভারে সুরক্ষিত সংযোগ স্থাপন হচ্ছে…', 'Connecting to conversion server…'));
     await UI.yield();
 
     // 1. Auth: Get JWT token
-    var authRes = await fetch('https://api.ilovepdf.com/v1/auth', {
+    var authRes = await fetchWithTimeout('https://api.ilovepdf.com/v1/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ public_key: pubKey })
-    });
+    }, 20000);
     if (!authRes.ok) {
       var errData = await authRes.json().catch(function () { return {}; });
       var msg = (errData && errData.error && errData.error.message) || (authRes.status + ' ' + authRes.statusText);
@@ -153,10 +164,10 @@
     // 2. Start Task
     onProgress(30, tr('টাস্ক শুরু করা হচ্ছে…', 'Starting task…'));
     await UI.yield();
-    var startRes = await fetch('https://api.ilovepdf.com/v1/start/' + encodeURIComponent(toolName), {
+    var startRes = await fetchWithTimeout('https://api.ilovepdf.com/v1/start/' + encodeURIComponent(toolName), {
       method: 'GET',
       headers: { 'Authorization': 'Bearer ' + token }
-    });
+    }, 20000);
     if (!startRes.ok) {
       var sErr = await startRes.json().catch(function () { return {}; });
       throw new Error(tr('টাস্ক শুরু করতে ব্যর্থ: ', 'Could not start task: ') + ((sErr && sErr.error && sErr.error.message) || startRes.statusText));
@@ -179,11 +190,11 @@
       fd.append('task', taskId);
       fd.append('file', f);
 
-      var upRes = await fetch('https://' + server + '/v1/upload', {
+      var upRes = await fetchWithTimeout('https://' + server + '/v1/upload', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token },
         body: fd
-      });
+      }, 35000);
       if (!upRes.ok) {
         var uErr = await upRes.json().catch(function () { return {}; });
         throw new Error(tr('ফাইল আপলোড ব্যর্থ: ', 'File upload failed: ') + ((uErr && uErr.error && uErr.error.message) || upRes.statusText));
@@ -210,14 +221,14 @@
       }
     }
 
-    var procRes = await fetch('https://' + server + '/v1/process', {
+    var procRes = await fetchWithTimeout('https://' + server + '/v1/process', {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer ' + token,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(procPayload)
-    });
+    }, 45000);
     if (!procRes.ok) {
       var pErr = await procRes.json().catch(function () { return {}; });
       throw new Error(tr('প্রসেসিং ব্যর্থ: ', 'Processing failed: ') + ((pErr && pErr.error && pErr.error.message) || procRes.statusText));
@@ -227,10 +238,10 @@
     onProgress(92, tr('ফলাফল ফাইল ডাউনলোড করা হচ্ছে…', 'Downloading processed result…'));
     await UI.yield();
 
-    var dlRes = await fetch('https://' + server + '/v1/download/' + taskId, {
+    var dlRes = await fetchWithTimeout('https://' + server + '/v1/download/' + taskId, {
       method: 'GET',
       headers: { 'Authorization': 'Bearer ' + token }
-    });
+    }, 35000);
     if (!dlRes.ok) {
       throw new Error(tr('ডাউনলোড সম্পন্ন করা যায়নি।', 'Could not download resulting file.'));
     }
@@ -244,6 +255,12 @@
   /* ---------------- মার্জ ---------------- */
   T['merge-pdf'] = function (root) {
     var files = [], out = UI.el('div');
+    function validFiles() {
+      return files.filter(function (it) { return !it.bad; });
+    }
+    function updateState() {
+      mergeBtn.disabled = validFiles().length < 2;
+    }
     var mergeBtn = UI.btn(tr('মার্জ করুন', "Merge"), run, { icon: 'merge', disabled: true });
     var list = UI.sortList({
       items: files,
@@ -251,7 +268,7 @@
         return UI.el('span', { class: 'fname' }, it.file.name,
           UI.el('small', {}, UI.fmtSize(it.file.size) + (it.pages ? ' · ' + UI.n(it.pages) + tr(' পৃষ্ঠা', " pages") : '') + (it.bad ? tr(' · পড়া যায়নি (পাসওয়ার্ড বা নষ্ট)', " · could not be read (password-protected or damaged)") : '')));
       },
-      onChange: function () { mergeBtn.disabled = files.length < 2; }
+      onChange: updateState
     });
     var drop = UI.dropzone({
       accept: 'application/pdf,.pdf', multiple: true, label: tr('পিডিএফ ফাইল বেছে নিন', "Choose PDF files"),
@@ -259,25 +276,36 @@
         fs.forEach(function (f) {
           var it = { file: f }; files.push(it);
           f.arrayBuffer().then(function (b) { return PDFLib.PDFDocument.load(b); })
-            .then(function (d) { it.pages = d.getPageCount(); list.redraw(); })
-            .catch(function () { it.bad = true; list.redraw(); });
+            .then(function (d) { it.pages = d.getPageCount(); updateState(); list.redraw(); })
+            .catch(function () { it.bad = true; updateState(); list.redraw(); });
         });
         UI.clear(out); list.redraw();
       }
     });
     async function run() {
-      UI.clear(out); var prog = UI.progress(); out.appendChild(prog); mergeBtn.disabled = true;
+      var valid = validFiles();
+      if (valid.length < 2) {
+        updateState();
+        return;
+      }
+      var bad = files.filter(function (it) { return it.bad; });
+      UI.clear(out);
+      if (bad.length > 0) {
+        var skippedNames = bad.map(function (it) { return it.file.name; }).join(', ');
+        out.appendChild(UI.notice('warn', tr('বাদ দেওয়া ফাইল (নষ্ট বা পাসওয়ার্ড যুক্ত): ', 'Skipped files (damaged or password-protected): ') + skippedNames));
+      }
+      var prog = UI.progress(); out.appendChild(prog); mergeBtn.disabled = true;
 
       // 1. Try iLovePDF Cloud API
       var apiKey = getILovePdfKey();
-      if (apiKey && files.length >= 2) {
+      if (apiKey && valid.length >= 2) {
         try {
-          var rawFiles = files.map(function (it) { return it.file; });
+          var rawFiles = valid.map(function (it) { return it.file; });
           var mBlob = await callILovePdf('merge', rawFiles, {}, function (pct, txt) {
             prog.set(pct, txt);
           });
-          UI.done(out, mBlob, 'ToolGhor(merge-pdf).pdf', tr('✓ মার্জ হয়েছে: ', "✓ Merged: ") + UI.n(files.length) + tr('টি ফাইল', " files"));
-          mergeBtn.disabled = files.length < 2;
+          UI.done(out, mBlob, 'ToolGhor(merge-pdf).pdf', tr('✓ মার্জ হয়েছে: ', "✓ Merged: ") + UI.n(valid.length) + tr('টি ফাইল', " files"));
+          updateState();
           return;
         } catch (cloudErr) {
           console.warn('Cloud merge failed, falling back to local engine:', cloudErr);
@@ -287,20 +315,20 @@
       // 2. Local fallback engine
       try {
         var merged = await PDFLib.PDFDocument.create(), total = 0;
-        for (var i = 0; i < files.length; i++) {
-          prog.set(i / files.length * 100, UI.n(i + 1) + '/' + UI.n(files.length) + ': ' + files[i].file.name);
+        for (var i = 0; i < valid.length; i++) {
+          prog.set(i / valid.length * 100, UI.n(i + 1) + '/' + UI.n(valid.length) + ': ' + valid[i].file.name);
           await UI.yield();
           var src;
-          try { src = await PDFLib.PDFDocument.load(await files[i].file.arrayBuffer()); }
-          catch (e) { throw new Error('"' + files[i].file.name + tr('" মার্জ করা যায়নি (পাসওয়ার্ড দেওয়া বা নষ্ট ফাইল হতে পারে)।', "\" could not be merged (it may be password-protected or damaged).")); }
+          try { src = await PDFLib.PDFDocument.load(await valid[i].file.arrayBuffer()); }
+          catch (e) { throw new Error('"' + valid[i].file.name + tr('" মার্জ করা যায়নি (পাসওয়ার্ড দেওয়া বা নষ্ট ফাইল হতে পারে)।', "\" could not be merged (it may be password-protected or damaged).")); }
           var pages = await merged.copyPages(src, src.getPageIndices());
           pages.forEach(function (p) { merged.addPage(p); }); total += pages.length;
         }
         prog.set(100, tr('সেভ হচ্ছে…', "Saving…"));
         var blob = pdfBlob(await merged.save());
-        UI.done(out, blob, 'ToolGhor(merge-pdf).pdf', tr('✓ মার্জ হয়েছে: ', "✓ Merged: ") + UI.n(files.length) + tr('টি ফাইল, মোট ', " files, ") + UI.n(total) + tr(' পৃষ্ঠা।', " pages in total."));
-      } catch (e) { UI.clear(out); out.appendChild(UI.notice('err', UI.err(e))); }
-      mergeBtn.disabled = files.length < 2;
+        UI.done(out, blob, 'ToolGhor(merge-pdf).pdf', tr('✓ মার্জ হয়েছে: ', "✓ Merged: ") + UI.n(valid.length) + tr('টি ফাইল, মোট ', " files, ") + UI.n(total) + tr(' পৃষ্ঠা।', " pages in total."));
+      } catch (e) { out.appendChild(UI.notice('err', UI.err(e))); }
+      updateState();
     }
     root.appendChild(UI.el('div', { class: 'stack' }, drop, list,
       UI.el('p', { class: 'lbl' }, tr('কমপক্ষে ২টি ফাইল লাগবে। উপরে/নিচে তীর দিয়ে ক্রম ঠিক করুন।', "You need at least 2 files. Use the up/down arrows to set the order.")), mergeBtn, out));
@@ -977,8 +1005,20 @@
           docxBlob = await callBackendConvertPdfToDocx(file, extraParams, function (pct, txt) {
             prog.set(pct, txt);
           });
+          var expectedPages = pdfInfo ? pdfInfo.numPages : 1;
+          if (extraParams.ranges && pdfInfo) {
+            try {
+              var rParts = parseRanges(extraParams.ranges, pdfInfo.numPages);
+              var seenIdx = {};
+              rParts.forEach(function (part) {
+                part.idx.forEach(function (idx) { seenIdx[idx] = true; });
+              });
+              var count = Object.keys(seenIdx).length;
+              if (count > 0) expectedPages = count;
+            } catch (ignore) {}
+          }
           stats = {
-            pageCount: pdfInfo ? pdfInfo.numPages : 1,
+            pageCount: expectedPages,
             size: docxBlob.size,
             isConvertApi: true
           };

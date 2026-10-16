@@ -576,13 +576,18 @@
   T['time-zone-converter'] = function (root) {
     var src = 'Asia/Dhaka', targets;
     try { targets = JSON.parse(localStorage.getItem('tz-targets-v2') || 'null'); } catch (e) { targets = null; }
+    var validZoneIds = {};
+    ZONES.forEach(function (z) { validZoneIds[z[0]] = true; });
+    if (Array.isArray(targets)) {
+      targets = targets.filter(function (z) { return validZoneIds[z]; });
+    }
     if (!Array.isArray(targets) || !targets.length) {
       // Default curated popular destinations for Bangladesh users
       targets = ['Asia/Riyadh', 'Asia/Dubai', 'Asia/Qatar', 'Asia/Kuala_Lumpur', 'Asia/Singapore', 'Europe/London', 'Europe/Rome', 'America/New_York', 'America/Toronto'];
     }
 
     var dt = UI.el('input', { type: 'datetime-local', value: nowLocalStr(src), style: { fontWeight: '600', fontSize: '15px' } });
-    var srcSel = UI.select(ZONES.map(function (z) { return { value: z[0], label: z[1] }; }), src, function () { src = srcSel.value; render(); });
+    var srcSel = UI.select(ZONES.map(function (z) { return { value: z[0], label: z[1] }; }), src, function () { src = srcSel.value; updateBaseLabels(); render(); });
 
     var grid = UI.el('div', { class: 'zone-grid' });
     var searchBox = UI.el('div', { class: 'stack', style: { marginTop: '16px', background: 'var(--card, rgba(255,255,255,0.03))', padding: '16px', borderRadius: '12px', border: '1px solid var(--line)' } });
@@ -706,15 +711,15 @@
 
         var bdDiffText = '';
         if (diffHours === 0) {
-          bdDiffText = tr('বাংলাদেশ সময়ের সমান', "Same time as BD");
+          bdDiffText = tr(baseCityName + ' সময়ের সমান', "Same time as " + baseCityName);
         } else if (diffHours > 0) {
-          bdDiffText = UI.num(Math.abs(diffHours)) + tr(' ঘণ্টা এগিয়ে (+BD)', " hrs ahead of BD");
+          bdDiffText = UI.num(Math.abs(diffHours)) + tr(' ঘণ্টা এগিয়ে (+' + baseCityName + ')', ' hrs ahead of ' + baseCityName);
         } else {
-          bdDiffText = UI.num(Math.abs(diffHours)) + tr(' ঘণ্টা পেছনে (-BD)', " hrs behind BD");
+          bdDiffText = UI.num(Math.abs(diffHours)) + tr(' ঘণ্টা পেছনে (-' + baseCityName + ')', ' hrs behind ' + baseCityName);
         }
 
         var dayTag = diffDays === 0
-          ? tr('আজ (Today)', "Today")
+          ? tr('আজ', "Today")
           : (diffDays > 0 ? tr('পরের দিন (+১ দিন)', "Next day") : tr('আগের দিন (-১ দিন)', "Previous day"));
 
         var card = UI.el('div', { class: 'zone-card', style: { position: 'relative', border: '1px solid var(--line)', borderRadius: '12px', padding: '16px', background: 'var(--card, rgba(255,255,255,0.02))' } },
@@ -748,23 +753,37 @@
     }
 
     dt.addEventListener('input', render);
-    var nowBtn = UI.btn(tr('এখনকার বাংলাদেশ সময়', "Current BD Time"), function () {
+    var nowBtn = UI.btn(tr('এখনকার সময়', "Current Time"), function () {
       dt.value = nowLocalStr(src);
       render();
     }, { cls: 'sm alt', icon: 'refresh-cw', iconSize: 16 });
 
+    var dtField = UI.field(tr('তারিখ ও সময়', "Date and Time"), dt);
+    var headerTitle = UI.el('h3', { style: { margin: '0' } }, tr('নির্বাচিত দেশগুলোর লাইভ সময়:', "Live Times:"));
+
+    function updateBaseLabels() {
+      var baseCityName = (zlabel(src) || src).split('(')[0].trim();
+      var nowSpan = nowBtn.querySelector('span:not(.icon)') || nowBtn;
+      nowSpan.textContent = ' ' + tr('এখনকার ' + baseCityName + ' সময়', 'Current ' + baseCityName + ' Time');
+      var dtLbl = dtField.querySelector('.lbl');
+      if (dtLbl) dtLbl.textContent = tr(baseCityName + ' তারিখ ও সময়', baseCityName + ' Date and Time');
+      headerTitle.textContent = tr('নির্বাচিত দেশগুলোর লাইভ সময় (' + baseCityName + ' অনুযায়ী):', 'Live Times Relative to ' + baseCityName + ':');
+    }
+
     var topControls = UI.el('div', { class: 'stack', style: { background: 'var(--card, rgba(255,255,255,0.02))', padding: '16px', borderRadius: '12px', border: '1px solid var(--line)' } },
       UI.el('div', { class: 'row' },
-        UI.field(tr('বেস শহর (ডিফল্ট: বাংলাদেশ সময়)', "Base City (Default: BD Time)"), srcSel),
-        UI.field(tr('বাংলাদেশ তারিখ ও সময়', "BD Date and Time"), dt),
+        UI.field(tr('বেস শহর', "Base City"), srcSel),
+        dtField,
         UI.el('div', { style: { alignSelf: 'flex-end', marginBottom: '4px' } }, nowBtn)
       )
     );
 
+    updateBaseLabels();
+
     root.appendChild(UI.el('div', { class: 'stack' },
       topControls,
       UI.el('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' } },
-        UI.el('h3', { style: { margin: '0' } }, tr('নির্বাচিত দেশগুলোর লাইভ সময় (BD Time অনুযায়ী):', "Live Times Relative to BD Time:")),
+        headerTitle,
         UI.el('span', { class: 'muted sm' }, targets.length + tr(' টি দেশ যুক্ত আছে', ' countries added'))
       ),
       grid,
@@ -1166,16 +1185,13 @@
 
       copyBtn.addEventListener('click', function () {
         var copyText = fullStr + ' (Rate: 1 ' + fromCode + ' = ' + unitRate.toFixed(4) + ' ' + toCode + ')';
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(copyText).then(function () {
-            copyBtn.textContent = '✓ ' + tr('কপি হয়েছে!', 'Copied!');
-            setTimeout(function () {
-              UI.clear(copyBtn);
-              copyBtn.appendChild(UI.icon('copy'));
-              copyBtn.appendChild(document.createTextNode(' ' + tr('কপি করুন', 'Copy Result')));
-            }, 2000);
-          });
-        }
+        UI.copy(copyText, tr('✓ ফলাফল কপি হয়েছে!', '✓ Result copied!'));
+        copyBtn.textContent = '✓ ' + tr('কপি হয়েছে!', 'Copied!');
+        setTimeout(function () {
+          UI.clear(copyBtn);
+          copyBtn.appendChild(UI.icon('copy'));
+          copyBtn.appendChild(document.createTextNode(' ' + tr('কপি করুন', 'Copy Result')));
+        }, 2000);
       });
 
       var actionRow = UI.el('div', { class: 'currency-res-actions' }, copyBtn);

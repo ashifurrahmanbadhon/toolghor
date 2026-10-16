@@ -380,10 +380,18 @@
         if (t) show(t); else fail();
       } catch (e) { out.appendChild(UI.notice('err', UI.err(e))); }
     }
+    if (window._qrDecoderPasteHandler) {
+      document.removeEventListener('paste', window._qrDecoderPasteHandler);
+    }
     var pasteH = function (e) {
+      if (!root || !root.isConnected) {
+        document.removeEventListener('paste', pasteH);
+        return;
+      }
       var items = (e.clipboardData && e.clipboardData.files) || [];
       if (items.length && /^image\//.test(items[0].type)) fromFile(items[0]);
     };
+    window._qrDecoderPasteHandler = pasteH;
     document.addEventListener('paste', pasteH);
     var drop = UI.dropzone({ accept: 'image/*', label: tr('কিউআর কোডের ছবি বেছে নিন', "Choose a QR code image"), hint: tr('টেনে আনুন, অথবা স্ক্রিনশট কপি করে এখানে পেস্ট (Ctrl+V) করুন', "Drag it here, or copy a screenshot and paste (Ctrl+V)"), onFiles: function (fs) { fromFile(fs[0]); } });
 
@@ -399,7 +407,7 @@
       var cvs = UI.canvas(8, 8), ctx = cvs.getContext('2d', { willReadFrequently: true }), tick = 0;
       (function loop() {
         raf = requestAnimationFrame(loop);
-        if (++tick % 4 || v.readyState < 2 || !v.videoWidth) return;
+        if (++tick % 4 || v.readyState < 2 || !v.videoWidth || typeof jsQR === 'undefined') return;
         var s = Math.min(1, 720 / Math.max(v.videoWidth, v.videoHeight)); cvs.width = Math.round(v.videoWidth * s); cvs.height = Math.round(v.videoHeight * s);
         ctx.drawImage(v, 0, 0, cvs.width, cvs.height);
         var d = ctx.getImageData(0, 0, cvs.width, cvs.height), code = jsQR(d.data, cvs.width, cvs.height, { inversionAttempts: 'dontInvert' });
