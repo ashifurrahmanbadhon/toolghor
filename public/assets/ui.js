@@ -422,7 +422,7 @@
     }
   ];
 
-  UI.getApiKeys = function (id) {
+  UI.getUserApiKeys = function (id) {
     var raw = '';
     try { raw = localStorage.getItem('th_api_' + id) || ''; } catch (e) { }
     raw = (raw || '').trim();
@@ -439,6 +439,11 @@
         keys = raw.split(/[\n,]+/).map(function (k) { return k.trim(); }).filter(Boolean);
       }
     }
+    return keys;
+  };
+
+  UI.getApiKeys = function (id) {
+    var keys = UI.getUserApiKeys(id);
     if (!keys.length && window.SITE_CONFIG && window.SITE_CONFIG.apis) {
       for (var i = 0; i < UI.AI_PROVIDERS.length; i++) {
         var p = UI.AI_PROVIDERS[i];
@@ -760,7 +765,7 @@
     var providerRowsMap = {};
 
     UI.AI_PROVIDERS.forEach(function (prov) {
-      var currentKeys = UI.getApiKeys(prov.id);
+      var currentKeys = UI.getUserApiKeys(prov.id);
       if (!currentKeys.length) currentKeys = [''];
 
       var statusPill = UI.el('span', { class: 'ai-status-pill not-connected' });
