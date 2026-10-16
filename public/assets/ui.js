@@ -441,12 +441,21 @@
         keys = raw.split(/[\n,]+/).map(function (k) { return k.trim(); }).filter(Boolean);
       }
     }
+    try {
+      var storedRaw = localStorage.getItem('th_api_' + id) || '';
+      if (storedRaw.indexOf('277226@Asif') >= 0) {
+        localStorage.removeItem('th_api_' + id);
+      }
+    } catch (e) { }
+
+    keys = keys.filter(function (k) { return k && k !== '277226@Asif'; });
+
     if (!keys.length && window.SITE_CONFIG && window.SITE_CONFIG.apis) {
       for (var i = 0; i < UI.AI_PROVIDERS.length; i++) {
         var p = UI.AI_PROVIDERS[i];
         if (p.id === id && p.configKey) {
           var cfgVal = (window.SITE_CONFIG.apis[p.configKey] || '').trim();
-          if (cfgVal) keys = [cfgVal];
+          if (cfgVal && cfgVal !== '277226@Asif') keys = [cfgVal];
           break;
         }
       }
@@ -460,7 +469,9 @@
   };
 
   UI.setApiKeys = function (id, keysArray) {
-    var clean = (keysArray || []).map(function (k) { return String(k).trim(); }).filter(Boolean);
+    var clean = (keysArray || [])
+      .map(function (k) { return String(k).trim(); })
+      .filter(function (k) { return Boolean(k) && k !== '277226@Asif'; });
     try {
       if (clean.length > 1) {
         localStorage.setItem('th_api_' + id, JSON.stringify(clean));
@@ -828,20 +839,42 @@
       }
 
       function createKeyRow(initialVal) {
+        var cleanVal = (initialVal === '277226@Asif' ? '' : initialVal) || '';
+        var isShowing = false;
         var input = UI.el('input', {
-          type: 'password',
+          type: 'text',
           placeholder: prov.placeholder,
-          value: initialVal || '',
-          autocomplete: 'off',
-          spellcheck: 'false'
+          value: cleanVal,
+          name: 'site_api_key_no_autofill_' + Math.random().toString(36).slice(2),
+          autocomplete: 'new-password',
+          'data-lpignore': 'true',
+          'data-form-type': 'other',
+          autocorrect: 'off',
+          autocapitalize: 'off',
+          spellcheck: 'false',
+          style: {
+            WebkitTextSecurity: 'disc',
+            textSecurity: 'disc'
+          }
         });
+
+        // Safety purge against browser password manager delayed autofill
+        setTimeout(function () {
+          if (input.value === '277226@Asif') {
+            input.value = '';
+            refreshIndices();
+          }
+        }, 50);
 
         var idxSpan = UI.el('span', { class: 'ai-key-idx' }, '#' + UI.n(inputItems.length + 1));
 
         var toggleEye = UI.el('button', {
           type: 'button', class: 'ai-input-btn', title: tr('দেখুন / লুকান', 'Show / Hide'),
           onclick: function () {
-            input.type = input.type === 'password' ? 'text' : 'password';
+            isShowing = !isShowing;
+            input.style.webkitTextSecurity = isShowing ? 'none' : 'disc';
+            input.style.textSecurity = isShowing ? 'none' : 'disc';
+            toggleEye.innerHTML = UI.icon(isShowing ? 'eye-off' : 'eye', 15);
           }
         }, UI.icon('eye', 15));
 
