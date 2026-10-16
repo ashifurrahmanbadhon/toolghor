@@ -241,7 +241,16 @@ export async function resendPasswordResetOtp(
     };
   }
 
-  // Generate new OTP, reset attempts, update expiry to 5 minutes from now
+  if (challenge.attempts >= MAX_ATTEMPTS) {
+    return {
+      success: false,
+      message: 'This verification request has exceeded maximum failed attempts. Please request a new code from the start.',
+      resendCooldownSeconds: 0,
+      statusCode: 429,
+    };
+  }
+
+  // Generate new OTP, keep attempts cumulative across resends, update expiry to 5 minutes from now
   const rawOtp = generateSecureOtp();
   const otpHash = hashSecret(rawOtp);
   const newExpiry = new Date(now + OTP_EXPIRY_MS);
@@ -252,7 +261,6 @@ export async function resendPasswordResetOtp(
     SET
       otp_hash = ${otpHash},
       otp_expires_at = ${newExpiry.toISOString()},
-      attempts = 0,
       resend_cooldown_until = ${newCooldown.toISOString()},
       updated_at = CURRENT_TIMESTAMP
     WHERE id = ${challengeId};
