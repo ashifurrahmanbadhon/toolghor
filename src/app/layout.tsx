@@ -8,41 +8,16 @@ import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   title: 'ToolGhor – Everyday tools, now on one platform',
-  description: `${siteConfig.taglineEn}. 27+ everyday productivity, document, image, and media tools processed 100% in your browser.`,
+  description: `${siteConfig.taglineEn}. Everyday productivity and file tools in your browser.`,
   metadataBase: new URL(siteConfig.url),
   icons: {
     icon: [
-      { url: '/assets/favicon.svg', type: 'image/svg+xml' },
       { url: '/favicon.ico', sizes: 'any' },
-      { url: '/assets/favicon.png', type: 'image/png' },
       { url: '/assets/logo-icon.png', type: 'image/png' },
+      { url: '/assets/favicon.png', type: 'image/png' },
     ],
     apple: '/assets/apple-touch-icon.png',
     shortcut: '/favicon.ico',
-  },
-  openGraph: {
-    title: 'ToolGhor – Everyday tools, now on one platform',
-    description: '27+ everyday web tools processed 100% in your browser. Document, Image, Calculator, QR & Media tools without ads or sign-up walls.',
-    url: siteConfig.url,
-    siteName: 'ToolGhor',
-    type: 'website',
-    images: [
-      {
-        url: `${siteConfig.url}/assets/logo-dark.png`,
-        width: 1200,
-        height: 630,
-        alt: 'ToolGhor Platform',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'ToolGhor – Everyday tools, now on one platform',
-    description: '27+ everyday web tools processed 100% in your browser. Fast, private and free.',
-    images: [`${siteConfig.url}/assets/logo-dark.png`],
-  },
-  alternates: {
-    canonical: siteConfig.url,
   },
 };
 
@@ -51,33 +26,13 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const websiteJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: 'ToolGhor',
-    url: siteConfig.url,
-    description: 'Everyday productivity tools processed 100% in your browser.',
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: `${siteConfig.url}/?q={search_term_string}`,
-      'query-input': 'required name=search_term_string',
-    },
-  };
-
   return (
     <html lang="en" data-theme="dark" className="dark" suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#09130f" />
-        <meta name="color-scheme" content="dark light" />
-        <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon.png" />
         <link rel="icon" type="image/png" sizes="256x256" href="/assets/logo-icon.png" />
         <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
-        />
         <script
           dangerouslySetInnerHTML={{
             __html: `

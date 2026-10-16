@@ -56,7 +56,7 @@ export default function ToolPageClient({ tool, relatedTools }: ToolPageClientPro
 
       <main className={`wrap tool-page cat-${primaryCat}`}>
         {/* Breadcrumb */}
-        <nav className="crumb" aria-label="Breadcrumb">
+        <div className="crumb">
           <Link
             href="/"
             scroll={true}
@@ -67,14 +67,12 @@ export default function ToolPageClient({ tool, relatedTools }: ToolPageClientPro
             }}
           >
             {lang === 'bn' ? 'হোম' : 'Home'}
-          </Link>
-          <span className="crumb-sep" aria-hidden="true">/</span>
+          </Link> /{' '}
           <Link href={`/#cat-${primaryCat}`}>
             {catLabel}
-          </Link>
-          <span className="crumb-sep" aria-hidden="true">/</span>
-          <span className="crumb-current" aria-current="page">{title}</span>
-        </nav>
+          </Link>{' '}
+          / {title}
+        </div>
 
         {/* Heading */}
         <h1>{title}</h1>
@@ -107,28 +105,20 @@ export default function ToolPageClient({ tool, relatedTools }: ToolPageClientPro
           <ToolRunner tool={tool} />
         </div>
 
-        {/* How to use (Card / Panel Treatment with Numbered Steps) */}
-        <div className="how" role="region" aria-label={howToTitle}>
-          <h2>
-            <span aria-hidden="true">📖</span>
-            <span>{howToTitle}</span>
-          </h2>
-          <ol className="how-steps">
+        {/* How to use */}
+        <div className="how">
+          <h2>{howToTitle}</h2>
+          <ol>
             {steps.map((step, idx) => (
-              <li key={idx}>
-                <span>{step}</span>
-              </li>
+              <li key={idx}>{step}</li>
             ))}
           </ol>
         </div>
 
         {/* Related Tools */}
         {relatedTools.length > 0 && (
-          <div className="related" role="region" aria-label={relatedTitle}>
-            <h2>
-              <span aria-hidden="true">🔗</span>
-              <span>{relatedTitle}</span>
-            </h2>
+          <div className="related">
+            <h2>{relatedTitle}</h2>
             <div className="grid">
               {relatedTools.map((relTool) => (
                 <ToolCard key={relTool.slug} tool={relTool} category={tool.cats[0]} />
@@ -137,24 +127,6 @@ export default function ToolPageClient({ tool, relatedTools }: ToolPageClientPro
           </div>
         )}
       </main>
-
-      {/* Scroll To Top Button */}
-      <button
-        type="button"
-        id="scroll-to-top"
-        className="scroll-to-top-btn"
-        aria-label={lang === 'bn' ? 'উপরে স্ক্রোল করুন' : 'Scroll to top'}
-        title={lang === 'bn' ? 'উপরে যান' : 'Back to top'}
-        onClick={() => {
-          if (typeof window !== 'undefined') {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }
-        }}
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="m18 15-6-6-6 6"/>
-        </svg>
-      </button>
 
       <Footer />
     </>

@@ -14,7 +14,6 @@ export interface SiteConfig {
     bio: string;
     bioBn: string;
     image: string;
-    email: string;
     facebook: string;
     linkedin: string;
     github: string;
@@ -52,7 +51,6 @@ export const siteConfig: SiteConfig = {
     bio: 'Passionate about crafting fast, privacy-friendly, and accessible productivity tools.',
     bioBn: 'দ্রুতগতির, নিরাপদ ও ব্যবহারবান্ধব প্রোডাক্টিভিটি টুল তৈরিতে নিবেদিত।',
     image: '/assets/creator.jpg',
-    email: 'ashifur.badhon@gmail.com',
     facebook: 'https://www.facebook.com/ashifurrahmanbadhon',
     linkedin: 'https://www.linkedin.com/in/ashifurrahmanbadhon',
     github: 'https://github.com/ashifurrahmanbadhon'
