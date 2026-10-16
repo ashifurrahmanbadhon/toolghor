@@ -133,8 +133,15 @@ export async function POST(req: NextRequest) {
     }
 
     if (cleanProvider === 'gemini') {
-      const candidateModels = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-1.5-flash'];
+      const candidateModels = [
+        'gemini-3.5-flash-lite',
+        'gemini-3.5-flash',
+        'gemini-flash-lite-latest',
+        'gemma-4-26b-a4b-it',
+        'gemini-3.8-flash',
+      ];
       let lastStatus = 0;
+      let quotaExceeded = false;
       for (const modelName of candidateModels) {
         try {
           const gUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(resolvedKey)}`;
@@ -156,10 +163,28 @@ export async function POST(req: NextRequest) {
               message_bn: 'Google Gemini API কী সফলভাবে যাচাই হয়েছে।',
             });
           }
+          const errData = await res.json().catch(() => ({}));
+          const errMsg = String(errData?.error?.message || '');
+          if (res.status === 429 || errMsg.includes('Quota exceeded') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+            quotaExceeded = true;
+          }
+          if (res.status === 400 && errMsg.includes('API_KEY_INVALID')) {
+            break;
+          }
         } catch {
           // try next model
         }
       }
+
+      if (quotaExceeded) {
+        return NextResponse.json({
+          success: true,
+          valid: true,
+          message: 'Valid Google Gemini API key (active, free tier daily quota reached on some models).',
+          message_bn: 'Google Gemini API কী সঠিক ও সক্রিয় (ফ্রি টিয়ার দৈনিক কোটা সীমা পূর্ণ)।',
+        });
+      }
+
       return NextResponse.json({
         success: true,
         valid: false,

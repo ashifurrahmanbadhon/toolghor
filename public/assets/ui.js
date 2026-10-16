@@ -519,33 +519,37 @@
 
     // 1. Try Google Gemini API if user configured their personal key
     var geminiKeys = UI.getApiKeys('gemini');
+    var gCandidateModels = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-flash-lite-latest', 'gemma-4-26b-a4b-it'];
     for (var i = 0; i < geminiKeys.length; i++) {
       var gk = geminiKeys[i];
-      try {
-        var gUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + encodeURIComponent(gk);
-        var payload = {
-          contents: [{ role: 'user', parts: [{ text: (systemInstruction ? (systemInstruction + '\n\n') : '') + prompt }] }],
-          generationConfig: { temperature: temperature, maxOutputTokens: maxTokens }
-        };
-        var gCtrl = new AbortController();
-        var gTid = setTimeout(function () { gCtrl.abort(); }, 35000);
-        var res = await fetch(gUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          signal: gCtrl.signal
-        }).finally(function () { clearTimeout(gTid); });
-        if (res.ok) {
-          var data = await res.json();
-          if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
-            var text = data.candidates[0].content.parts.map(function (p) { return p.text || ''; }).join('').trim();
-            if (text) return { success: true, text: text, provider: 'Google Gemini' };
+      for (var mIdx = 0; mIdx < gCandidateModels.length; mIdx++) {
+        var gModelName = gCandidateModels[mIdx];
+        try {
+          var gUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + gModelName + ':generateContent?key=' + encodeURIComponent(gk);
+          var payload = {
+            contents: [{ role: 'user', parts: [{ text: (systemInstruction ? (systemInstruction + '\n\n') : '') + prompt }] }],
+            generationConfig: { temperature: temperature, maxOutputTokens: maxTokens }
+          };
+          var gCtrl = new AbortController();
+          var gTid = setTimeout(function () { gCtrl.abort(); }, 35000);
+          var res = await fetch(gUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal: gCtrl.signal
+          }).finally(function () { clearTimeout(gTid); });
+          if (res.ok) {
+            var data = await res.json();
+            if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+              var text = data.candidates[0].content.parts.map(function (p) { return p.text || ''; }).join('').trim();
+              if (text) return { success: true, text: text, provider: 'Google Gemini' };
+            }
+          } else {
+            console.warn('Gemini API HTTP Error on ' + gModelName + ':', res.status);
           }
-        } else {
-          console.warn('Gemini API HTTP Error:', res.status);
+        } catch (e) {
+          console.warn('Gemini request failed on ' + gModelName + ':', e);
         }
-      } catch (e) {
-        console.warn('Gemini request failed:', e);
       }
     }
 
