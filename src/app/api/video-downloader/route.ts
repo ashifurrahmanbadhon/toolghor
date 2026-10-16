@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { validateSafeUrl, isPrivateIp, handleCorsPreflight } from '@/lib/security';
 
 // Sliding-window rate limiter
 const ipRequestMap = new Map<string, { count: number; expiresAt: number }>();
@@ -16,52 +17,8 @@ function checkRateLimit(ip: string, isPolling = false): boolean {
   return true;
 }
 
-// SSRF Security Guard
-function isPrivateIp(ip: string): boolean {
-  if (!ip) return true;
-  const cleanIp = ip.trim().toLowerCase();
-  if (cleanIp === '127.0.0.1' || cleanIp === '0.0.0.0' || cleanIp === 'localhost') return true;
-  if (cleanIp.startsWith('10.')) return true;
-  if (cleanIp.startsWith('192.168.')) return true;
-  if (cleanIp.startsWith('169.254.')) return true;
-  if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(cleanIp)) return true;
-  if (cleanIp === '::1' || cleanIp === '::' || cleanIp.startsWith('fe80:') || cleanIp.startsWith('fc00:')) return true;
-  return false;
-}
-
-function validateSafeUrl(rawUrl: string): { safe: boolean; error?: string; urlObj?: URL } {
-  try {
-    const parsed = new URL(rawUrl.trim());
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      return { safe: false, error: 'Only HTTP and HTTPS URLs are supported.' };
-    }
-    const hostname = parsed.hostname.toLowerCase();
-    if (
-      hostname === 'localhost' ||
-      hostname.endsWith('.local') ||
-      hostname.endsWith('.internal') ||
-      hostname.endsWith('.localhost')
-    ) {
-      return { safe: false, error: 'Access to localhost and internal network addresses is blocked.' };
-    }
-    if (isPrivateIp(hostname)) {
-      return { safe: false, error: 'Access to private and cloud metadata addresses is blocked.' };
-    }
-    return { safe: true, urlObj: parsed };
-  } catch {
-    return { safe: false, error: 'Invalid URL format.' };
-  }
-}
-
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
+export async function OPTIONS(req: NextRequest) {
+  return handleCorsPreflight(req, 'GET, POST, OPTIONS');
 }
 
 // -------------------------------------------------------------
