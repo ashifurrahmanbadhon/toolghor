@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const { provider, key } = body;
 
-    const ALLOWED_PROVIDERS = ['convertapi', 'gemini', 'removebg', 'openai'];
+    const ALLOWED_PROVIDERS = ['convertapi', 'gemini', 'removebg', 'openai', 'ilovepdf'];
     const cleanProvider = typeof provider === 'string' ? provider.toLowerCase().trim() : '';
     if (!cleanProvider || !ALLOWED_PROVIDERS.includes(cleanProvider)) {
       return NextResponse.json(
@@ -48,13 +48,17 @@ export async function POST(req: NextRequest) {
 
     // Resolve key: client-passed key, or fallback to server env, or fallback to DB
     let resolvedKey = typeof key === 'string' ? key.trim() : '';
+    let resolvedPublicKey = typeof body.publicKey === 'string' ? body.publicKey.trim() : '';
 
     // If key contains mask bullets, resolve from server instead of testing the mask
     if (resolvedKey.startsWith('••') || resolvedKey.includes('••••')) {
       resolvedKey = '';
     }
+    if (resolvedPublicKey.startsWith('••') || resolvedPublicKey.includes('••••')) {
+      resolvedPublicKey = '';
+    }
 
-    if (!resolvedKey) {
+    if (!resolvedKey || (cleanProvider === 'ilovepdf' && !resolvedPublicKey)) {
       if (cleanProvider === 'gemini') {
         resolvedKey = (process.env.GEMINI_API_KEY || '').trim();
       } else if (cleanProvider === 'convertapi') {
@@ -63,14 +67,17 @@ export async function POST(req: NextRequest) {
         resolvedKey = (process.env.REMOVE_BG_API_KEY || process.env.REMOVEBG_API_KEY || '').trim();
       } else if (cleanProvider === 'openai') {
         resolvedKey = (process.env.OPENAI_API_KEY || '').trim();
+      } else if (cleanProvider === 'ilovepdf') {
+        if (!resolvedKey) resolvedKey = (process.env.ILOVEPDF_SECRET_KEY || '').trim();
+        if (!resolvedPublicKey) resolvedPublicKey = (process.env.ILOVEPDF_PUBLIC_KEY || '').trim();
       }
 
       // Check DB if env var is empty
-      if (!resolvedKey) {
+      if (!resolvedKey || (cleanProvider === 'ilovepdf' && !resolvedPublicKey)) {
         try {
           const sql = getDb();
           const rows = await sql`
-            SELECT gemini_key, convertapi_token, removebg_key, openai_key
+            SELECT gemini_key, convertapi_token, removebg_key, openai_key, ilovepdf_secret_key, ilovepdf_public_key
             FROM section_api_keys
             WHERE id = 1
             LIMIT 1
@@ -81,6 +88,10 @@ export async function POST(req: NextRequest) {
             else if (cleanProvider === 'convertapi') resolvedKey = (row.convertapi_token || '').trim();
             else if (cleanProvider === 'removebg') resolvedKey = (row.removebg_key || '').trim();
             else if (cleanProvider === 'openai') resolvedKey = (row.openai_key || '').trim();
+            else if (cleanProvider === 'ilovepdf') {
+              if (!resolvedKey) resolvedKey = (row.ilovepdf_secret_key || '').trim();
+              if (!resolvedPublicKey) resolvedPublicKey = (row.ilovepdf_public_key || '').trim();
+            }
           }
         } catch {}
       }
@@ -243,6 +254,61 @@ export async function POST(req: NextRequest) {
           message_bn: 'OpenAI সংযোগ ব্যর্থ হয়েছে বা সময় শেষ হয়েছে।',
         });
       }
+    }
+
+    if (cleanProvider === 'ilovepdf') {
+      if (resolvedPublicKey) {
+        try {
+          const authRes = await fetch('https://api.ilovepdf.com/v1/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ public_key: resolvedPublicKey }),
+            signal: AbortSignal.timeout(10000),
+          });
+          if (authRes.ok) {
+            const data = await authRes.json();
+            if (data.token) {
+              return NextResponse.json({
+                success: true,
+                valid: true,
+                message: 'Valid iLovePDF credentials (connected to server successfully).',
+                message_bn: 'iLovePDF ক্রেডেনশিয়াল সফলভাবে যাচাই হয়েছে।',
+              });
+            }
+          }
+          const errData = await authRes.json().catch(() => ({}));
+          const errMsg = errData?.error?.message || `HTTP ${authRes.status}`;
+          return NextResponse.json({
+            success: true,
+            valid: false,
+            message: `iLovePDF auth failed: ${errMsg}`,
+            message_bn: `iLovePDF অথেন্টিকেশন ব্যর্থ হয়েছে: ${errMsg}`,
+          });
+        } catch (err: any) {
+          return NextResponse.json({
+            success: true,
+            valid: false,
+            message: `iLovePDF connection error: ${err?.message || 'timeout'}`,
+            message_bn: 'iLovePDF সংযোগ ব্যর্থ হয়েছে বা সময় শেষ হয়েছে।',
+          });
+        }
+      }
+
+      if (resolvedKey && resolvedKey.startsWith('secret_key_')) {
+        return NextResponse.json({
+          success: true,
+          valid: true,
+          message: 'Secret key format valid. Please also enter your Project Public Key (starts with project_public_...) from your iLovePDF dashboard to connect.',
+          message_bn: 'সিক্রেট কী ফরম্যাট সঠিক। সংযোগ সম্পূর্ণ করতে iLovePDF ড্যাশবোর্ড থেকে প্রজেক্ট পাবলিক কী (project_public_...) প্রদান করুন।',
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        valid: false,
+        message: 'Invalid iLovePDF secret key format.',
+        message_bn: 'iLovePDF সিক্রেট কী-এর ফরম্যাট সঠিক নয়।',
+      });
     }
 
     return NextResponse.json(
