@@ -3,6 +3,8 @@
   var UI = window.UI, T = window.Tools;
   var CORE = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
   var ff = null, loading = null;
+  var isFFmpegBusy = false;
+  var ffRunCounter = 0;
 
   function getFFmpeg(setMsg) {
     if (ff) return Promise.resolve(ff);
@@ -25,9 +27,16 @@
     return new Error(tr('ভিডিও-ইঞ্জিন চালু করা যায়নি। ইন্টারনেট সংযোগ দেখুন। আর সাইটটি https:// ঠিকানা থেকে খুলুন (ফাইলে ডাবল-ক্লিক করে খুললে এই টুল চলবে না)। ', "Could not start the video engine. Check your internet connection, and open the site from an https:// address (this tool will not work if you just double-click the file). ") + (e && e.message ? '(' + e.message + ')' : ''));
   }
   async function runFF(setMsg, setPct, inName, file, args, outName) {
+    if (isFFmpegBusy) {
+      throw new Error(tr(
+        'ভিডিও-ইঞ্জিনটি বর্তমানে অন্য একটি টাস্কে ব্যস্ত আছে। অনুগ্রহ করে আগের প্রক্রিয়া শেষ হওয়া পর্যন্ত অপেক্ষা করুন।',
+        'The video engine is currently busy with another task. Please wait until the ongoing task completes.'
+      ));
+    }
+    isFFmpegBusy = true;
     var inst;
-    try { inst = await getFFmpeg(setMsg); } catch (e) { throw engineError(e); }
-    var onProg = function (ev) { var p = ev && ev.progress; if (isFinite(p)) setPct(Math.max(0, Math.min(99, p * 100))); };
+    try { inst = await getFFmpeg(setMsg); } catch (e) { isFFmpegBusy = false; throw engineError(e); }
+    var onProg = function (ev) { var p = ev && ev.progress; if (isFinite(p)) setPct(Math.max(0, Math.min(100, Math.round(p * 100)))); };
     inst.on('progress', onProg);
     try {
       setMsg(tr('ফাইল পড়া হচ্ছে…', "Reading the file…")); setPct(0);
@@ -36,11 +45,13 @@
       var code = await inst.exec(args);
       if (code !== 0) throw new Error(tr('প্রসেস করা যায়নি। ফাইলটি নষ্ট, বা এতে অডিও/ভিডিও ট্র্যাক নেই, অথবা ফরম্যাট সমর্থিত নয়।', "Could not process. The file may be damaged, have no audio/video track, or be in an unsupported format."));
       var data = await inst.readFile(outName);
+      setPct(100);
       return data;
     } finally {
       inst.off('progress', onProg);
       try { await inst.deleteFile(inName); } catch (e) { }
       try { await inst.deleteFile(outName); } catch (e) { }
+      isFFmpegBusy = false;
     }
   }
   function sizeCheck(f) {
@@ -67,7 +78,8 @@
       UI.clear(out); var prog = UI.progress(); out.appendChild(prog); go.disabled = true;
       try {
         sizeCheck(file);
-        var f = fmt.get(), inName = 'input.' + (UI.ext(file.name) || 'mp4'), outName = 'output.' + f;
+        var f = fmt.get(), runId = ++ffRunCounter + '_' + Date.now();
+        var inName = 'in_' + runId + '.' + (UI.ext(file.name) || 'mp4'), outName = 'out_' + runId + '.' + f;
         var args = ['-i', inName, '-vn'];
         if (f === 'mp3') args.push('-c:a', 'libmp3lame', '-b:a', br.value);
         else if (f === 'm4a') args.push('-c:a', 'aac', '-b:a', br.value);
@@ -129,7 +141,15 @@
         go.disabled = false;
         setTimeout(layoutBox, 50);
       });
-      vid.addEventListener('error', function () { stage.appendChild(UI.notice('warn', tr('প্রিভিউ দেখানো যাচ্ছে না (কোডেক সমর্থিত নয়)। তবু "ভিডিও বানান" চেষ্টা করতে পারেন, কিন্তু কাটার অবস্থান আন্দাজে হবে।', "The preview cannot be shown (codec not supported). You can still try \"Create video\", but the crop position will be a guess."))); });
+      vid.addEventListener('error', function () {
+        stage.appendChild(UI.notice('warn', tr('প্রিভিউ দেখানো যাচ্ছে না (কোডেক সমর্থিত নয়)। তবু "ভিডিও বানান" চেষ্টা করতে পারেন, কিন্তু কাটার অবস্থান আন্দাজে হবে।', "The preview cannot be shown (codec not supported). You can still try \"Create video\", but the crop position will be a guess.")));
+        if (!controls.parentNode) {
+          controls.appendChild(UI.el('div', { class: 'stack' }, UI.el('span', { class: 'lbl' }, tr('কোন মাপে কাটবেন?', "Which size do you want to crop to?")), tgt));
+          controls.appendChild(UI.el('div', { class: 'row' }, UI.field(tr('শুরুর সময় (সেকেন্ড), ঐচ্ছিক', "Start time (seconds), optional"), start), UI.field(tr('দৈর্ঘ্য (সেকেন্ড), ঐচ্ছিক', "Length (seconds), optional"), dur), UI.field(tr('প্রসেসিং', "Processing"), qual)));
+          controls.appendChild(go);
+          go.disabled = false;
+        }
+      });
     }
     function geom() {
       var r = PRESETS[preset].r, va = vw / vh, cw, ch;
@@ -166,7 +186,8 @@
         if (!vw) throw new Error(tr('ভিডিওর মাপ জানা যায়নি, তাই কাটা সম্ভব হচ্ছে না।', "The video size is unknown, so cropping is not possible."));
         var g = geom(), P = PRESETS[preset], f = Math.min(1, P.w / g.cw);
         var ow = even(g.cw * f), oh = even(g.ch * f);
-        var inName = 'input.' + (UI.ext(file.name) || 'mp4'), outName = 'output.mp4';
+        var runId = ++ffRunCounter + '_' + Date.now();
+        var inName = 'in_' + runId + '.' + (UI.ext(file.name) || 'mp4'), outName = 'out_' + runId + '.mp4';
         var ss = UI.parseNum(start.value), tt = UI.parseNum(dur.value), args = [];
         if (ss > 0) args.push('-ss', String(ss));
         args.push('-i', inName);
@@ -321,6 +342,7 @@
     var isFetchingFormats = false;
 
     async function fetchOnlineFormats() {
+      if (isFetchingFormats) return;
       var rawUrl = (onlineInput.value || '').trim();
       if (!rawUrl) {
         UI.clear(onlineStatusBox);
@@ -792,8 +814,9 @@
         sizeCheck(localFile);
         var targetExt = localFmt.get();
         var inExt = UI.ext(localFile.name) || 'mp4';
-        var inName = 'input.' + inExt;
-        var outName = 'output.' + targetExt;
+        var runId = ++ffRunCounter + '_' + Date.now();
+        var inName = 'in_' + runId + '.' + inExt;
+        var outName = 'out_' + runId + '.' + targetExt;
 
         var args = ['-i', inName];
 

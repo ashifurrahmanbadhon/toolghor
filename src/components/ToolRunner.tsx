@@ -12,15 +12,17 @@ interface ToolRunnerProps {
 export default function ToolRunner({ tool }: ToolRunnerProps) {
   const { lang } = useApp();
   const rootRef = useRef<HTMLDivElement>(null);
+  const lastTrackedSlug = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let isCancelled = false;
 
-    // Fast script loader that resolves immediately if script is already present or loaded
+    // Fast script loader with proper error tracking
     async function loadScript(src: string): Promise<void> {
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
         const existing = document.querySelector(`script[src="${src}"]`) as HTMLScriptElement;
         if (existing) {
           if (
@@ -30,18 +32,27 @@ export default function ToolRunner({ tool }: ToolRunnerProps) {
           ) {
             return resolve();
           }
-          // Attach listener with fast timeout fallback so it never hangs
+          if (existing.getAttribute('data-failed') === 'true') {
+            return reject(new Error(lang === 'bn' ? `স্ক্রিপ্ট লোড হতে ব্যর্থ হয়েছে: ${src}` : `Failed to load script: ${src}`));
+          }
           let done = false;
-          const finish = () => {
+          const finishOk = () => {
             if (!done) {
               done = true;
               existing.setAttribute('data-loaded', 'true');
               resolve();
             }
           };
-          existing.addEventListener('load', finish, { once: true });
-          existing.addEventListener('error', finish, { once: true });
-          setTimeout(finish, 80);
+          const finishErr = () => {
+            if (!done) {
+              done = true;
+              existing.setAttribute('data-failed', 'true');
+              reject(new Error(lang === 'bn' ? `স্ক্রিপ্ট লোড হতে ব্যর্থ হয়েছে: ${src}` : `Failed to load script: ${src}`));
+            }
+          };
+          existing.addEventListener('load', finishOk, { once: true });
+          existing.addEventListener('error', finishErr, { once: true });
+          setTimeout(finishOk, 80);
           return;
         }
 
@@ -53,8 +64,8 @@ export default function ToolRunner({ tool }: ToolRunnerProps) {
           resolve();
         };
         s.onerror = () => {
-          s.setAttribute('data-loaded', 'true');
-          resolve();
+          s.setAttribute('data-failed', 'true');
+          reject(new Error(lang === 'bn' ? `স্ক্রিপ্ট লোড হতে ব্যর্থ হয়েছে: ${src}` : `Failed to load script: ${src}`));
         };
         document.body.appendChild(s);
       });
@@ -71,12 +82,15 @@ export default function ToolRunner({ tool }: ToolRunnerProps) {
         document.body.setAttribute('data-tool', tool.slug);
         document.documentElement.lang = lang;
 
-        // Analytics (non-blocking in background)
-        fetch('/api/analytics/track', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ slug: tool.slug }),
-        }).catch(() => {});
+        // Analytics: only track once per unique tool slug (not on language toggles)
+        if (lastTrackedSlug.current !== tool.slug) {
+          lastTrackedSlug.current = tool.slug;
+          fetch('/api/analytics/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: tool.slug }),
+          }).catch(() => {});
+        }
 
         // Instant mounting if tool handler is ALREADY defined
         if (w.Tools && typeof w.Tools[tool.slug] === 'function' && rootRef.current) {
@@ -157,13 +171,22 @@ export default function ToolRunner({ tool }: ToolRunnerProps) {
               setLoading(false);
             } else {
               setLoading(false);
+              setError(
+                lang === 'bn'
+                  ? 'টুলটি লোড করা সম্ভব হয়নি। অনুগ্রহ করে ইন্টারনেট সংযোগ পরীক্ষা করে পুনরায় চেষ্টা করুন।'
+                  : 'Failed to initialize tool engine. Please check your internet connection and try again.'
+              );
             }
           }, 80);
         }
       } catch (err: any) {
         if (!isCancelled) {
           console.error('Error mounting tool:', err);
-          setError(err?.message || 'Failed to initialize tool engine.');
+          setError(
+            lang === 'bn'
+              ? 'টুলটি লোড করা সম্ভব হয়নি। অনুগ্রহ করে ইন্টারনেট সংযোগ পরীক্ষা করে পুনরায় চেষ্টা করুন।'
+              : (err?.message || 'Failed to initialize tool engine.')
+          );
           setLoading(false);
         }
       }
@@ -174,7 +197,7 @@ export default function ToolRunner({ tool }: ToolRunnerProps) {
     return () => {
       isCancelled = true;
     };
-  }, [tool.slug, tool.group, lang]);
+  }, [tool.slug, tool.group, lang, retryCount]);
 
   return (
     <div className="w-full">
@@ -190,9 +213,18 @@ export default function ToolRunner({ tool }: ToolRunnerProps) {
 
       {/* Error indicator */}
       {error && (
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
-          <span>{error}</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRetryCount((c) => c + 1)}
+            className="self-start sm:self-auto px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-medium text-xs transition-colors"
+          >
+            {lang === 'bn' ? 'পুনরায় চেষ্টা করুন' : 'Retry'}
+          </button>
         </div>
       )}
 

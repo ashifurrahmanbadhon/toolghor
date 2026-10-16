@@ -206,8 +206,8 @@
     document.body.appendChild(a); a.click();
     setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 5000);
   };
-  UI.copy = function (text) {
-    var done = function () { UI.toast(tr('কপি হয়েছে', "Copied")); };
+  UI.copy = function (text, msg) {
+    var done = function () { UI.toast(msg || tr('কপি হয়েছে', "Copied")); };
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(done, function () { legacy(); });
     } else legacy();
@@ -514,11 +514,14 @@
           contents: [{ role: 'user', parts: [{ text: (systemInstruction ? (systemInstruction + '\n\n') : '') + prompt }] }],
           generationConfig: { temperature: temperature, maxOutputTokens: maxTokens }
         };
+        var gCtrl = new AbortController();
+        var gTid = setTimeout(function () { gCtrl.abort(); }, 35000);
         var res = await fetch(gUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
+          body: JSON.stringify(payload),
+          signal: gCtrl.signal
+        }).finally(function () { clearTimeout(gTid); });
         if (res.ok) {
           var data = await res.json();
           if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
@@ -538,6 +541,8 @@
     for (var j = 0; j < openaiKeys.length; j++) {
       var ok = openaiKeys[j];
       try {
+        var oCtrl = new AbortController();
+        var oTid = setTimeout(function () { oCtrl.abort(); }, 35000);
         var oRes = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ok },
@@ -549,8 +554,9 @@
             ],
             temperature: temperature,
             max_tokens: maxTokens
-          })
-        });
+          }),
+          signal: oCtrl.signal
+        }).finally(function () { clearTimeout(oTid); });
         if (oRes.ok) {
           var oData = await oRes.json();
           if (oData.choices && oData.choices[0] && oData.choices[0].message) {
@@ -567,6 +573,8 @@
 
     // 3. Fallback to server-side AI proxy (securely uses server/database keys without leaking them)
     try {
+      var pCtrl = new AbortController();
+      var pTid = setTimeout(function () { pCtrl.abort(); }, 35000);
       var proxyRes = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -577,8 +585,9 @@
             temperature: temperature,
             maxTokens: maxTokens
           }
-        })
-      });
+        }),
+        signal: pCtrl.signal
+      }).finally(function () { clearTimeout(pTid); });
       if (proxyRes.ok) {
         var proxyData = await proxyRes.json();
         if (proxyData && proxyData.success && proxyData.text) {
