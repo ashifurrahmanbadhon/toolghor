@@ -50,6 +50,11 @@ export default function HomeClient({ initialData }: HomeClientProps) {
     }
   }, []);
 
+  // Ensure returning to Home or opening always starts with an empty search query
+  useEffect(() => {
+    setSearchQuery('');
+  }, [setSearchQuery]);
+
   // Sync browser document title with selected language
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -452,8 +457,14 @@ export default function HomeClient({ initialData }: HomeClientProps) {
                 <input
                   type="search"
                   id="q"
+                  name="site_tool_search_no_autofill"
                   placeholder={searchPlaceholder}
                   autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-form-type="other"
                   aria-label="Search tools"
                   aria-controls="sugg"
                   value={searchQuery}
