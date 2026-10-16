@@ -2,7 +2,7 @@ import { getDb } from '@/lib/db';
 
 let cachedSiteData: any = null;
 let lastCacheTime = 0;
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes high-performance in-memory cache (cleared instantly on admin edits)
+const CACHE_TTL_MS = 15 * 1000; // 15-second micro-cache, cleared instantly on admin edits
 
 export async function getPublicSiteData() {
   const now = Date.now();

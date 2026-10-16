@@ -13,7 +13,15 @@ export default function ToolRunner({ tool }: ToolRunnerProps) {
   const { lang } = useApp();
   const rootRef = useRef<HTMLDivElement>(null);
   const lastTrackedSlug = useRef<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const w = window as any;
+      if (w.Tools && typeof w.Tools[tool.slug] === 'function') {
+        return false;
+      }
+    }
+    return true;
+  });
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
@@ -107,33 +115,7 @@ export default function ToolRunner({ tool }: ToolRunnerProps) {
         setLoading(true);
         setError(null);
 
-        // 1. Parallel load core scripts if not yet ready
-        const corePromises: Promise<void>[] = [];
-        if (!w.SITE_CONFIG) corePromises.push(loadScript('/assets/config.js'));
-        if (!w.CATEGORIES) corePromises.push(loadScript('/assets/registry.js'));
-        if (!w.ICONS) corePromises.push(loadScript('/assets/icons.js'));
-        if (!w.UI) corePromises.push(loadScript('/assets/ui.js'));
-        if (corePromises.length > 0) {
-          await Promise.all(corePromises);
-        }
-
-        // 2. Parallel load vendor scripts based on tool group
-        const vendorPromises: Promise<void>[] = [];
-        if (tool.group === 'pdf' || tool.slug.includes('pdf')) {
-          if (!w.PDFLib) vendorPromises.push(loadScript('/assets/vendor/pdf-lib.min.js'));
-          if (!w.JSZip) vendorPromises.push(loadScript('/assets/vendor/jszip.min.js'));
-          if (!w.pdfjsLib) vendorPromises.push(loadScript('/assets/vendor/pdf.min.js'));
-        } else if (tool.group === 'image') {
-          if (!w.JSZip) vendorPromises.push(loadScript('/assets/vendor/jszip.min.js'));
-        } else if (tool.group === 'qr') {
-          if (!w.QRCode) vendorPromises.push(loadScript('/assets/vendor/qrcode.js'));
-          if (tool.slug === 'qr-decoder' && !w.jsQR) vendorPromises.push(loadScript('/assets/vendor/jsQR.js'));
-        }
-        if (vendorPromises.length > 0) {
-          await Promise.all(vendorPromises);
-        }
-
-        // 3. Load tool group script if handler not ready
+        // Tool group script map
         const groupScriptMap: Record<string, string> = {
           pdf: '/assets/tools/pdf.js',
           image: '/assets/tools/image.js',
@@ -143,9 +125,31 @@ export default function ToolRunner({ tool }: ToolRunnerProps) {
           resume: '/assets/tools/resume.js',
         };
 
+        // All required scripts (core, vendor, tool group) loaded in PARALLEL
+        const scriptPromises: Promise<void>[] = [];
+        if (!w.SITE_CONFIG) scriptPromises.push(loadScript('/assets/config.js'));
+        if (!w.CATEGORIES) scriptPromises.push(loadScript('/assets/registry.js'));
+        if (!w.ICONS) scriptPromises.push(loadScript('/assets/icons.js'));
+        if (!w.UI) scriptPromises.push(loadScript('/assets/ui.js'));
+
+        if (tool.group === 'pdf' || tool.slug.includes('pdf')) {
+          if (!w.PDFLib) scriptPromises.push(loadScript('/assets/vendor/pdf-lib.min.js'));
+          if (!w.JSZip) scriptPromises.push(loadScript('/assets/vendor/jszip.min.js'));
+          if (!w.pdfjsLib) scriptPromises.push(loadScript('/assets/vendor/pdf.min.js'));
+        } else if (tool.group === 'image') {
+          if (!w.JSZip) scriptPromises.push(loadScript('/assets/vendor/jszip.min.js'));
+        } else if (tool.group === 'qr') {
+          if (!w.QRCode) scriptPromises.push(loadScript('/assets/vendor/qrcode.js'));
+          if (tool.slug === 'qr-decoder' && !w.jsQR) scriptPromises.push(loadScript('/assets/vendor/jsQR.js'));
+        }
+
         const scriptUrl = groupScriptMap[tool.group];
         if (scriptUrl && (!w.Tools || typeof w.Tools[tool.slug] !== 'function')) {
-          await loadScript(scriptUrl);
+          scriptPromises.push(loadScript(scriptUrl));
+        }
+
+        if (scriptPromises.length > 0) {
+          await Promise.all(scriptPromises);
         }
 
         if (isCancelled) return;

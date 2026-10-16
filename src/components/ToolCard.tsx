@@ -59,16 +59,12 @@ export default function ToolCard({ tool, category }: ToolCardProps) {
       resume: '/assets/tools/resume.js',
     };
     const scriptUrl = groupScriptMap[tool.group];
-    if (
-      scriptUrl &&
-      !document.querySelector(`link[href="${scriptUrl}"]`) &&
-      !document.querySelector(`script[src="${scriptUrl}"]`)
-    ) {
-      const link = document.createElement('link');
-      link.rel = 'prefetch';
-      link.as = 'script';
-      link.href = scriptUrl;
-      document.head.appendChild(link);
+    if (scriptUrl && !document.querySelector(`script[src="${scriptUrl}"]`)) {
+      const s = document.createElement('script');
+      s.src = scriptUrl;
+      s.async = true;
+      s.onload = () => s.setAttribute('data-loaded', 'true');
+      document.body.appendChild(s);
     }
   };
 

@@ -109,6 +109,36 @@ export default function HomeClient({ initialData }: HomeClientProps) {
     }
   }, []);
 
+  // Idle prefetch tool scripts so opening any tool is instantaneous
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const prefetchUrls = [
+      '/assets/tools/calc.js',
+      '/assets/tools/image.js',
+      '/assets/tools/pdf.js',
+      '/assets/tools/qr.js',
+      '/assets/tools/media.js',
+      '/assets/tools/resume.js',
+    ];
+    const idleCallback = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 800));
+    const handle = idleCallback(() => {
+      prefetchUrls.forEach((url) => {
+        if (!document.querySelector(`link[href="${url}"]`) && !document.querySelector(`script[src="${url}"]`)) {
+          const l = document.createElement('link');
+          l.rel = 'prefetch';
+          l.as = 'script';
+          l.href = url;
+          document.head.appendChild(l);
+        }
+      });
+    });
+    return () => {
+      if ((window as any).cancelIdleCallback && typeof handle === 'number') {
+        (window as any).cancelIdleCallback(handle);
+      }
+    };
+  }, []);
+
   // Compute active categories list based on database status
   const activeCategories = useMemo(() => {
     if (!publicData || !publicData.categories || publicData.categories.length === 0) {
