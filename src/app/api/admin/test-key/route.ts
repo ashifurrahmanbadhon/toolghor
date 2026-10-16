@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (cleanProvider === 'gemini') {
-      const candidateModels = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
+      const candidateModels = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-1.5-flash'];
       let lastStatus = 0;
       for (const modelName of candidateModels) {
         try {
