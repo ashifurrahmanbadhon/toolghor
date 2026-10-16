@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPublicSiteData } from '@/lib/siteData';
-
-// Default ConvertAPI token from ToolGhor (Netlify & production configuration)
-const DEFAULT_CONVERTAPI_TOKEN = 'skmyWmKCXHFXHogM2ixxitPKCIKUcOEJ';
+import { getDb } from '@/lib/db';
 
 async function getConvertApiToken(): Promise<string> {
   const envToken = (process.env.CONVERTAPI_TOKEN || '').trim();
@@ -10,13 +7,20 @@ async function getConvertApiToken(): Promise<string> {
     return envToken;
   }
   try {
-    const siteData = await getPublicSiteData();
-    if (siteData?.apiKeys?.convertapi_active && siteData.apiKeys.convertapi_token) {
-      const dbToken = siteData.apiKeys.convertapi_token.trim();
+    const sql = getDb();
+    const rows = await sql`
+      SELECT convertapi_active, convertapi_token
+      FROM section_api_keys
+      WHERE id = 1
+      LIMIT 1
+    `;
+    const row = rows[0];
+    if (row && row.convertapi_active && row.convertapi_token) {
+      const dbToken = row.convertapi_token.trim();
       if (dbToken) return dbToken;
     }
   } catch (e) {}
-  return DEFAULT_CONVERTAPI_TOKEN;
+  return '';
 }
 
 export async function OPTIONS() {
@@ -32,6 +36,12 @@ export async function OPTIONS() {
 
 export async function POST(req: NextRequest) {
   const token = await getConvertApiToken();
+  if (!token) {
+    return NextResponse.json(
+      { error: 'ConvertAPI service is not configured on the server. Please set CONVERTAPI_TOKEN.' },
+      { status: 503 }
+    );
+  }
 
   try {
     const formData = await req.formData();

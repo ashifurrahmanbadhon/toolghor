@@ -2,8 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb, initDatabase } from '@/lib/db';
 import { clearSiteDataCache } from '@/lib/siteData';
 import { revalidatePath } from 'next/cache';
+import { verifyAdminRequest } from '@/lib/adminAuth';
 
 export async function GET(req: NextRequest) {
+  const session = verifyAdminRequest(req);
+  if (!session) {
+    return NextResponse.json(
+      { success: false, error: 'Unauthorized. Admin session required.' },
+      { status: 401 }
+    );
+  }
+
   try {
     const sql = getDb();
 
@@ -69,6 +78,14 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const session = verifyAdminRequest(req);
+  if (!session) {
+    return NextResponse.json(
+      { success: false, error: 'Unauthorized. Admin session required.' },
+      { status: 401 }
+    );
+  }
+
   try {
     const sql = getDb();
     const body = await req.json();

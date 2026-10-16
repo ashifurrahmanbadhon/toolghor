@@ -1100,13 +1100,8 @@
     /* Backend remove.bg API Connector */
     function getRemoveBgKey() {
       var k = '';
-      if (typeof SITE_CONFIG !== 'undefined' && SITE_CONFIG.apis && SITE_CONFIG.apis.removeBgKey) {
-        k = SITE_CONFIG.apis.removeBgKey.trim();
-      }
-      if (!k) {
-        try { k = (localStorage.getItem('th_api_removebg') || '').trim(); } catch (e) { }
-      }
-      return k || '***REMOVED***';
+      try { k = (localStorage.getItem('th_api_removebg') || '').trim(); } catch (e) { }
+      return k;
     }
 
     // Main workspace container

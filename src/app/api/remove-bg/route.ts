@@ -1,21 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPublicSiteData } from '@/lib/siteData';
-
-const DEFAULT_REMOVEBG_KEY = '***REMOVED***';
+import { getDb } from '@/lib/db';
 
 async function getRemoveBgKey(): Promise<string> {
-  const envKey = (process.env.REMOVE_BG_API_KEY || '').trim();
+  const envKey = (process.env.REMOVE_BG_API_KEY || process.env.REMOVEBG_API_KEY || '').trim();
   if (envKey && envKey !== 'your_key_here') {
     return envKey;
   }
   try {
-    const siteData = await getPublicSiteData();
-    if (siteData?.apiKeys?.removebg_active && siteData.apiKeys.removebg_key) {
-      const dbKey = siteData.apiKeys.removebg_key.trim();
+    const sql = getDb();
+    const rows = await sql`
+      SELECT removebg_active, removebg_key
+      FROM section_api_keys
+      WHERE id = 1
+      LIMIT 1
+    `;
+    const row = rows[0];
+    if (row && row.removebg_active && row.removebg_key) {
+      const dbKey = row.removebg_key.trim();
       if (dbKey) return dbKey;
     }
   } catch (e) {}
-  return DEFAULT_REMOVEBG_KEY;
+  return '';
 }
 
 export async function OPTIONS() {
@@ -31,6 +36,12 @@ export async function OPTIONS() {
 
 export async function POST(req: NextRequest) {
   const key = await getRemoveBgKey();
+  if (!key) {
+    return NextResponse.json(
+      { error: 'remove.bg API service is not configured on the server. Please set REMOVE_BG_API_KEY.' },
+      { status: 503 }
+    );
+  }
 
   try {
     const formData = await req.formData();

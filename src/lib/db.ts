@@ -265,7 +265,7 @@ export async function initDatabase() {
     CREATE TABLE IF NOT EXISTS admin_account (
       id INT PRIMARY KEY DEFAULT 1,
       username VARCHAR(100) NOT NULL DEFAULT 'admin',
-      passcode TEXT NOT NULL DEFAULT 'admin123',
+      passcode TEXT NOT NULL,
       email VARCHAR(255) NOT NULL DEFAULT 'ashifur.badhon@gmail.com',
       phone VARCHAR(50) NOT NULL DEFAULT '+8801521417284',
       reset_otp VARCHAR(10),
@@ -274,11 +274,14 @@ export async function initDatabase() {
     );
   `;
 
-  await sql`
-    INSERT INTO admin_account (id, username, passcode, email, phone)
-    VALUES (1, 'admin', 'admin123', 'ashifur.badhon@gmail.com', '+8801521417284')
-    ON CONFLICT (id) DO NOTHING;
-  `;
+  const setupPasscode = (process.env.ADMIN_SETUP_PASSCODE || process.env.ADMIN_INITIAL_PASSWORD || '').trim();
+  if (setupPasscode) {
+    await sql`
+      INSERT INTO admin_account (id, username, passcode, email, phone)
+      VALUES (1, 'admin', ${setupPasscode}, 'ashifur.badhon@gmail.com', '+8801521417284')
+      ON CONFLICT (id) DO NOTHING;
+    `;
+  }
 
   // 10. Password Reset Challenges (Cryptographically secure, hashed OTP, attempts, resend cooldown, and single-use bearer reset tokens)
   await sql`

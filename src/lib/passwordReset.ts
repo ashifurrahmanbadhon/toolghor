@@ -49,7 +49,10 @@ export function resetRateLimits(): void {
  * Returns a SHA-256 hash of a string with a server secret pepper.
  */
 function hashSecret(val: string): string {
-  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || 'toolghor-secure-otp-pepper-2026';
+  const secret = (process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || '').trim();
+  if (!secret) {
+    throw new Error('CRITICAL SECURITY ERROR: AUTH_SECRET environment variable is missing.');
+  }
   return crypto.createHmac('sha256', secret).update(val).digest('hex');
 }
 
