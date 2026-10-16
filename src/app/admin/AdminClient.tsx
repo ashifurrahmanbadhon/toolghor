@@ -368,7 +368,11 @@ export default function AdminConsole() {
           if (data.sections.tools) setTools(data.sections.tools);
           if (data.sections.footerSocial) setFooterSocial(data.sections.footerSocial);
           if (data.sections.creatorAbout) setCreatorAbout(data.sections.creatorAbout);
-          if (data.sections.apiKeys) setApiKeys(data.sections.apiKeys);
+          if (data.sections.apiKeys) {
+            const rawApi = { ...data.sections.apiKeys };
+            if (rawApi.gemini_key === '277226@Asif') rawApi.gemini_key = '';
+            setApiKeys(rawApi);
+          }
         }
         if (data.analytics) setAnalytics(data.analytics);
       } else {
@@ -779,11 +783,15 @@ export default function AdminConsole() {
 
   // 7. API Keys Updates
   const saveApiKeys = async (updated: ApiKeysSection) => {
-    // Safety guard: ensure no masked display strings are saved
+    // Safety guard: ensure no masked display strings or admin passcodes are saved into keys
     const safePayload: any = { ...updated };
     ['gemini_key', 'convertapi_token', 'removebg_key', 'openai_key'].forEach((k) => {
-      if (typeof safePayload[k] === 'string' && (safePayload[k].startsWith('••') || safePayload[k].includes('••••'))) {
-        safePayload[k] = undefined;
+      if (typeof safePayload[k] === 'string') {
+        if (safePayload[k].startsWith('••') || safePayload[k].includes('••••')) {
+          safePayload[k] = undefined;
+        } else if (safePayload[k].trim() === '277226@Asif') {
+          safePayload[k] = '';
+        }
       }
     });
     setApiKeys(safePayload);
@@ -3345,6 +3353,12 @@ export default function AdminConsole() {
                 </div>
               </div>
 
+              {/* Browser autofill blocker: dummy hidden fields that absorb browser credential autofill */}
+              <div style={{ position: 'absolute', opacity: 0, height: 0, width: 0, overflow: 'hidden', pointerEvents: 'none' }} tabIndex={-1} aria-hidden="true">
+                <input type="text" name="decoy_username_prevent_autofill" tabIndex={-1} autoComplete="username" />
+                <input type="password" name="decoy_password_prevent_autofill" tabIndex={-1} autoComplete="current-password" />
+              </div>
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {[
                   {
@@ -3466,6 +3480,8 @@ export default function AdminConsole() {
 
                       <div style={{ position: 'relative' }}>
                         <input
+                          id={`api_key_token_${item.key}`}
+                          name={`api_key_token_${item.key}`}
                           type={isRevealed ? 'text' : isFocused ? 'password' : 'text'}
                           value={displayValue}
                           onFocus={() => setFocusedKey((p) => ({ ...p, [item.key]: true }))}
@@ -3473,9 +3489,18 @@ export default function AdminConsole() {
                           onChange={(e) => {
                             const val = e.target.value;
                             if (!isRevealed && !isFocused && val.startsWith('••••••••')) return;
+                            if (val.trim() === '277226@Asif') return;
                             setApiKeys({ ...apiKeys, [item.key]: val });
                           }}
                           placeholder={item.placeholder}
+                          autoComplete="new-password"
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck={false}
+                          data-lpignore="true"
+                          data-1p-ignore="true"
+                          data-bwignore="true"
+                          data-form-type="other"
                           style={{
                             width: '100%',
                             padding: '11px 44px 11px 14px',

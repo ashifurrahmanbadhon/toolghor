@@ -10,6 +10,7 @@ import { POST as postWordToPdf } from '../src/app/api/convert-word-to-pdf/route'
 import { POST as postPdfToDocx } from '../src/app/api/convert-pdf-to-docx/route';
 import { POST as postTestKey } from '../src/app/api/admin/test-key/route';
 import { createAdminSessionToken, ADMIN_SESSION_COOKIE_NAME } from '../src/lib/adminAuth';
+import { getDb } from '../src/lib/db';
 import { siteConfig } from '../src/data/config';
 import { getConfigStatus, runConfigCheck } from '../src/lib/configCheck';
 import fs from 'node:fs';
@@ -298,7 +299,11 @@ test('Security Verification — Server Config Health Check & Bilingual Fail-Clos
 
   await t.test('POST /api/remove-bg fails closed with bilingual error when key is unconfigured', async () => {
     const origKey = process.env.REMOVE_BG_API_KEY;
+    const sql = getDb();
+    let origDb: any = null;
     try {
+      origDb = (await sql`SELECT removebg_active, removebg_key FROM section_api_keys WHERE id = 1`)[0];
+      await sql`UPDATE section_api_keys SET removebg_active = false WHERE id = 1`;
       delete process.env.REMOVE_BG_API_KEY;
       const req = new NextRequest('http://localhost:3000/api/remove-bg', {
         method: 'POST',
@@ -310,12 +315,19 @@ test('Security Verification — Server Config Health Check & Bilingual Fail-Clos
       assert.ok(body.error_bn, 'Must include Bengali error message');
     } finally {
       if (origKey !== undefined) process.env.REMOVE_BG_API_KEY = origKey;
+      if (origDb) {
+        await sql`UPDATE section_api_keys SET removebg_active = ${origDb.removebg_active} WHERE id = 1`;
+      }
     }
   });
 
   await t.test('POST /api/convert-word-to-pdf fails closed with bilingual error when token is unconfigured', async () => {
     const origToken = process.env.CONVERTAPI_TOKEN;
+    const sql = getDb();
+    let origDb: any = null;
     try {
+      origDb = (await sql`SELECT convertapi_active, convertapi_token FROM section_api_keys WHERE id = 1`)[0];
+      await sql`UPDATE section_api_keys SET convertapi_active = false WHERE id = 1`;
       delete process.env.CONVERTAPI_TOKEN;
       const req = new NextRequest('http://localhost:3000/api/convert-word-to-pdf', {
         method: 'POST',
@@ -327,12 +339,19 @@ test('Security Verification — Server Config Health Check & Bilingual Fail-Clos
       assert.ok(body.error_bn, 'Must include Bengali error message');
     } finally {
       if (origToken !== undefined) process.env.CONVERTAPI_TOKEN = origToken;
+      if (origDb) {
+        await sql`UPDATE section_api_keys SET convertapi_active = ${origDb.convertapi_active} WHERE id = 1`;
+      }
     }
   });
 
   await t.test('POST /api/convert-pdf-to-docx fails closed with bilingual error when token is unconfigured', async () => {
     const origToken = process.env.CONVERTAPI_TOKEN;
+    const sql = getDb();
+    let origDb: any = null;
     try {
+      origDb = (await sql`SELECT convertapi_active, convertapi_token FROM section_api_keys WHERE id = 1`)[0];
+      await sql`UPDATE section_api_keys SET convertapi_active = false WHERE id = 1`;
       delete process.env.CONVERTAPI_TOKEN;
       const req = new NextRequest('http://localhost:3000/api/convert-pdf-to-docx', {
         method: 'POST',
@@ -344,6 +363,9 @@ test('Security Verification — Server Config Health Check & Bilingual Fail-Clos
       assert.ok(body.error_bn, 'Must include Bengali error message');
     } finally {
       if (origToken !== undefined) process.env.CONVERTAPI_TOKEN = origToken;
+      if (origDb) {
+        await sql`UPDATE section_api_keys SET convertapi_active = ${origDb.convertapi_active} WHERE id = 1`;
+      }
     }
   });
 });
