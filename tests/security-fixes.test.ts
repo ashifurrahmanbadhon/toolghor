@@ -59,10 +59,14 @@ test('Security Verification — Public Data & Configs', async (t) => {
       assert.equal(typeof data.apiKeys.openai_active, 'boolean');
       assert.equal(typeof data.apiKeys.convertapi_active, 'boolean');
       assert.equal(typeof data.apiKeys.removebg_active, 'boolean');
+      if (data.apiKeys.ilovepdf_active !== undefined) {
+        assert.equal(typeof data.apiKeys.ilovepdf_active, 'boolean');
+      }
       assert.equal(data.apiKeys.gemini_key, undefined);
       assert.equal(data.apiKeys.openai_key, undefined);
       assert.equal(data.apiKeys.convertapi_token, undefined);
       assert.equal(data.apiKeys.removebg_key, undefined);
+      assert.equal(data.apiKeys.ilovepdf_secret_key, undefined);
     }
   });
 

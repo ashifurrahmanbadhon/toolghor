@@ -115,6 +115,9 @@ interface ApiKeysSection {
   removebg_key: string;
   openai_active: boolean;
   openai_key: string;
+  ilovepdf_active?: boolean;
+  ilovepdf_public_key?: string;
+  ilovepdf_secret_key?: string;
 }
 
 type MenuTab =
@@ -247,6 +250,9 @@ export default function AdminConsole() {
     removebg_key: '',
     openai_active: true,
     openai_key: '',
+    ilovepdf_active: true,
+    ilovepdf_public_key: '',
+    ilovepdf_secret_key: '',
   });
 
   const [analytics, setAnalytics] = useState<Record<string, number>>({});
@@ -299,19 +305,25 @@ export default function AdminConsole() {
     return '••••••••' + trimmed.slice(-4);
   };
 
-  const runTestKey = async (provider: string, keyField: string) => {
+  const runTestKey = async (provider: string, keyField: string, secondKeyField?: string) => {
     setTestingKey((p) => ({ ...p, [provider]: true }));
     setTestResult((p) => ({ ...p, [provider]: null }));
 
     try {
       const currentKey = ((apiKeys as any)[keyField] || '').trim();
+      const currentSecond = secondKeyField ? ((apiKeys as any)[secondKeyField] || '').trim() : '';
+      const payload: any = {
+        provider,
+        key: currentKey.startsWith('••') ? '' : currentKey,
+      };
+      if (secondKeyField) {
+        payload.publicKey = currentSecond.startsWith('••') ? '' : currentSecond;
+      }
+
       const res = await fetch('/api/admin/test-key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider,
-          key: currentKey.startsWith('••') ? '' : currentKey,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -789,7 +801,7 @@ export default function AdminConsole() {
   const saveApiKeys = async (updated: ApiKeysSection) => {
     // Safety guard: ensure no masked display strings or admin passcodes are saved into keys
     const safePayload: any = { ...updated };
-    ['gemini_key', 'convertapi_token', 'removebg_key', 'openai_key'].forEach((k) => {
+    ['gemini_key', 'convertapi_token', 'removebg_key', 'openai_key', 'ilovepdf_secret_key', 'ilovepdf_public_key'].forEach((k) => {
       if (typeof safePayload[k] === 'string') {
         if (safePayload[k].startsWith('••') || safePayload[k].includes('••••')) {
           safePayload[k] = undefined;
@@ -3422,6 +3434,17 @@ export default function AdminConsole() {
                     color: '#10b981',
                   },
                   {
+                    key: 'ilovepdf_secret_key',
+                    secondKey: 'ilovepdf_public_key',
+                    activeKey: 'ilovepdf_active',
+                    provider: 'ilovepdf',
+                    label: 'iLovePDF Cloud Engine',
+                    desc: 'High-speed cloud processing for Merge PDF, Split PDF, and Compress PDF',
+                    placeholder: 'secret_key_...',
+                    secondPlaceholder: 'project_public_... (Project Public Key)',
+                    color: '#e11d48',
+                  },
+                  {
                     key: 'convertapi_token',
                     activeKey: 'convertapi_active',
                     provider: 'convertapi',
@@ -3451,7 +3474,9 @@ export default function AdminConsole() {
                 ].map((item) => {
                   const isActive = (apiKeys as any)[item.activeKey];
                   const rawVal = (apiKeys as any)[item.key] || '';
-                  const hasKey = Boolean(rawVal.trim());
+                  const hasKey = item.secondKey
+                    ? Boolean(rawVal.trim() || ((apiKeys as any)[item.secondKey] || '').trim())
+                    : Boolean(rawVal.trim());
                   const isRevealed = Boolean(showKey[item.key]);
                   const isFocused = Boolean(focusedKey[item.key]);
                   const displayValue = isRevealed || isFocused ? rawVal : formatMaskedKey(rawVal);
@@ -3482,7 +3507,7 @@ export default function AdminConsole() {
                           {/* Minimal Test Button */}
                           <button
                             type="button"
-                            onClick={() => runTestKey(item.provider, item.key)}
+                            onClick={() => runTestKey(item.provider, item.key, item.secondKey)}
                             disabled={testingKey[item.provider]}
                             style={{
                               padding: '6px 14px',
@@ -3529,6 +3554,43 @@ export default function AdminConsole() {
                         </div>
                       </div>
 
+                      {item.secondKey && (
+                        <div style={{ marginBottom: '12px' }}>
+                          <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>
+                            Project Public Key (public_key)
+                          </label>
+                          <input
+                            id={`api_key_token_${item.secondKey}`}
+                            name={`api_key_token_${item.secondKey}`}
+                            type="text"
+                            value={(apiKeys as any)[item.secondKey] || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val.trim() === '277226@Asif') return;
+                              setApiKeys({ ...apiKeys, [item.secondKey!]: val });
+                            }}
+                            placeholder={item.secondPlaceholder || 'project_public_...'}
+                            autoComplete="off"
+                            spellCheck={false}
+                            style={{
+                              width: '100%',
+                              padding: '11px 14px',
+                              borderRadius: '10px',
+                              background: '#0b0f19',
+                              border: '1px solid #334155',
+                              color: '#f8fafc',
+                              fontSize: '13.5px',
+                              fontFamily: 'monospace',
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {item.secondKey && (
+                        <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>
+                          Project Secret Key (secret_key)
+                        </label>
+                      )}
                       <div style={{ position: 'relative' }}>
                         <input
                           id={`api_key_token_${item.key}`}

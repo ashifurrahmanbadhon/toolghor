@@ -252,13 +252,16 @@ export async function initDatabase() {
       removebg_key TEXT DEFAULT '',
       openai_active BOOLEAN NOT NULL DEFAULT true,
       openai_key TEXT DEFAULT '',
+      ilovepdf_active BOOLEAN NOT NULL DEFAULT true,
+      ilovepdf_public_key TEXT DEFAULT '',
+      ilovepdf_secret_key TEXT DEFAULT '',
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `;
 
   await sql`
-    INSERT INTO section_api_keys (id, is_active, gemini_active, gemini_key, convertapi_active, convertapi_token, removebg_active, removebg_key, openai_active, openai_key)
-    VALUES (1, true, true, '', true, '', true, '', true, '')
+    INSERT INTO section_api_keys (id, is_active, gemini_active, gemini_key, convertapi_active, convertapi_token, removebg_active, removebg_key, openai_active, openai_key, ilovepdf_active, ilovepdf_public_key, ilovepdf_secret_key)
+    VALUES (1, true, true, '', true, '', true, '', true, '', true, '', '')
     ON CONFLICT (id) DO NOTHING;
   `;
 

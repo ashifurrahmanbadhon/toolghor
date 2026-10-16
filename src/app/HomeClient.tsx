@@ -79,6 +79,7 @@ export default function HomeClient({ initialData }: HomeClientProps) {
         w.SITE_CONFIG.apis.openaiActive = Boolean(data.apiKeys.openai_active);
         w.SITE_CONFIG.apis.convertApiActive = Boolean(data.apiKeys.convertapi_active);
         w.SITE_CONFIG.apis.removeBgActive = Boolean(data.apiKeys.removebg_active);
+        w.SITE_CONFIG.apis.ilovepdfActive = Boolean(data.apiKeys.ilovepdf_active);
       }
       if (data.uiSettings) {
         w.UI_SETTINGS = data.uiSettings;
