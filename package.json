@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "npx tsx --env-file=.env.local --test tests/auth-recovery.test.ts"
+    "test": "npx tsx --env-file=.env.local --test tests/*.test.ts"
   },
   "dependencies": {
     "@distube/ytdl-core": "^4.16.12",

@@ -583,6 +583,7 @@
         body: JSON.stringify({
           prompt: prompt,
           options: {
+            toolSlug: (typeof document !== 'undefined' && document.body && document.body.getAttribute('data-tool')) || '',
             systemInstruction: systemInstruction,
             temperature: temperature,
             maxTokens: maxTokens

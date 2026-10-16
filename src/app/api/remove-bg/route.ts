@@ -35,7 +35,10 @@ export async function POST(req: NextRequest) {
   const rateLimit = await checkPersistentRateLimit(`rbg_${ip}`, 100, 86400);
   if (!rateLimit.allowed) {
     return NextResponse.json(
-      { error: 'Daily conversion quota reached. Please try again tomorrow.' },
+      {
+        error: 'Daily conversion quota reached. Please try again tomorrow.',
+        error_bn: 'দৈনিক কনভার্সন সীমা শেষ হয়েছে। অনুগ্রহ করে আগামীকাল আবার চেষ্টা করুন।'
+      },
       { status: 429, headers: getCorsHeaders(req) }
     );
   }
@@ -43,7 +46,10 @@ export async function POST(req: NextRequest) {
   const key = await getRemoveBgKey();
   if (!key) {
     return NextResponse.json(
-      { error: 'remove.bg API service is not configured on the server. Please set REMOVE_BG_API_KEY.' },
+      {
+        error: 'remove.bg API service is not configured on the server. Please set REMOVE_BG_API_KEY.',
+        error_bn: 'সার্ভারে remove.bg API কনফিগার করা নেই। অনুগ্রহ করে REMOVE_BG_API_KEY সেট করুন।'
+      },
       { status: 503, headers: getCorsHeaders(req) }
     );
   }
@@ -54,7 +60,10 @@ export async function POST(req: NextRequest) {
 
     if (!imageFile) {
       return NextResponse.json(
-        { error: 'No image file provided' },
+        {
+          error: 'No image file provided',
+          error_bn: 'কোনো ইমেজ ফাইল প্রদান করা হয়নি'
+        },
         { status: 400, headers: getCorsHeaders(req) }
       );
     }
@@ -62,7 +71,10 @@ export async function POST(req: NextRequest) {
     // 2. File size cap (25MB) to protect serverless memory and API quotas
     if (imageFile.size > 25 * 1024 * 1024) {
       return NextResponse.json(
-        { error: 'Image file size exceeds the allowed limit (25MB).' },
+        {
+          error: 'Image file size exceeds the allowed limit (25MB).',
+          error_bn: 'ইমেজ ফাইলের সাইজ অনুমোদিত সীমা (২৫MB) অতিক্রম করেছে।'
+        },
         { status: 413, headers: getCorsHeaders(req) }
       );
     }
@@ -84,7 +96,10 @@ export async function POST(req: NextRequest) {
       const errJson = await res.json().catch(() => ({}));
       console.error('[remove.bg API Error]', res.status, errJson);
       return NextResponse.json(
-        { error: (errJson && errJson.errors && errJson.errors[0]?.title) || 'Failed to remove background' },
+        {
+          error: (errJson && errJson.errors && errJson.errors[0]?.title) || 'Failed to remove background',
+          error_bn: 'ব্যাকগ্রাউন্ড রিমুভ করা সম্ভব হয়নি।'
+        },
         { status: res.status, headers: getCorsHeaders(req) }
       );
     }
@@ -101,7 +116,10 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error('[remove.bg Proxy Exception]', err);
     return NextResponse.json(
-      { error: 'Internal server error processing background removal' },
+      {
+        error: 'Internal server error processing background removal',
+        error_bn: 'ব্যাকগ্রাউন্ড রিমুভ প্রসেসিংয়ে অভ্যন্তরীণ সার্ভার ত্রুটি ঘটেছে।'
+      },
       { status: 500, headers: getCorsHeaders(req) }
     );
   }
