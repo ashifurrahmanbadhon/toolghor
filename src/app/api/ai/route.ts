@@ -177,7 +177,13 @@ export async function POST(req: NextRequest) {
 
     // 1. Try Google Gemini if configured and active
     if (geminiActive && geminiKey) {
-      const candidateModels = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-1.5-flash'];
+      const candidateModels = [
+        'gemini-3.5-flash-lite',
+        'gemini-3.5-flash',
+        'gemini-flash-lite-latest',
+        'gemma-4-26b-a4b-it',
+        'gemini-3.8-flash',
+      ];
       for (const modelName of candidateModels) {
         try {
           const gUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(geminiKey)}`;
