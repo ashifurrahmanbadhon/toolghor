@@ -12,7 +12,8 @@ import { ShieldCheck, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { getPublicSiteData } from '@/lib/siteData';
 import ToolPageClient from './ToolPageClient';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export function generateStaticParams() {
   return TOOLS.map((t) => ({ slug: t.slug }));

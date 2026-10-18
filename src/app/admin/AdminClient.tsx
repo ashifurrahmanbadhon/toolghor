@@ -706,6 +706,13 @@ export default function AdminConsole() {
       }
       if (res.ok) {
         showNotification(successMessage);
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+          try {
+            const ch = new BroadcastChannel('toolghor_sync');
+            ch.postMessage('refresh');
+            setTimeout(() => ch.close(), 200);
+          } catch {}
+        }
         return true;
       }
       return false;

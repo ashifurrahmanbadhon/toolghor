@@ -17,15 +17,32 @@ export default function Footer({ customSettings }: FooterProps) {
       setLiveFooter(customSettings);
       return;
     }
-    // Fetch live footer/social settings from database
-    fetch('/api/public/data')
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success && data.footerSocial) {
-          setLiveFooter(data.footerSocial);
-        }
-      })
-      .catch(() => {});
+    const fetchFooter = () => {
+      fetch('/api/public/data?t=' + Date.now(), { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && data.success && data.footerSocial) {
+            setLiveFooter(data.footerSocial);
+          }
+        })
+        .catch(() => {});
+    };
+
+    fetchFooter();
+
+    let channel: BroadcastChannel | null = null;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        channel = new BroadcastChannel('toolghor_sync');
+        channel.onmessage = (evt) => {
+          if (evt.data === 'refresh') fetchFooter();
+        };
+      } catch {}
+    }
+
+    return () => {
+      if (channel) channel.close();
+    };
   }, [customSettings]);
 
   const isFooterActive = liveFooter ? liveFooter.is_active : true;

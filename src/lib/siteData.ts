@@ -1,14 +1,8 @@
 import { getDb } from '@/lib/db';
 
 let cachedSiteData: any = null;
-let lastCacheTime = 0;
-const CACHE_TTL_MS = 15 * 1000; // 15-second micro-cache, cleared instantly on admin edits
 
 export async function getPublicSiteData() {
-  const now = Date.now();
-  if (cachedSiteData && now - lastCacheTime < CACHE_TTL_MS) {
-    return cachedSiteData;
-  }
 
   try {
     const sql = getDb();
@@ -58,7 +52,6 @@ export async function getPublicSiteData() {
     };
 
     cachedSiteData = data;
-    lastCacheTime = now;
     return data;
   } catch (error: any) {
     console.warn('[getPublicSiteData Notice]: Serving cached/default site data. Reason:', error?.message);
@@ -69,6 +62,5 @@ export async function getPublicSiteData() {
 
 export function clearSiteDataCache() {
   cachedSiteData = null;
-  lastCacheTime = 0;
 }
 

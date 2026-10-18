@@ -15,6 +15,10 @@ import {
 } from '@/lib/passwordReset';
 import { runConfigCheck } from '@/lib/configCheck';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 export async function POST(req: NextRequest) {
   runConfigCheck();
   try {

@@ -90,7 +90,7 @@ export default function HomeClient({ initialData }: HomeClientProps) {
     };
 
     const syncData = () => {
-      fetch('/api/public/data?t=' + Date.now())
+      fetch('/api/public/data?t=' + Date.now(), { cache: 'no-store' })
         .then((res) => res.json())
         .then((data) => {
           if (data && data.success) {
@@ -103,13 +103,27 @@ export default function HomeClient({ initialData }: HomeClientProps) {
 
     if (publicData) {
       syncGlobals(publicData);
-    } else {
-      syncData();
+    }
+    syncData();
+
+    let channel: BroadcastChannel | null = null;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        channel = new BroadcastChannel('toolghor_sync');
+        channel.onmessage = (evt) => {
+          if (evt.data === 'refresh') {
+            syncData();
+          }
+        };
+      } catch {}
     }
 
     if (typeof window !== 'undefined') {
       window.addEventListener('focus', syncData);
-      return () => window.removeEventListener('focus', syncData);
+      return () => {
+        window.removeEventListener('focus', syncData);
+        if (channel) channel.close();
+      };
     }
   }, []);
 

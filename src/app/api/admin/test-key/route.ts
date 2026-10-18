@@ -3,6 +3,10 @@ import { verifyAdminRequest } from '@/lib/adminAuth';
 import { checkPersistentRateLimit } from '@/lib/security';
 import { getDb } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 export async function POST(req: NextRequest) {
   // 1. Session-gated: only authenticated admin can invoke
   const session = verifyAdminRequest(req);

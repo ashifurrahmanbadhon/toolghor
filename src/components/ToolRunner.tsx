@@ -171,7 +171,7 @@ export default function ToolRunner({ tool, apiKeys }: ToolRunnerProps) {
         // Fallback: If iLovePDF public key is still placeholder or missing, fetch from /api/public/data
         if (!w.SITE_CONFIG?.apis?.ilovepdfPublicKey || w.SITE_CONFIG.apis.ilovepdfPublicKey.startsWith('project_public_d3a21718')) {
           try {
-            const pRes = await fetch('/api/public/data');
+            const pRes = await fetch('/api/public/data?t=' + Date.now(), { cache: 'no-store' });
             if (pRes.ok) {
               const pData = await pRes.json();
               if (pData?.apiKeys) {

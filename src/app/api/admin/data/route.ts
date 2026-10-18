@@ -4,6 +4,10 @@ import { clearSiteDataCache } from '@/lib/siteData';
 import { revalidatePath } from 'next/cache';
 import { verifyAdminRequest, isAuthSecretDerived } from '@/lib/adminAuth';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 export async function GET(req: NextRequest) {
   const session = verifyAdminRequest(req);
   if (!session) {
@@ -100,8 +104,18 @@ export async function POST(req: NextRequest) {
         revalidatePath('/tools/[slug]', 'page');
         revalidatePath('/tools/[slug]', 'layout');
         revalidatePath('/admin', 'page');
+        revalidatePath('/api/public/data');
       } catch (e) {}
-      return NextResponse.json({ success: true, message, ...extra });
+      return NextResponse.json(
+        { success: true, message, ...extra },
+        {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0',
+            'CDN-Cache-Control': 'no-store',
+            'Vercel-CDN-Cache-Control': 'no-store',
+          },
+        }
+      );
     }
 
     // 1. Update Hero section independently
@@ -354,6 +368,29 @@ export async function POST(req: NextRequest) {
         WHERE id = 1;
       `;
       return notifyLiveUpdate('API Keys updated successfully');
+    }
+
+    // 8. Update UI Settings section independently
+    if (action === 'update_ui_settings') {
+      const {
+        default_theme,
+        cursor_animation_type,
+        cursor_animation_active,
+        background_animation_active,
+        high_performance_mode,
+      } = payload;
+      await sql`
+        UPDATE section_ui_settings
+        SET
+          default_theme = COALESCE(${default_theme}, default_theme),
+          cursor_animation_type = COALESCE(${cursor_animation_type}, cursor_animation_type),
+          cursor_animation_active = COALESCE(${cursor_animation_active}, cursor_animation_active),
+          background_animation_active = COALESCE(${background_animation_active}, background_animation_active),
+          high_performance_mode = COALESCE(${high_performance_mode}, high_performance_mode),
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = 1;
+      `;
+      return notifyLiveUpdate('UI Settings updated successfully');
     }
 
     return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 });
