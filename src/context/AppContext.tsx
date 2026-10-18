@@ -78,6 +78,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (w.UI) {
         w.UI.lang = newLang;
         w.UI.digits = newLang === 'bn' ? 'bn' : 'en';
+        if (typeof w.UI.updateInAppBanner === 'function') {
+          w.UI.updateInAppBanner();
+        }
       }
     } catch {}
   };

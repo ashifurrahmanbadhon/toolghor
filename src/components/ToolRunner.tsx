@@ -106,6 +106,9 @@ export default function ToolRunner({ tool, apiKeys }: ToolRunnerProps) {
           if (w.UI) {
             w.UI.lang = lang;
             w.UI.digits = lang === 'bn' ? 'bn' : 'en';
+            if (typeof w.UI.ensureInAppBanner === 'function') {
+              w.UI.ensureInAppBanner();
+            }
           }
           rootRef.current.innerHTML = '';
           w.Tools[tool.slug](rootRef.current);
@@ -193,6 +196,9 @@ export default function ToolRunner({ tool, apiKeys }: ToolRunnerProps) {
         if (rootRef.current && w.Tools && typeof w.Tools[tool.slug] === 'function') {
           rootRef.current.innerHTML = '';
           w.Tools[tool.slug](rootRef.current);
+          if (w.UI && typeof w.UI.ensureInAppBanner === 'function') {
+            w.UI.ensureInAppBanner();
+          }
           setLoading(false);
         } else {
           // Fast check retry
@@ -201,6 +207,9 @@ export default function ToolRunner({ tool, apiKeys }: ToolRunnerProps) {
             if (rootRef.current && w.Tools && typeof w.Tools[tool.slug] === 'function') {
               rootRef.current.innerHTML = '';
               w.Tools[tool.slug](rootRef.current);
+              if (w.UI && typeof w.UI.ensureInAppBanner === 'function') {
+                w.UI.ensureInAppBanner();
+              }
               setLoading(false);
             } else {
               setLoading(false);
@@ -229,6 +238,12 @@ export default function ToolRunner({ tool, apiKeys }: ToolRunnerProps) {
 
     return () => {
       isCancelled = true;
+      if (typeof window !== 'undefined') {
+        const w = window as any;
+        if (w.UI && typeof w.UI.removeInAppBanner === 'function') {
+          w.UI.removeInAppBanner();
+        }
+      }
     };
   }, [tool.slug, tool.group, lang, retryCount]);
 

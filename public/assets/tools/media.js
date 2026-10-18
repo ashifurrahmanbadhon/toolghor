@@ -394,24 +394,7 @@
 
     function triggerBrowserDownload(downloadUrl, filename) {
       if (!downloadUrl) return;
-
-      // Safe browser attachment download: uses _self on mobile to invoke system DownloadManager without blank tabs
-      try {
-        var a = document.createElement('a');
-        a.href = downloadUrl;
-        if (filename) a.download = filename;
-        var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
-        a.target = isMobile ? '_self' : '_blank';
-        a.rel = 'noopener noreferrer';
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(function () {
-          if (a && a.parentNode) a.parentNode.removeChild(a);
-        }, 2000);
-      } catch (e) {
-        window.location.assign(downloadUrl);
-      }
+      UI.download(downloadUrl, filename);
     }
 
     function renderDownloadSuccess(title, quality, container, downloadUrl, filename) {
@@ -440,6 +423,10 @@
         download: filename || '',
         target: '_self',
         rel: 'noopener noreferrer',
+        onclick: function (e) {
+          e.preventDefault();
+          UI.download(downloadUrl, filename);
+        },
         style: 'background:#10b981; border-color:#10b981; font-weight:700; color:#fff; text-decoration:none; display:inline-flex; align-items:center; gap:8px; padding:10px 18px; border-radius:8px; cursor:pointer;'
       }, '📥 ' + tr('সরাসরি ফাইল সেভ করুন (Save File Directly)', 'Save File Directly'));
 

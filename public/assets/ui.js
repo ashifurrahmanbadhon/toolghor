@@ -12,6 +12,14 @@
       return UI.ROOT || '/';
     }
   };
+
+  function isInAppBrowser() {
+    var ua = (typeof navigator !== 'undefined' && (navigator.userAgent || navigator.vendor)) || '';
+    return /FBAN|FBAV|FB_IAB|FBIOS|Messenger|Instagram|Line\/|MicroMessenger|Twitter/i.test(ua);
+  }
+  UI.isInAppBrowser = isInAppBrowser;
+  window.isInAppBrowser = isInAppBrowser;
+
   var BN = '০১২৩৪৫৬৭৮৯';
 
   /* ভাষা: <html lang="bn|en"> থেকে আসে। বাংলা পেজে বাংলা, বাকিগুলোতে ইংরেজি। */
@@ -22,6 +30,7 @@
     return cur === 'bn' ? bn : en;
   };
   window.tr = UI.tr;
+  var tr = UI.tr;
   UI.digits = LANG === 'bn' ? 'bn' : 'en';
   UI.locale = LANG === 'bn' ? 'bn-BD' : 'en-GB';
   UI.numLocale = LANG === 'bn' ? 'bn-BD' : 'en-IN';
@@ -262,6 +271,13 @@
       }
     }
 
+    if (isInAppBrowser()) {
+      try { window.open(url, '_blank', 'noopener'); } catch (e) {}
+      UI.toast(tr('নতুন ট্যাবে ফাইল খুলেছে, চেপে ধরে সেভ করুন', 'File opened in a new tab — long-press it to save'));
+      if (shouldRevoke && url) setTimeout(function(){ try { URL.revokeObjectURL(url); } catch (e) {} }, 60000);
+      return;
+    }
+
     a.href = url;
     document.body.appendChild(a);
 
@@ -425,7 +441,7 @@
             res(null);
           }
         }
-      }, 1500);
+      }, 180000);
 
       try {
         if (typeof canvas.toBlob === 'function') {
@@ -1479,9 +1495,120 @@
     }
   });
 
+  var iabBannerDismissedSlug = null;
+
+  function isToolPage() {
+    if (typeof window === 'undefined') return false;
+    if (document.body && document.body.getAttribute('data-tool')) return true;
+    if (typeof UI.getToolSlug === 'function' && UI.getToolSlug()) return true;
+    if (window.location && /\/tools\/[^\/]+/.test(window.location.pathname)) return true;
+    if (document.querySelector('.tool-page')) return true;
+    return false;
+  }
+
+  UI.updateInAppBanner = function () {
+    var banner = document.getElementById('tg-iab-banner');
+    if (!banner) return;
+    var msgEl = banner.querySelector('.tg-iab-msg');
+    if (msgEl) {
+      msgEl.textContent = tr('📱 সহজে ডাউনলোড করতে Chrome/Safari তে খুলুন', '📱 Open in Chrome/Safari for easier downloads');
+    }
+    var btnEl = banner.querySelector('.tg-iab-btn');
+    if (btnEl) {
+      btnEl.textContent = tr('Chrome এ খুলুন', 'Open in Chrome');
+      btnEl.href = 'intent://' + window.location.host + window.location.pathname + window.location.search + '#Intent;scheme=https;package=com.android.chrome;end';
+    }
+    var iosEl = banner.querySelector('.tg-iab-ios-hint');
+    if (iosEl) {
+      iosEl.textContent = tr('••• মেনু → "Open in Safari" চাপুন', 'Tap ••• menu → "Open in Safari"');
+    }
+    var closeEl = banner.querySelector('.tg-iab-close');
+    if (closeEl) {
+      closeEl.setAttribute('aria-label', tr('বন্ধ করুন', 'Close'));
+    }
+  };
+
+  UI.ensureInAppBanner = function () {
+    if (!isInAppBrowser() || !isToolPage()) {
+      var old = document.getElementById('tg-iab-banner');
+      if (old && !isToolPage()) old.remove();
+      return;
+    }
+
+    var currentTool = (document.body && document.body.getAttribute('data-tool')) || (window.location && window.location.pathname) || 'tool';
+    if (iabBannerDismissedSlug === currentTool) {
+      return;
+    }
+
+    var existing = document.getElementById('tg-iab-banner');
+    if (existing) {
+      UI.updateInAppBanner();
+      return;
+    }
+
+    var banner = document.createElement('aside');
+    banner.id = 'tg-iab-banner';
+    banner.className = 'tg-iab-banner';
+    banner.setAttribute('role', 'banner');
+    banner.setAttribute('aria-label', tr('ইন-অ্যাপ ব্রাউজার নোটিশ', 'In-app browser notice'));
+
+    var inner = document.createElement('div');
+    inner.className = 'tg-iab-banner-inner';
+
+    var msg = document.createElement('div');
+    msg.className = 'tg-iab-msg';
+    msg.textContent = tr('📱 সহজে ডাউনলোড করতে Chrome/Safari তে খুলুন', '📱 Open in Chrome/Safari for easier downloads');
+
+    var actions = document.createElement('div');
+    actions.className = 'tg-iab-actions';
+
+    var ua = (typeof navigator !== 'undefined' && (navigator.userAgent || navigator.vendor)) || '';
+    var isIOS = /iPhone|iPad|iPod/i.test(ua);
+
+    if (isIOS) {
+      var iosHint = document.createElement('span');
+      iosHint.className = 'tg-iab-ios-hint';
+      iosHint.textContent = tr('••• মেনু → "Open in Safari" চাপুন', 'Tap ••• menu → "Open in Safari"');
+      actions.appendChild(iosHint);
+    } else {
+      var chromeBtn = document.createElement('a');
+      chromeBtn.className = 'tg-iab-btn';
+      chromeBtn.target = '_self';
+      chromeBtn.rel = 'noopener noreferrer';
+      chromeBtn.href = 'intent://' + window.location.host + window.location.pathname + window.location.search + '#Intent;scheme=https;package=com.android.chrome;end';
+      chromeBtn.textContent = tr('Chrome এ খুলুন', 'Open in Chrome');
+      actions.appendChild(chromeBtn);
+    }
+
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'tg-iab-close';
+    closeBtn.setAttribute('aria-label', tr('বন্ধ করুন', 'Close'));
+    closeBtn.innerHTML = '&times;';
+    closeBtn.onclick = function () {
+      iabBannerDismissedSlug = currentTool;
+      banner.remove();
+    };
+    actions.appendChild(closeBtn);
+
+    inner.appendChild(msg);
+    inner.appendChild(actions);
+    banner.appendChild(inner);
+
+    if (document.body) {
+      document.body.insertBefore(banner, document.body.firstChild);
+    }
+  };
+
+  UI.removeInAppBanner = function () {
+    var banner = document.getElementById('tg-iab-banner');
+    if (banner) banner.remove();
+  };
+
   function initHeader() {
     UI.ensureTopHeaderButtons();
     UI.updateHeaderApiBadge();
+    UI.ensureInAppBanner();
   }
 
   if (document.readyState === 'loading') {

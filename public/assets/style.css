@@ -3517,3 +3517,88 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
   color: var(--ink);
   border-color: var(--ink-3);
 }
+
+/* In-App Browser (WebView) Smart Open Banner */
+.tg-iab-banner {
+  position: relative;
+  z-index: 9999;
+  width: 100%;
+  background: #1e293b;
+  color: #f8fafc;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  font-family: inherit;
+  font-size: 13.5px;
+  line-height: 1.4;
+  padding: 8px 14px;
+  box-sizing: border-box;
+}
+.tg-iab-banner-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.tg-iab-msg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  font-weight: 500;
+  color: #f1f5f9;
+}
+.tg-iab-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.tg-iab-btn {
+  background: #2563eb;
+  color: #ffffff !important;
+  text-decoration: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.tg-iab-btn:hover {
+  background: #1d4ed8;
+}
+.tg-iab-ios-hint {
+  background: rgba(255, 255, 255, 0.14);
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+}
+.tg-iab-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 20px;
+  line-height: 1;
+  padding: 2px 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+.tg-iab-close:hover {
+  color: #ffffff;
+}
+
