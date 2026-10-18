@@ -548,7 +548,7 @@
       var ss = await loadMediaPipeSelfie();
       if (!ss) return null;
       return new Promise(function (resolve) {
-        var timer = setTimeout(function () { resolve(null); }, 12000);
+        var timer = setTimeout(function () { resolve(null); }, 3500);
         ss.onResults(function (results) {
           clearTimeout(timer);
           if (!results || !results.segmentationMask) return resolve(null);
@@ -1184,24 +1184,6 @@
     previewWrap.appendChild(previewCanvas);
     previewWrap.appendChild(loadingOverlay);
 
-    // Click on canvas to sample color for manual matting touch-up
-    previewCanvas.addEventListener('click', function (e) {
-      if (!img || activeTab !== 'cutout') return;
-      var rect = previewCanvas.getBoundingClientRect();
-      var cx = Math.floor((e.clientX - rect.left) * (previewCanvas.width / rect.width));
-      var cy = Math.floor((e.clientY - rect.top) * (previewCanvas.height / rect.height));
-      var ox = Math.floor(cx * (img.naturalWidth / previewCanvas.width));
-      var oy = Math.floor(cy * (img.naturalHeight / previewCanvas.height));
-      ox = Math.max(0, Math.min(ox, img.naturalWidth - 1));
-      oy = Math.max(0, Math.min(oy, img.naturalHeight - 1));
-      var temp = UI.canvas(1, 1), tctx = temp.getContext('2d');
-      tctx.drawImage(img, ox, oy, 1, 1, 0, 0, 1, 1);
-      var pixel = tctx.getImageData(0, 0, 1, 1).data;
-      sampleColor = [pixel[0], pixel[1], pixel[2]];
-      UI.toast(tr('কালার স্যাম্পল নেয়া হয়েছে: rgb(' + pixel[0] + ',' + pixel[1] + ',' + pixel[2] + ')', 'Color sampled: rgb(' + pixel[0] + ',' + pixel[1] + ',' + pixel[2] + ')'));
-      reapplyLocalMatting();
-    });
-
     // Background Color Swatches Bar
     var swatchesWrap = UI.el('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' } });
     var swatchesLabel = UI.el('span', { style: { fontSize: '13.5px', fontWeight: '700', color: 'var(--ink)' } },
@@ -1306,16 +1288,11 @@
     reapplyBtn.style.padding = '6px 14px';
     reapplyBtn.style.fontSize = '13px';
 
-    var clickHint = UI.el('small', { class: 'lbl' },
-      tr('💡 টিপস: উপরের ছবিতে যেকোনো ব্যাকগ্রাউন্ড অংশে ক্লিক করে সেই নির্দিষ্ট রংটি মুছে ফেলতে পারেন।', "💡 Tip: Click on any background area in the preview above to sample and erase that specific color.")
-    );
-
     fineTuneBody.appendChild(UI.el('div', { class: 'row' },
       UI.field(tr('সেনসিটিভিটি (সহনশীলতা)', "Sensitivity (Tolerance)"), UI.el('div', {}, tol, tolV)),
       UI.field(tr('স্মুথনেস (Feather)', "Edge Smoothness (Feather)"), UI.el('div', {}, feather, featherV)),
       UI.field('', reapplyBtn)
     ));
-    fineTuneBody.appendChild(clickHint);
     fineTuneDetails.appendChild(fineTuneSummary);
     fineTuneDetails.appendChild(fineTuneBody);
 
@@ -1326,12 +1303,49 @@
     );
 
     var isRenderingBg = false;
-    var downloadBtn = UI.btn(tr('ডাউনলোড (PNG)', "Download (PNG)"), function () {
-      if (isRenderingBg || !processedBlob || !file) return;
+
+    function triggerDownload() {
       var ext = (activeTab === 'original' || activeBg !== 'transparent') ? 'jpg' : 'png';
       var outName = 'ToolGhor(remove-background).' + ext;
-      UI.download(processedBlob, outName);
-    }, { icon: 'download' });
+      var mime = (ext === 'jpg') ? 'image/jpeg' : 'image/png';
+
+      // 1. Direct download if processedBlob is already ready
+      if (processedBlob) {
+        UI.download(processedBlob, outName);
+        UI.toast(tr('✓ ডাউনলোড সম্পন্ন হচ্ছে…', "✓ Downloading image…"));
+        return;
+      }
+
+      // 2. Synchronous fallback directly from previewCanvas (Preserves user gesture)
+      if (previewCanvas) {
+        try {
+          var dataUrl = previewCanvas.toDataURL(mime, 0.95);
+          if (dataUrl && dataUrl.length > 50) {
+            UI.download(dataUrl, outName);
+            UI.toast(tr('✓ ডাউনলোড সম্পন্ন হচ্ছে…', "✓ Downloading image…"));
+            return;
+          }
+        } catch (e) {
+          console.warn('Canvas toDataURL failed, attempting toBlob:', e);
+        }
+
+        if (typeof previewCanvas.toBlob === 'function') {
+          previewCanvas.toBlob(function (b) {
+            if (b) {
+              UI.download(b, outName);
+              UI.toast(tr('✓ ডাউনলোড সম্পন্ন হচ্ছে…', "✓ Downloading image…"));
+            } else {
+              UI.toast(tr('ডাউনলোড সম্পন্ন করা যায়নি, ছবিটি পুনরায় আপলোড করুন', 'Could not complete download, please re-upload image'), 'error');
+            }
+          }, mime, 0.95);
+          return;
+        }
+      }
+
+      UI.toast(tr('ডাউনলোড সম্পন্ন করা যায়নি, অনুগ্রহ করে ছবিটি পুনরায় নির্বাচন করুন', 'Could not complete download, please re-select image'), 'error');
+    }
+
+    var downloadBtn = UI.btn(tr('ডাউনলোড (PNG)', "Download (PNG)"), triggerDownload, { icon: 'download' });
     downloadBtn.style.padding = '10px 24px';
     downloadBtn.style.fontSize = '15px';
     downloadBtn.style.fontWeight = '700';
@@ -1484,36 +1498,58 @@
     async function renderPreview() {
       if (!img) return;
       isRenderingBg = true;
-      downloadBtn.disabled = true;
-      var w = img.naturalWidth, h = img.naturalHeight;
-      previewCanvas.width = w;
-      previewCanvas.height = h;
-      var pctx = previewCanvas.getContext('2d');
-      pctx.clearRect(0, 0, w, h);
+      downloadBtn.disabled = false;
+      downloadBtn.removeAttribute('disabled');
 
-      if (activeTab === 'original' && originalCanvas) {
-        pctx.drawImage(originalCanvas, 0, 0);
-        downloadBtn.textContent = tr('আসল ছবি ডাউনলোড (JPG)', "Download Original (JPG)");
-        processedBlob = await UI.toBlob(previewCanvas, 'image/jpeg', 0.95);
-        resBadge.textContent = '✓ ' + w + ' × ' + h + ' px • ' + tr('আসল ছবি', "Original");
+      try {
+        var w = img.naturalWidth, h = img.naturalHeight;
+        previewCanvas.width = w;
+        previewCanvas.height = h;
+        var pctx = previewCanvas.getContext('2d');
+        pctx.clearRect(0, 0, w, h);
+
+        if (activeTab === 'original' && originalCanvas) {
+          pctx.drawImage(originalCanvas, 0, 0);
+          UI.clear(downloadBtn);
+          UI.add(downloadBtn, UI.icon('download', 18));
+          UI.add(downloadBtn, ' ' + tr('আসল ছবি ডাউনলোড (JPG)', "Download Original (JPG)"));
+          try {
+            processedBlob = await UI.toBlob(previewCanvas, 'image/jpeg', 0.95);
+          } catch (e) {
+            processedBlob = null;
+          }
+          resBadge.textContent = '✓ ' + w + ' × ' + h + ' px • ' + tr('আসল ছবি', "Original");
+          return;
+        }
+
+        if (cutoutCanvas) {
+          if (activeBg !== 'transparent') {
+            pctx.fillStyle = activeBg;
+            pctx.fillRect(0, 0, w, h);
+          }
+          pctx.drawImage(cutoutCanvas, 0, 0, w, h);
+
+          var isPng = (activeBg === 'transparent');
+          var outMime = isPng ? 'image/png' : 'image/jpeg';
+          try {
+            processedBlob = await UI.toBlob(previewCanvas, outMime, 0.95);
+          } catch (e) {
+            console.warn('Preview toBlob warning:', e);
+            processedBlob = null;
+          }
+
+          UI.clear(downloadBtn);
+          UI.add(downloadBtn, UI.icon('download', 18));
+          UI.add(downloadBtn, ' ' + (isPng ? tr('ডাউনলোড (PNG)', "Download (PNG)") : tr('ডাউনলোড (JPG)', "Download (JPG)")));
+          resBadge.textContent = '✓ ' + w + ' × ' + h + ' px • ' + (isPng ? 'HD Transparent PNG' : 'HD Solid JPG');
+        }
+      } catch (err) {
+        console.error('renderPreview error:', err);
+      } finally {
         isRenderingBg = false;
         downloadBtn.disabled = false;
-        return;
-      }
-
-      if (cutoutCanvas) {
-        if (activeBg !== 'transparent') {
-          pctx.fillStyle = activeBg;
-          pctx.fillRect(0, 0, w, h);
-        }
-        pctx.drawImage(cutoutCanvas, 0, 0, w, h);
-
-        var isPng = (activeBg === 'transparent');
-        var outMime = isPng ? 'image/png' : 'image/jpeg';
-        processedBlob = await UI.toBlob(previewCanvas, outMime, 0.95);
-
-        downloadBtn.textContent = isPng ? tr('ডাউনলোড (PNG)', "Download (PNG)") : tr('ডাউনলোড (JPG)', "Download (JPG)");
-        resBadge.textContent = '✓ ' + w + ' × ' + h + ' px • ' + (isPng ? 'HD Transparent PNG' : 'HD Solid JPG');
+        downloadBtn.removeAttribute('disabled');
+        downloadBtn.removeAttribute('aria-disabled');
       }
     }
 
@@ -1522,70 +1558,77 @@
       isProcessing = true;
       loadingOverlay.style.display = 'flex';
 
-      // 1. Prepare original canvas
-      originalCanvas = UI.canvas(imageEl.naturalWidth, imageEl.naturalHeight);
-      originalCanvas.getContext('2d').drawImage(imageEl, 0, 0);
+      try {
+        // 1. Prepare original canvas
+        originalCanvas = UI.canvas(imageEl.naturalWidth, imageEl.naturalHeight);
+        originalCanvas.getContext('2d').drawImage(imageEl, 0, 0);
 
-      var resultCanvas = null;
+        var resultCanvas = null;
 
-      // Tier 1: remove.bg API if key configured in backend
-      // Tier 1: remove.bg Studio AI API
-      var rbgKey = getRemoveBgKey();
-      if (imageFile) {
-        try {
-          var fd = new FormData();
-          fd.append('image_file', imageFile);
-          fd.append('size', 'auto');
+        // Tier 1: remove.bg Studio AI API
+        var rbgKey = getRemoveBgKey();
+        if (imageFile) {
+          try {
+            var fd = new FormData();
+            fd.append('image_file', imageFile);
+            fd.append('size', 'auto');
 
-          // 1. Try secure server proxy
-          var res = await fetch('/api/remove-bg', {
-            method: 'POST',
-            body: fd
-          });
-
-          // 2. Direct API call fallback if proxy returned non-200
-          if (!res.ok && rbgKey) {
-            var directFd = new FormData();
-            directFd.append('image_file', imageFile);
-            directFd.append('size', 'auto');
-            res = await fetch('https://api.remove.bg/v1.0/removebg', {
+            // 1. Try secure server proxy
+            var res = await fetch('/api/remove-bg', {
               method: 'POST',
-              headers: { 'X-Api-Key': rbgKey },
-              body: directFd
+              body: fd
             });
+
+            // 2. Direct API call fallback if proxy returned non-200
+            if (!res.ok && rbgKey) {
+              var directFd = new FormData();
+              directFd.append('image_file', imageFile);
+              directFd.append('size', 'auto');
+              res = await fetch('https://api.remove.bg/v1.0/removebg', {
+                method: 'POST',
+                headers: { 'X-Api-Key': rbgKey },
+                body: directFd
+              });
+            }
+
+            if (res && res.ok) {
+              var blob = await res.blob();
+              var aiImg = await UI.readImage(blob);
+              resultCanvas = UI.canvas(aiImg.naturalWidth, aiImg.naturalHeight);
+              resultCanvas.getContext('2d').drawImage(aiImg, 0, 0);
+            }
+          } catch (e) {
+            console.warn('remove.bg API call error, using local AI model:', e);
           }
+        }
 
-          if (res.ok) {
-            var blob = await res.blob();
-            var aiImg = await UI.readImage(blob);
-            resultCanvas = UI.canvas(aiImg.naturalWidth, aiImg.naturalHeight);
-            resultCanvas.getContext('2d').drawImage(aiImg, 0, 0);
+        // Tier 2: In-browser Deep Neural Network (Google MediaPipe)
+        if (!resultCanvas) {
+          try {
+            resultCanvas = await segmentSubjectWithAI(imageEl);
+          } catch (e) {
+            console.warn('MediaPipe segmentation error:', e);
           }
-        } catch (e) {
-          console.warn('remove.bg API call error, using local AI model:', e);
         }
-      }
 
-      // Tier 2: In-browser Deep Neural Network (Google MediaPipe)
-      if (!resultCanvas) {
-        try {
-          resultCanvas = await segmentSubjectWithAI(imageEl);
-        } catch (e) {
-          console.warn('MediaPipe segmentation error:', e);
+        // Tier 3: Adaptive Flood Fill Matting fallback
+        if (!resultCanvas) {
+          resultCanvas = runFloodFillMatting(imageEl, sampleColor, +tol.value, +feather.value);
         }
-      }
 
-      // Tier 3: Adaptive Flood Fill Matting fallback
-      if (!resultCanvas) {
-        resultCanvas = runFloodFillMatting(imageEl, sampleColor, +tol.value, +feather.value);
+        cutoutCanvas = resultCanvas;
+      } catch (pipelineErr) {
+        console.error('Cutout pipeline error:', pipelineErr);
+        if (!cutoutCanvas) {
+          cutoutCanvas = runFloodFillMatting(imageEl, sampleColor, +tol.value, +feather.value);
+        }
+      } finally {
+        loadingOverlay.style.display = 'none';
+        isProcessing = false;
+        activeTab = 'cutout';
+        updateTabsUI();
+        await renderPreview();
       }
-
-      cutoutCanvas = resultCanvas;
-      loadingOverlay.style.display = 'none';
-      isProcessing = false;
-      activeTab = 'cutout';
-      updateTabsUI();
-      await renderPreview();
     }
 
     async function handleFileSelect(f) {

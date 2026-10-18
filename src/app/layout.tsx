@@ -1,10 +1,24 @@
 import type { Metadata } from 'next';
+import { Inter, Hind_Siliguri } from 'next/font/google';
 import './globals.css';
 import { AppProvider } from '@/context/AppContext';
 import { siteConfig } from '@/data/config';
 import BackgroundAnimation from '@/components/BackgroundAnimation';
 import SmoothCursor from '@/components/SmoothCursor';
 import { Analytics } from '@vercel/analytics/next';
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+});
+
+const hindSiliguri = Hind_Siliguri({
+  weight: ['400', '500', '600', '700'],
+  subsets: ['bengali'],
+  display: 'swap',
+  variable: '--font-hind-siliguri',
+});
 
 export const metadata: Metadata = {
   title: 'ToolGhor – Everyday tools, now on one platform',
@@ -27,7 +41,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" data-theme="dark" className="dark" suppressHydrationWarning>
+    <html
+      lang="en"
+      data-theme="dark"
+      className={`${inter.variable} ${hindSiliguri.variable} dark`}
+      suppressHydrationWarning
+    >
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon.png" />
@@ -48,21 +67,13 @@ export default function RootLayout({
             `,
           }}
         />
-        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-        <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@500;700;800&family=Hind+Siliguri:wght@400;500;600&display=swap"
-        />
         <link rel="stylesheet" href="/assets/style.css" />
         <script src="/assets/config.js" defer></script>
         <script src="/assets/registry.js" defer></script>
         <script src="/assets/icons.js" defer></script>
         <script src="/assets/ui.js" defer></script>
       </head>
-      <body className="dark" suppressHydrationWarning>
+      <body className={`${inter.className} dark`} suppressHydrationWarning>
         <SmoothCursor />
         <BackgroundAnimation />
         <AppProvider>{children}</AppProvider>

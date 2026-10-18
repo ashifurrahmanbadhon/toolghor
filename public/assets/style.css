@@ -16,8 +16,8 @@
   --c-qr: #6a48d1;
   --c-media: #cf4420;
   --c-resume: #0e7a5a;
-  --font-display: 'Anek Bangla', 'Hind Siliguri', 'Noto Sans Bengali', 'Kalpurush', 'SolaimanLipi', system-ui, sans-serif;
-  --font-body: 'Hind Siliguri', 'Noto Sans Bengali', 'Kalpurush', 'SolaimanLipi', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: var(--font-inter), var(--font-hind-siliguri), 'Hind Siliguri', system-ui, sans-serif;
+  --font-body: var(--font-inter), var(--font-hind-siliguri), 'Hind Siliguri', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 :root[data-theme="dark"],
 html[data-theme="dark"],
@@ -786,7 +786,7 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
 .paper-frame { position: relative; width: 100%; background: #fff; border: 1px solid var(--line); box-shadow: 0 10px 30px -14px rgba(0, 0, 0, .4); overflow: hidden; }
 .paper-frame .paper { transform-origin: top left; position: absolute; left: 0; top: 0; }
 
-.paper { width: 210mm; min-height: 297mm; background: #fff; color: #1b1b1b; font-family: 'Hind Siliguri', 'Noto Sans Bengali', 'Segoe UI', Arial, sans-serif; font-size: 10.5pt; line-height: 1.45; --ac: #0e7a5a; }
+.paper { width: 210mm; min-height: 297mm; background: #fff; color: #1b1b1b; font-family: var(--font-inter), var(--font-hind-siliguri), 'Hind Siliguri', system-ui, sans-serif; font-size: 10.5pt; line-height: 1.45; --ac: #0e7a5a; }
 .paper h1, .paper h2, .paper h3, .paper p, .paper ul { margin: 0; font-family: inherit; }
 .paper ul { padding-left: 1.2em; }
 .paper li { margin: 1px 0; }
@@ -1354,6 +1354,8 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
   max-height: 560px;
   object-fit: contain;
   display: block;
+  cursor: default;
+  user-select: none;
 }
 .rbg-color-swatches {
   display: flex;
@@ -3514,5 +3516,44 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
   background: var(--paper);
   color: var(--ink);
   border-color: var(--ink-3);
+}
+
+/* Floating Admin Badge (positioned slightly lower on the right side) */
+.admin-floating-badge {
+  position: fixed;
+  top: 76px;
+  right: 18px;
+  z-index: 45;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  background: color-mix(in srgb, var(--paper) 85%, transparent);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-floating-badge:hover {
+  color: var(--brand);
+  border-color: var(--brand);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.24);
+}
+
+@media (max-width: 640px) {
+  .admin-floating-badge {
+    top: 70px;
+    right: 12px;
+    font-size: 11px;
+    padding: 4px 10px;
+  }
 }
 

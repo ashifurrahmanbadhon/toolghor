@@ -198,13 +198,85 @@
     return 'ToolGhor(' + tool + sub + ')' + ext;
   };
 
-  UI.download = function (blob, name) {
-    name = UI.formatDownloadName(name);
+  UI.download = function (data, name) {
+    if (!data) {
+      UI.toast(tr('ডাউনলোড করার ফাইল পাওয়া যায়নি', "File not found for download"), 'error');
+      return;
+    }
+    name = UI.formatDownloadName(name || 'file');
+
+    // Canvas element support
+    if (typeof HTMLCanvasElement !== 'undefined' && data instanceof HTMLCanvasElement) {
+      if (typeof data.toBlob === 'function') {
+        data.toBlob(function (b) {
+          if (b) UI.download(b, name);
+          else {
+            try { UI.download(data.toDataURL('image/png'), name); }
+            catch (e) { UI.toast(tr('ডাউনলোড ব্যর্থ হয়েছে', "Download failed"), 'error'); }
+          }
+        }, 'image/png');
+        return;
+      }
+      try { data = data.toDataURL('image/png'); }
+      catch (e) { UI.toast(tr('ডাউনলোড ব্যর্থ হয়েছে', "Download failed"), 'error'); return; }
+    }
+
+    // Convert data: URLs to Blob for reliable browser download
+    if (typeof data === 'string' && data.indexOf('data:') === 0) {
+      try {
+        var bFromData = dataURItoBlob(data);
+        if (bFromData) data = bFromData;
+      } catch (e) {}
+    }
+
     var a = document.createElement('a');
-    var url = URL.createObjectURL(blob);
-    a.href = url; a.download = name;
-    document.body.appendChild(a); a.click();
-    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 5000);
+    a.download = name;
+    a.rel = 'noopener';
+    a.style.position = 'fixed';
+    a.style.left = '-9999px';
+    a.style.top = '-9999px';
+    a.style.opacity = '0';
+    a.style.pointerEvents = 'none';
+
+    var url = '';
+    var shouldRevoke = false;
+
+    if (typeof data === 'string') {
+      url = data;
+    } else if (data instanceof Blob) {
+      try {
+        url = URL.createObjectURL(data);
+        shouldRevoke = true;
+      } catch (e) {
+        console.error('URL.createObjectURL failed:', e);
+        return;
+      }
+    } else {
+      try {
+        var b = new Blob([data]);
+        url = URL.createObjectURL(b);
+        shouldRevoke = true;
+      } catch (e) {
+        console.error('Blob creation failed:', e);
+        return;
+      }
+    }
+
+    a.href = url;
+    document.body.appendChild(a);
+
+    try {
+      a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+    } catch (err) {
+      a.click();
+    }
+
+    setTimeout(function () {
+      if (shouldRevoke && url) {
+        try { URL.revokeObjectURL(url); } catch (e) {}
+      }
+      if (a.parentNode) a.parentNode.removeChild(a);
+    }, 40000);
   };
   UI.copy = function (text, msg) {
     var done = function () { UI.toast(msg || tr('কপি হয়েছে', "Copied")); };
@@ -300,57 +372,86 @@
       reader.onload = function (e) {
         var dataUrl = e.target.result;
         var img = new Image();
-        img.crossOrigin = 'anonymous';
         img.onload = function () {
           img._url = dataUrl;
           res(img);
         };
         img.onerror = function () {
+          try {
+            var blobUrl = URL.createObjectURL(file);
+            var bImg = new Image();
+            bImg.onload = function () { bImg._url = blobUrl; res(bImg); };
+            bImg.onerror = function () {
+              URL.revokeObjectURL(blobUrl);
+              rej(new Error(tr('ছবিটি খোলা যায়নি: ', "Could not open the image: ") + (file.name || '')));
+            };
+            bImg.src = blobUrl;
+          } catch (err) {
+            rej(new Error(tr('ছবিটি খোলা যায়নি', "Could not open image")));
+          }
+        };
+        img.src = dataUrl;
+      };
+      reader.onerror = function () {
+        try {
           var blobUrl = URL.createObjectURL(file);
           var bImg = new Image();
-          bImg.crossOrigin = 'anonymous';
           bImg.onload = function () { bImg._url = blobUrl; res(bImg); };
           bImg.onerror = function () {
             URL.revokeObjectURL(blobUrl);
             rej(new Error(tr('ছবিটি খোলা যায়নি: ', "Could not open the image: ") + (file.name || '')));
           };
           bImg.src = blobUrl;
-        };
-        img.src = dataUrl;
-      };
-      reader.onerror = function () {
-        var blobUrl = URL.createObjectURL(file);
-        var bImg = new Image();
-        bImg.crossOrigin = 'anonymous';
-        bImg.onload = function () { bImg._url = blobUrl; res(bImg); };
-        bImg.onerror = function () {
-          URL.revokeObjectURL(blobUrl);
-          rej(new Error(tr('ছবিটি খোলা যায়নি: ', "Could not open the image: ") + (file.name || '')));
-        };
-        bImg.src = blobUrl;
+        } catch (err) {
+          rej(new Error(tr('ছবিটি পড়া সম্ভব হয়নি', "Could not read image file")));
+        }
       };
       reader.readAsDataURL(file);
     });
   };
   UI.toBlob = function (canvas, type, q) {
-    return new Promise(function (res, rej) {
-      try {
-        canvas.toBlob(function (b) {
-          if (b) return res(b);
+    return new Promise(function (res) {
+      if (!canvas) return res(null);
+      type = type || 'image/png';
+      q = (q == null) ? 0.95 : q;
+      var settled = false;
+      var timer = setTimeout(function () {
+        if (!settled) {
+          settled = true;
           try {
             var dataUrl = canvas.toDataURL(type, q);
             res(dataURItoBlob(dataUrl));
-          } catch (err) {
-            rej(new Error(tr('ছবি তৈরি করা যায়নি (ব্রাউজার এই ফরম্যাট সমর্থন করে না?)', "Could not create the image (your browser may not support this format)")));
+          } catch (e) {
+            res(null);
           }
-        }, type, q);
-      } catch (e) {
-        try {
-          var dataUrl = canvas.toDataURL(type, q);
-          res(dataURItoBlob(dataUrl));
-        } catch (err) {
-          rej(new Error(tr('ছবি তৈরি করা যায়নি: ', "Could not create the image: ") + (e.message || '')));
         }
+      }, 1500);
+
+      try {
+        if (typeof canvas.toBlob === 'function') {
+          canvas.toBlob(function (b) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            if (b) return res(b);
+            try {
+              var dataUrl = canvas.toDataURL(type, q);
+              res(dataURItoBlob(dataUrl));
+            } catch (err) {
+              res(null);
+            }
+          }, type, q);
+          return;
+        }
+      } catch (e) {}
+
+      settled = true;
+      clearTimeout(timer);
+      try {
+        var dataUrl = canvas.toDataURL(type, q);
+        res(dataURItoBlob(dataUrl));
+      } catch (err) {
+        res(null);
       }
     });
   };

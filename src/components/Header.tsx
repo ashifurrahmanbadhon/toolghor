@@ -162,13 +162,19 @@ export default function Header() {
             </span>
             <span>{lang === 'bn' ? 'টুলের অনুরোধ' : 'Request a Tool'}</span>
           </button>
-
-          {/* Admin link */}
-          <Link href="/admin" className="pill" title="Admin Console">
-            <span>🛡️ {lang === 'bn' ? 'অ্যাডমিন' : 'Admin'}</span>
-          </Link>
         </div>
       </div>
+
+      {/* Floating Admin Option: positioned slightly lower on the right side */}
+      <Link
+        href="/admin"
+        className="admin-floating-badge"
+        title="Admin Console"
+        aria-label="Admin Console"
+      >
+        <span aria-hidden="true">🛡️</span>
+        <span>{lang === 'bn' ? 'অ্যাডমিন' : 'Admin'}</span>
+      </Link>
     </header>
   );
 }

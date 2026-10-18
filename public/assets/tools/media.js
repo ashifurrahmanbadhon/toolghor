@@ -746,7 +746,6 @@
     // MODE 2: LOCAL FILE CONVERTER (WebAssembly FFmpeg)
     // ========================================================
     var localHero = UI.el('div', { class: 'snapyt-hero' },
-      UI.el('div', { class: 'snapyt-badge', style: 'background:rgba(16,185,129,0.12); color:#10b981; border-color:rgba(16,185,129,0.25);' }, '⚡ In-Browser FFmpeg Converter'),
       UI.el('h2', {}, tr('ভিডিও ফাইল কনভার্ট করুন', 'Convert Local Video Files')),
       UI.el('p', {}, tr('আপনার যেকোনো ভিডিও ফাইল ব্রাউজারেই সরাসরি MP4, WebM, MP3 বা WAV তে কনভার্ট করুন। কোনো ফাইল সার্ভারে আপলোড হয় না।', 'Convert your video files directly inside your browser into MP4, WebM, MP3, or WAV. 100% private, no server upload.'))
     );

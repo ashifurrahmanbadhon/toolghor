@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { siteConfig } from '@/data/config';
 
@@ -59,8 +60,40 @@ export default function Footer({ customSettings }: FooterProps) {
   return (
     <>
       <footer className="foot">
-        <div className="wrap">
-          © 2026 <span>{siteConfig.name}</span>. {copyrightText}
+        <div
+          className="wrap"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px',
+          }}
+        >
+          <div>
+            © 2026 <span>{siteConfig.name}</span>. {copyrightText}
+          </div>
+          <Link
+            href="/admin"
+            className="admin-footer-link"
+            title="Admin Console"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '12px',
+              color: 'var(--ink-3)',
+              textDecoration: 'none',
+              padding: '4px 10px',
+              borderRadius: '6px',
+              border: '1px solid var(--line)',
+              background: 'color-mix(in srgb, var(--paper) 70%, transparent)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <span aria-hidden="true">🛡️</span>
+            <span>{lang === 'bn' ? 'অ্যাডমিন' : 'Admin'}</span>
+          </Link>
         </div>
       </footer>
 
