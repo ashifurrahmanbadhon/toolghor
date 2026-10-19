@@ -118,29 +118,16 @@
     var target = UI.el('input', { type: 'text', inputmode: 'numeric', placeholder: tr('যেমন: 100', "e.g. 100") });
     var go = UI.btn(tr('কমপ্রেস করুন', "Compress"), run, { icon: 'minimize-2', disabled: true });
     function showList() { UI.clear(listBox); files.forEach(function (f) { listBox.appendChild(UI.el('div', {}, f.name + ' · ' + UI.fmtSize(f.size))); }); go.disabled = !files.length; }
-    var dropWrap = UI.el('div', { class: 'drop-wrap' });
-    function makeDrop(isFolder) {
-      UI.clear(dropWrap);
-      var d = UI.dropzone({
-        accept: 'image/*',
-        multiple: true,
-        directory: !!isFolder,
-        label: isFolder ? tr('ফোল্ডার বেছে নিন', "Choose folder") : tr('ছবি বেছে নিন', "Choose images"),
-        hint: isFolder ? tr('অথবা ফোল্ডার এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a folder here") : tr('অথবা ফাইল এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a file here"),
-        onFiles: function (fs) { files = fs; UI.clear(out); showList(); }
-      });
-      dropWrap.appendChild(d);
-      return d;
-    }
-    makeDrop(false);
-    var toggle = UI.fileFolderToggle(function (mode) {
-      makeDrop(mode === 'folder');
+    var drop = UI.dropzone({
+      accept: 'image/*',
+      multiple: true,
+      onFiles: function (fs) { files = fs; UI.clear(out); showList(); }
     });
     async function run() {
       UI.clear(out); var prog = UI.progress(); out.appendChild(prog); go.disabled = true;
       var activeFiles = files.slice();
-      var dropInput = dropWrap.querySelector('input');
-      if (dropInput) dropInput.disabled = true;
+      var dropInputs = drop.querySelectorAll('input');
+      dropInputs.forEach(function (inp) { inp.disabled = true; });
       var rows = [];
       try {
         var tkb = UI.parseNum(target.value), tbytes = tkb > 0 ? tkb * 1024 : 0;
@@ -171,11 +158,11 @@
         out.appendChild(UI.el('div', { class: 'result stack' }, UI.notice('ok', tr('✓ কমপ্রেস শেষ।', "✓ Compression finished.")), resultTable(rows, 'ToolGhor(compress-image).zip')));
       } catch (e) { UI.clear(out); out.appendChild(UI.notice('err', UI.err(e))); }
       finally {
-        if (dropInput) dropInput.disabled = false;
+        dropInputs.forEach(function (inp) { inp.disabled = false; });
         go.disabled = !files.length;
       }
     }
-    root.appendChild(UI.el('div', { class: 'stack' }, toggle, dropWrap, listBox,
+    root.appendChild(UI.el('div', { class: 'stack' }, drop, listBox,
       UI.el('div', { class: 'row' },
         UI.field(tr('মান', "Quality"), UI.el('div', {}, q), null),
         UI.field(tr('সর্বোচ্চ প্রস্থ', "Maximum width"), maxw), UI.field(tr('আউটপুট ফরম্যাট', "Output format"), fmt)),
@@ -206,27 +193,14 @@
     [tr('ইনস্টাগ্রাম ১০৮০×১০৮০', "Instagram 1080×1080"), function () { setSize(1080, 1080, true); }], [tr('ফেসবুক শেয়ার ১২০০×৬৩০', "Facebook share 1200×630"), function () { setSize(1200, 630, true); }]].forEach(function (p) {
       presets.appendChild(UI.el('button', { type: 'button', onclick: function () { if (img) p[1](); else UI.toast(tr('আগে একটি ছবি বেছে নিন', "Choose an image first")); } }, p[0]));
     });
-    var dropWrap = UI.el('div', { class: 'drop-wrap' });
-    function makeDrop(isFolder) {
-      UI.clear(dropWrap);
-      var d = UI.dropzone({
-        accept: 'image/*',
-        directory: !!isFolder,
-        label: isFolder ? tr('ফোল্ডার বেছে নিন', "Choose folder") : tr('ছবি বেছে নিন', "Choose images"),
-        hint: isFolder ? tr('অথবা ফোল্ডার এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a folder here") : tr('অথবা ফাইল এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a file here"),
-        onFiles: async function (fs) {
-          UI.clear(out); UI.clear(info); file = fs[0];
-          try { img = await UI.readImage(file); } catch (e) { info.appendChild(UI.notice('err', UI.err(e))); return; }
-          ow = img.naturalWidth; oh = img.naturalHeight; wIn.value = ow; hIn.value = oh; go.disabled = false;
-          info.appendChild(UI.notice('info', file.name + ' · ' + UI.n(ow) + '×' + UI.n(oh) + ' px · ' + UI.fmtSize(file.size)));
-        }
-      });
-      dropWrap.appendChild(d);
-      return d;
-    }
-    makeDrop(false);
-    var toggle = UI.fileFolderToggle(function (mode) {
-      makeDrop(mode === 'folder');
+    var drop = UI.dropzone({
+      accept: 'image/*',
+      onFiles: async function (fs) {
+        UI.clear(out); UI.clear(info); file = fs[0];
+        try { img = await UI.readImage(file); } catch (e) { info.appendChild(UI.notice('err', UI.err(e))); return; }
+        ow = img.naturalWidth; oh = img.naturalHeight; wIn.value = ow; hIn.value = oh; go.disabled = false;
+        info.appendChild(UI.notice('info', file.name + ' · ' + UI.n(ow) + '×' + UI.n(oh) + ' px · ' + UI.fmtSize(file.size)));
+      }
     });
     var logoCheck = UI.el('input', { type: 'checkbox' });
     var logoFile = null, logoImg = null;
@@ -302,7 +276,7 @@
         out.firstChild.appendChild(pv);
       } catch (e) { UI.clear(out); out.appendChild(UI.notice('err', UI.err(e))); }
     }
-    root.appendChild(UI.el('div', { class: 'stack' }, toggle, dropWrap, info,
+    root.appendChild(UI.el('div', { class: 'stack' }, drop, info,
       UI.el('div', { class: 'stack' }, UI.el('span', { class: 'lbl' }, tr('তৈরি মাপ', "Ready-made sizes")), presets),
       UI.el('div', { class: 'row' }, UI.field(tr('প্রস্থ (px)', "Width (px)"), wIn), UI.field(tr('উচ্চতা (px)', "Height (px)"), hIn)),
       UI.el('label', { class: 'check' }, lock, tr(' অনুপাত ঠিক রাখুন', " Keep the aspect ratio")),
@@ -427,29 +401,16 @@
       label: function (it) { return UI.el('span', { class: 'fname', style: { display: 'flex', alignItems: 'center', gap: '10px' } }, UI.el('img', { class: 'thumb', src: it.url, alt: '' }), UI.el('span', {}, it.file.name, UI.el('small', {}, UI.fmtSize(it.file.size)))); },
       onChange: function () { go.disabled = items.length < 2; }
     });
-    var dropWrap = UI.el('div', { class: 'drop-wrap' });
-    function makeDrop(isFolder) {
-      UI.clear(dropWrap);
-      var d = UI.dropzone({
-        accept: 'image/*',
-        multiple: true,
-        directory: !!isFolder,
-        label: isFolder ? tr('ফোল্ডার বেছে নিন', "Choose folder") : tr('ছবি বেছে নিন (২টি বা বেশি)', "Choose images (2 or more)"),
-        hint: isFolder ? tr('অথবা ফোল্ডার এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a folder here") : tr('অথবা ফাইল এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a file here"),
-        onFiles: function (fs) { fs.forEach(function (f) { items.push({ file: f, url: URL.createObjectURL(f) }); }); UI.clear(out); list.redraw(); }
-      });
-      dropWrap.appendChild(d);
-      return d;
-    }
-    makeDrop(false);
-    var toggle = UI.fileFolderToggle(function (mode) {
-      makeDrop(mode === 'folder');
+    var drop = UI.dropzone({
+      accept: 'image/*',
+      multiple: true,
+      onFiles: function (fs) { fs.forEach(function (f) { items.push({ file: f, url: URL.createObjectURL(f) }); }); UI.clear(out); list.redraw(); }
     });
     async function run() {
       UI.clear(out); var prog = UI.progress(); out.appendChild(prog); go.disabled = true;
       var activeItems = items.slice();
-      var dropInput = dropWrap.querySelector('input');
-      if (dropInput) dropInput.disabled = true;
+      var dropInputs = drop.querySelectorAll('input');
+      dropInputs.forEach(function (inp) { inp.disabled = true; });
       try {
         var imgs = [];
         for (var i = 0; i < activeItems.length; i++) { prog.set(i / activeItems.length * 50, tr('ছবি পড়া হচ্ছে…', "Reading images…")); imgs.push(await UI.readImage(activeItems[i].file)); }
@@ -485,11 +446,11 @@
         out.firstChild.appendChild(UI.el('img', { src: URL.createObjectURL(blob), alt: tr('প্রিভিউ', "Preview"), style: { maxWidth: '100%', maxHeight: '360px', borderRadius: '8px', marginTop: '12px' } }));
       } catch (e) { UI.clear(out); out.appendChild(UI.notice('err', UI.err(e))); }
       finally {
-        if (dropInput) dropInput.disabled = false;
+        dropInputs.forEach(function (inp) { inp.disabled = false; });
         go.disabled = items.length < 2;
       }
     }
-    root.appendChild(UI.el('div', { class: 'stack' }, toggle, dropWrap, list,
+    root.appendChild(UI.el('div', { class: 'stack' }, drop, list,
       UI.el('div', { class: 'stack' }, UI.el('span', { class: 'lbl' }, tr('সাজানোর ধরন', "Layout")), layout),
       UI.el('div', { class: 'row' }, UI.field(tr('ছবির মাঝে ফাঁক', "Gap between images"), UI.el('div', {}, gap, gapV)), UI.field(tr('ব্যাকগ্রাউন্ড রং', "Background colour"), bg, null, 'fit'), UI.field(tr('ফরম্যাট', "Format"), fmt, null, 'fit')),
       go, out));
@@ -497,81 +458,380 @@
 
   /* ---------------- কনভার্ট ---------------- */
   T['convert-image'] = function (root) {
-    var files = [], out = UI.el('div'), listBox = UI.el('div');
-    var target = UI.seg([{ value: 'jpg', label: 'JPG' }, { value: 'png', label: 'PNG' }, { value: 'webp', label: 'WebP' }], 'jpg');
-    var q = UI.el('input', { type: 'range', min: '40', max: '100', value: '90' });
-    var qv = UI.el('strong', {}, UI.n(90) + '%');
-    q.addEventListener('input', function () { qv.textContent = UI.n(q.value) + '%'; });
-    var targetSize = UI.el('input', { type: 'number', min: '1', placeholder: tr('যেমন: 100', "e.g. 100") });
-    var targetUnit = UI.select([{ value: 'KB', label: 'KB' }, { value: 'MB', label: 'MB' }], 'KB');
-    var go = UI.btn(tr('রূপান্তর করুন', "Convert"), run, { icon: 'repeat', disabled: true });
+    var items = [];
+    var currentFormat = 'jpg';
+    var activeRunId = 0;
+    var reprocessTimer = null;
+
+    var container = UI.el('div', { class: 'stack' });
     var dropWrap = UI.el('div', { class: 'drop-wrap' });
-    function makeDrop(isFolder) {
-      UI.clear(dropWrap);
-      var d = UI.dropzone({
-        accept: 'image/*',
-        multiple: true,
-        directory: !!isFolder,
-        label: isFolder ? tr('ফোল্ডার বেছে নিন', "Choose folder") : tr('ছবি বেছে নিন', "Choose images"),
-        hint: isFolder ? tr('অথবা ফোল্ডার এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a folder here") : tr('অথবা ফাইল এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a file here"),
-        onFiles: function (fs) { files = fs; UI.clear(out); UI.clear(listBox); files.forEach(function (f) { listBox.appendChild(UI.el('div', {}, f.name + ' · ' + UI.fmtSize(f.size))); }); go.disabled = false; }
-      });
-      dropWrap.appendChild(d);
-      return d;
-    }
-    makeDrop(false);
-    var toggle = UI.fileFolderToggle(function (mode) {
-      makeDrop(mode === 'folder');
+
+    var drop = UI.dropzone({
+      accept: 'image/*',
+      multiple: true,
+      hint: tr('অথবা আপনার ছবিগুলো এখানে টেনে এনে ছেড়ে দিন', "Or drag and drop your images here"),
+      onFiles: function (fs) {
+        if (!fs || !fs.length) return;
+        items = fs.map(function (f, idx) {
+          return { id: 'ci_' + idx + '_' + Math.random().toString(36).slice(2, 7), file: f, img: null, res: null, cardEl: null };
+        });
+        dropWrap.style.display = 'none';
+        workspace.style.display = 'grid';
+        renderCardsSkeleton();
+        triggerReprocess();
+      }
     });
-    async function run() {
-      UI.clear(out); var prog = UI.progress(); out.appendChild(prog); go.disabled = true;
-      var rows = [];
-      try {
-        var ext = target.get();
-        var tval = UI.parseNum(targetSize.value);
-        var targetBytes = (tval > 0) ? (targetUnit.value === 'MB' ? tval * 1024 * 1024 : tval * 1024) : 0;
-        for (var i = 0; i < files.length; i++) {
-          prog.set(i / files.length * 100, UI.n(i + 1) + '/' + UI.n(files.length));
-          await UI.yield();
-          var f = files[i], img = await UI.readImage(f);
-          var c = drawToCanvas(img, img.naturalWidth, img.naturalHeight, ext === 'jpg' ? '#fff' : null);
-          var blob, note = '';
-          if (targetBytes && (ext === 'jpg' || ext === 'webp')) {
-            var r = await fitToTargetSize(c, MIME[ext], targetBytes);
-            blob = r.blob;
-            if (blob.size > targetBytes) {
-              note = tr('(টার্গেটে পৌঁছানো যায়নি)', "(could not reach the target)");
-            } else if (r.w !== img.naturalWidth || r.h !== img.naturalHeight) {
-              note = '(' + UI.n(r.w) + '×' + UI.n(r.h) + ' px)';
-            }
-          } else {
-            blob = await UI.toBlob(c, MIME[ext], +q.value / 100);
-          }
-          if (blob.type && blob.type !== MIME[ext]) throw new Error(tr('আপনার ব্রাউজার ', "Your browser cannot save ") + ext.toUpperCase() + tr(' ফরম্যাটে সেভ করতে পারছে না। অন্য ফরম্যাট বেছে নিন।', " format. Choose another format."));
-          rows.push({ name: outName(f, ext, i, files.length), before: f.size, blob: blob, note: note, url: URL.createObjectURL(blob) });
-          URL.revokeObjectURL(img._url);
-        }
-        UI.clear(out);
-        out.appendChild(UI.el('div', { class: 'result stack' }, UI.notice('ok', tr('✓ রূপান্তর শেষ।', "✓ Conversion finished.")), resultTable(rows, 'ToolGhor(convert-image).zip')));
-      } catch (e) { UI.clear(out); out.appendChild(UI.notice('err', UI.err(e))); }
-      go.disabled = !files.length;
-    }
-    root.appendChild(UI.el('div', { class: 'stack' }, toggle, dropWrap, listBox,
-      UI.el('div', { class: 'stack' }, UI.el('span', { class: 'lbl' }, tr('কোন ফরম্যাটে চান?', "Which format do you want?")), target),
-      UI.el('div', { class: 'row' },
-        UI.field(tr('মান (JPG/WebP-এর জন্য)', "Quality (for JPG/WebP)"), UI.el('div', {}, q)),
-        UI.el('div', { class: 'field fit' }, UI.el('span', { class: 'lbl' }, tr('বর্তমান: ', "Current: ")), qv)),
-      UI.el('div', { class: 'row' },
-        UI.field(tr('টার্গেট সাইজ (JPG/WebP, ঐচ্ছিক)', "Target size (JPG/WebP, optional)"),
-          UI.el('div', { style: { display: 'flex', gap: '8px', alignItems: 'center' } },
-            UI.el('div', { style: { flex: '1' } }, targetSize),
-            UI.el('div', { style: { width: '80px' } }, targetUnit)
-          ),
-          tr('দিলে স্লাইডারের বদলে এই সাইজের নিচে আনার চেষ্টা করবে। যেমন ১০০ KB।', "If set, binary-searches quality to fit under this target size. E.g. 100 KB.")
-        )
+    dropWrap.appendChild(drop);
+
+    // Workspace container matching Image 2
+    var workspace = UI.el('div', { class: 'ci-workspace', style: { display: 'none' } });
+
+    // --- LEFT COLUMN: SETTINGS PANEL ---
+    var settingsPanel = UI.el('div', { class: 'ci-panel' });
+
+    // Panel Header
+    var countBadge = UI.el('span', { class: 'ci-count-badge' }, '0 Files');
+    var settingsHead = UI.el('div', { class: 'ci-panel-header' });
+    var settingsTitle = UI.el('h3', { class: 'ci-panel-title' });
+    settingsTitle.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> <span>' + tr('সেটিংস', "Settings") + '</span>';
+    settingsHead.appendChild(settingsTitle);
+    settingsHead.appendChild(countBadge);
+
+    // Section 1: Convert To
+    var pillsWrap = UI.el('div', { class: 'ci-pills' });
+    var formats = ['JPG', 'JPEG', 'PNG', 'WEBP'];
+    var pillBtns = {};
+    formats.forEach(function (f) {
+      var btn = UI.el('button', { type: 'button', class: 'ci-pill' + (f.toLowerCase() === currentFormat ? ' active' : '') }, f);
+      btn.addEventListener('click', function () {
+        currentFormat = f.toLowerCase();
+        formats.forEach(function (k) {
+          if (pillBtns[k]) pillBtns[k].classList.toggle('active', k.toLowerCase() === currentFormat);
+        });
+        triggerReprocess();
+      });
+      pillBtns[f] = btn;
+      pillsWrap.appendChild(btn);
+    });
+
+    var formatSection = UI.el('div', { class: 'ci-section' });
+    var formatLabel = UI.el('div', { class: 'ci-label' });
+    formatLabel.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> <span>' + tr('কনভার্ট ফরম্যাট', "Convert To") + '</span>';
+    formatSection.appendChild(formatLabel);
+    formatSection.appendChild(pillsWrap);
+
+    // Section 2: Target File Size
+    var targetInput = UI.el('input', { type: 'number', class: 'ci-input', min: '1', placeholder: tr('যেমন: 5 বা 100', "e.g. 5 or 100") });
+    var targetUnit = UI.el('select', { class: 'ci-select' },
+      UI.el('option', { value: 'MB' }, 'MB'),
+      UI.el('option', { value: 'KB' }, 'KB')
+    );
+    targetInput.addEventListener('input', triggerReprocess);
+    targetUnit.addEventListener('change', triggerReprocess);
+
+    var targetSection = UI.el('div', { class: 'ci-section' });
+    var targetLabel = UI.el('div', { class: 'ci-label' });
+    targetLabel.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg> <span>' + tr('টার্গেট ফাইল সাইজ', "Target File Size") + '</span>';
+    targetSection.appendChild(targetLabel);
+    targetSection.appendChild(UI.el('div', { class: 'ci-target-row' }, targetInput, targetUnit));
+    targetSection.appendChild(UI.el('div', { class: 'ci-help-text' }, tr('অটো-কম্প্রেশনের জন্য ফাঁকা রাখুন।', "Leave blank for optimal auto-compression.")));
+
+    // Section 3: Custom Resize
+    var widthInput = UI.el('input', { type: 'number', class: 'ci-input', min: '1', placeholder: tr('Auto', "Auto") });
+    var heightInput = UI.el('input', { type: 'number', class: 'ci-input', min: '1', placeholder: tr('Auto', "Auto") });
+    var ratioCheck = UI.el('input', { type: 'checkbox', checked: true });
+    widthInput.addEventListener('input', triggerReprocess);
+    heightInput.addEventListener('input', triggerReprocess);
+    ratioCheck.addEventListener('change', triggerReprocess);
+
+    var resizeSection = UI.el('div', { class: 'ci-section' });
+    var resizeLabel = UI.el('div', { class: 'ci-label' });
+    resizeLabel.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg> <span>' + tr('কাস্টম সাইজ পরিবর্তন', "Custom Resize") + '</span>';
+    resizeSection.appendChild(resizeLabel);
+    resizeSection.appendChild(UI.el('div', { class: 'ci-resize-row' },
+      UI.el('div', { class: 'ci-field-wrap' },
+        UI.el('small', {}, tr('প্রস্থ (px)', "Width (px)")),
+        widthInput
       ),
-      UI.el('small', { class: 'lbl' }, tr('PNG থেকে JPG করলে স্বচ্ছ অংশ সাদা হয়ে যায়। HEIC ছবি অনেক ব্রাউজারে খোলে না।', "Converting PNG to JPG turns transparent areas white. HEIC images do not open in many browsers.")),
-      go, out));
+      UI.el('div', { class: 'ci-field-wrap' },
+        UI.el('small', {}, tr('উচ্চতা (px)', "Height (px)")),
+        heightInput
+      )
+    ));
+    resizeSection.appendChild(UI.el('label', { class: 'ci-check-label' }, ratioCheck, tr('অনুপাত ঠিক রাখুন', "Maintain Aspect Ratio")));
+
+    // Reset button
+    var resetBtn = UI.el('button', { type: 'button', class: 'ci-reset-btn' }, tr('↺ অন্য ছবি বেছে নিন', "↺ Choose other images"));
+    resetBtn.addEventListener('click', function () {
+      items.forEach(function (it) {
+        if (it.res && it.res.url) URL.revokeObjectURL(it.res.url);
+        if (it.img && it.img._url) URL.revokeObjectURL(it.img._url);
+      });
+      items = [];
+      workspace.style.display = 'none';
+      dropWrap.style.display = 'block';
+    });
+
+    settingsPanel.appendChild(settingsHead);
+    settingsPanel.appendChild(formatSection);
+    settingsPanel.appendChild(targetSection);
+    settingsPanel.appendChild(resizeSection);
+    settingsPanel.appendChild(resetBtn);
+
+    // --- RIGHT COLUMN: CONVERTED FILES ---
+    var resultsWrap = UI.el('div', { class: 'ci-results-wrap' });
+    var zipBtn = UI.el('button', { type: 'button', class: 'ci-download-btn', style: { width: 'auto', padding: '0 18px', display: 'none' } });
+    zipBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ' + tr('সবগুলো ZIP ডাউনলোড', "Download All (ZIP)");
+    zipBtn.addEventListener('click', async function () {
+      var validBlobs = items.filter(function (it) { return it.res && it.res.blob; }).map(function (it) {
+        return { name: it.res.name, blob: it.res.blob };
+      });
+      if (!validBlobs.length) return;
+      var z = await UI.zip(validBlobs);
+      UI.download(z, 'ToolGhor(convert-image).zip');
+    });
+
+    var resultsHead = UI.el('div', { class: 'ci-results-head' },
+      UI.el('h2', { class: 'ci-results-title' }, tr('রূপান্তরিত ফাইল', "Converted Files")),
+      zipBtn
+    );
+
+    var cardsGrid = UI.el('div', { class: 'ci-cards-grid' });
+    resultsWrap.appendChild(resultsHead);
+    resultsWrap.appendChild(cardsGrid);
+
+    workspace.appendChild(settingsPanel);
+    workspace.appendChild(resultsWrap);
+
+    container.appendChild(dropWrap);
+    container.appendChild(workspace);
+    root.appendChild(container);
+
+    function renderCardsSkeleton() {
+      countBadge.textContent = items.length + ' ' + tr('টি ফাইল', 'Files');
+      zipBtn.style.display = items.length > 1 ? 'inline-flex' : 'none';
+      UI.clear(cardsGrid);
+
+      items.forEach(function (item) {
+        var card = UI.el('div', { class: 'ci-card' });
+        var thumbBox = UI.el('div', { class: 'ci-card-thumb-wrap' });
+        var badge = UI.el('div', { class: 'ci-badge-busy' }, '⏳');
+        var imgEl = UI.el('img', { class: 'ci-card-img', alt: item.file.name });
+        thumbBox.appendChild(imgEl);
+        thumbBox.appendChild(badge);
+
+        var cardBody = UI.el('div', { class: 'ci-card-body' });
+        var titleEl = UI.el('h4', { class: 'ci-card-filename', title: item.file.name }, item.file.name);
+
+        var specsGrid = UI.el('div', { class: 'ci-specs-grid' },
+          UI.el('div', { class: 'ci-spec-old-size' }, 'Old: ' + UI.fmtSize(item.file.size)),
+          UI.el('div', { class: 'ci-spec-old-dims' }, '—'),
+          UI.el('div', { class: 'ci-spec-new-size' }, tr('প্রসেসিং...', 'Processing...')),
+          UI.el('div', { class: 'ci-spec-new-dims' }, '—')
+        );
+
+        var dlBtn = UI.el('button', { type: 'button', class: 'ci-download-btn', disabled: true });
+        dlBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ' + tr('ডাউনলোড', "Download");
+
+        var delBtn = UI.el('button', { type: 'button', class: 'ci-delete-btn', title: tr('মুছে ফেলুন', "Delete") });
+        delBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
+
+        dlBtn.addEventListener('click', function () {
+          if (item.res && item.res.blob) {
+            UI.download(item.res.blob, item.res.name);
+          }
+        });
+
+        delBtn.addEventListener('click', function () {
+          if (item.res && item.res.url) URL.revokeObjectURL(item.res.url);
+          if (item.img && item.img._url) URL.revokeObjectURL(item.img._url);
+          items = items.filter(function (it) { return it.id !== item.id; });
+          card.remove();
+          countBadge.textContent = items.length + ' ' + tr('টি ফাইল', 'Files');
+          zipBtn.style.display = items.length > 1 ? 'inline-flex' : 'none';
+          if (!items.length) {
+            workspace.style.display = 'none';
+            dropWrap.style.display = 'block';
+          }
+        });
+
+        var actionsRow = UI.el('div', { class: 'ci-actions-row' }, dlBtn, delBtn);
+
+        cardBody.appendChild(titleEl);
+        cardBody.appendChild(specsGrid);
+        cardBody.appendChild(actionsRow);
+
+        card.appendChild(thumbBox);
+        card.appendChild(cardBody);
+
+        item.cardEl = {
+          card: card,
+          img: imgEl,
+          badge: badge,
+          title: titleEl,
+          oldSize: specsGrid.children[0],
+          oldDims: specsGrid.children[1],
+          newSize: specsGrid.children[2],
+          newDims: specsGrid.children[3],
+          dlBtn: dlBtn
+        };
+
+        cardsGrid.appendChild(card);
+      });
+    }
+
+    function triggerReprocess() {
+      clearTimeout(reprocessTimer);
+      reprocessTimer = setTimeout(runAllConversions, 200);
+    }
+
+    async function convertSingleFile(item, opt) {
+      if (!item.img) {
+        item.img = await UI.readImage(item.file);
+      }
+      var img = item.img;
+      var ow = img.naturalWidth, oh = img.naturalHeight;
+      var w = ow, h = oh;
+
+      if (opt.customW > 0 && opt.customH > 0) {
+        w = opt.customW;
+        h = opt.customH;
+      } else if (opt.customW > 0) {
+        w = opt.customW;
+        h = opt.maintainRatio ? Math.max(1, Math.round(w * oh / ow)) : oh;
+      } else if (opt.customH > 0) {
+        h = opt.customH;
+        w = opt.maintainRatio ? Math.max(1, Math.round(h * ow / oh)) : ow;
+      }
+
+      var fmt = (opt.format || 'jpg').toLowerCase();
+      var ext = (fmt === 'jpeg') ? 'jpeg' : (fmt === 'png') ? 'png' : (fmt === 'webp') ? 'webp' : 'jpg';
+      var mime = (ext === 'png') ? 'image/png' : (ext === 'webp') ? 'image/webp' : 'image/jpeg';
+      var targetBytes = opt.targetBytes || 0;
+
+      var finalBlob = null, finalW = w, finalH = h;
+
+      if (targetBytes > 0 && (ext === 'jpg' || ext === 'jpeg' || ext === 'webp')) {
+        // Test at current dimensions
+        var testCanvas = drawToCanvas(img, w, h, (ext === 'png' || ext === 'webp') ? null : '#fff');
+        var maxBlob = await UI.toBlob(testCanvas, mime, 0.98);
+
+        if (maxBlob.size < targetBytes * 0.92) {
+          // Target size is significantly larger than image at max quality
+          // Upscale canvas resolution to reach target file size (e.g. 768x1024 -> 3072x4096)
+          var scale = Math.min(6, Math.max(1.15, Math.sqrt(targetBytes / Math.max(1024, maxBlob.size))));
+          var upW = Math.round(w * scale);
+          var upH = Math.round(h * scale);
+          if (upW > 8192) { upH = Math.round(upH * 8192 / upW); upW = 8192; }
+          if (upH > 8192) { upW = Math.round(upW * 8192 / upH); upH = 8192; }
+
+          var upCanvas = drawToCanvas(img, upW, upH, (ext === 'png' || ext === 'webp') ? null : '#fff');
+          var r = await fitToTargetSize(upCanvas, mime, targetBytes);
+          finalBlob = r.blob;
+          finalW = r.w;
+          finalH = r.h;
+        } else {
+          // Target size is smaller or equal -> binary search quality / downscale
+          var r = await fitToTargetSize(testCanvas, mime, targetBytes);
+          finalBlob = r.blob;
+          finalW = r.w;
+          finalH = r.h;
+        }
+      } else if (targetBytes > 0 && ext === 'png') {
+        var curW = w, curH = h;
+        var c = drawToCanvas(img, curW, curH, null);
+        var b = await UI.toBlob(c, 'image/png');
+        var steps = 0;
+        while (b.size > targetBytes && (curW > 60 && curH > 60) && steps < 12) {
+          steps++;
+          curW = Math.max(30, Math.round(curW * 0.9));
+          curH = Math.max(30, Math.round(curH * 0.9));
+          c = drawToCanvas(img, curW, curH, null);
+          b = await UI.toBlob(c, 'image/png');
+        }
+        finalBlob = b;
+        finalW = curW;
+        finalH = curH;
+      } else {
+        // Optimal auto-compression
+        var qVal = (ext === 'png') ? 1 : (ext === 'webp') ? 0.90 : 0.92;
+        var c = drawToCanvas(img, w, h, (ext === 'png' || ext === 'webp') ? null : '#fff');
+        finalBlob = await UI.toBlob(c, mime, qVal);
+        finalW = w;
+        finalH = h;
+      }
+
+      var base = UI.baseName(item.file.name);
+      var outFileName = base + '.' + ext;
+
+      return {
+        blob: finalBlob,
+        url: URL.createObjectURL(finalBlob),
+        name: outFileName,
+        oldSize: item.file.size,
+        newSize: finalBlob.size,
+        oldW: ow,
+        oldH: oh,
+        newW: finalW,
+        newH: finalH
+      };
+    }
+
+    async function runAllConversions() {
+      var runId = ++activeRunId;
+      var tVal = UI.parseNum(targetInput.value);
+      var unit = targetUnit.value || 'MB';
+      var targetBytes = (tVal > 0) ? (unit === 'MB' ? tVal * 1024 * 1024 : tVal * 1024) : 0;
+      var cW = UI.parseNum(widthInput.value) || 0;
+      var cH = UI.parseNum(heightInput.value) || 0;
+      var mRatio = ratioCheck.checked;
+
+      var opt = {
+        format: currentFormat,
+        targetBytes: targetBytes,
+        customW: cW,
+        customH: cH,
+        maintainRatio: mRatio
+      };
+
+      for (var i = 0; i < items.length; i++) {
+        if (runId !== activeRunId) return;
+        var item = items[i];
+        if (item.cardEl) {
+          item.cardEl.badge.className = 'ci-badge-busy';
+          item.cardEl.badge.innerHTML = '⏳';
+          item.cardEl.dlBtn.disabled = true;
+        }
+
+        try {
+          var res = await convertSingleFile(item, opt);
+          if (runId !== activeRunId) return;
+          if (item.res && item.res.url) {
+            URL.revokeObjectURL(item.res.url);
+          }
+          item.res = res;
+
+          if (item.cardEl) {
+            item.cardEl.img.src = res.url;
+            item.cardEl.title.textContent = res.name;
+            item.cardEl.title.title = res.name;
+            item.cardEl.oldSize.textContent = 'Old: ' + UI.fmtSize(res.oldSize);
+            item.cardEl.oldDims.textContent = res.oldW + 'x' + res.oldH;
+            item.cardEl.newSize.textContent = 'New: ' + UI.fmtSize(res.newSize);
+            item.cardEl.newDims.textContent = res.newW + 'x' + res.newH;
+            item.cardEl.badge.className = 'ci-badge-success';
+            item.cardEl.badge.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+            item.cardEl.dlBtn.disabled = false;
+          }
+        } catch (err) {
+          if (item.cardEl) {
+            item.cardEl.newSize.textContent = tr('ব্যর্থ', 'Failed');
+            item.cardEl.badge.className = 'ci-badge-busy';
+            item.cardEl.badge.innerHTML = '❌';
+          }
+        }
+      }
+    }
   };
 
   /* ---------------- পাসপোর্ট সাইজ ফটো (Fixed 35×45 mm / 413×531 px) ---------------- */
@@ -1772,33 +2032,19 @@
         UI.toast(tr('ছবি লোড করা যায়নি', "Could not read image file"));
         return;
       }
-      if (dropZoneWrap) dropZoneWrap.style.display = 'none';
-      if (toggle) toggle.style.display = 'none';
+      if (dropZone) dropZone.style.display = 'none';
       workspace.style.display = 'flex';
       await processImagePipeline(img, file);
     }
 
     // Inviting dropzone matching remove.bg
-    var dropZoneWrap = UI.el('div', { class: 'drop-wrap' });
-    function makeDrop(isFolder) {
-      UI.clear(dropZoneWrap);
-      var d = UI.dropzone({
-        accept: 'image/*',
-        directory: !!isFolder,
-        label: isFolder ? tr('ফোল্ডার বেছে নিন', "Choose folder") : tr('ছবি আপলোড করুন', "Upload Image"),
-        hint: isFolder ? tr('অথবা ফোল্ডার এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a folder here") : tr('অথবা ছবি টেনে আনুন, বা পেস্ট করুন (Ctrl+V) • PNG, JPG, WEBP', "or drop a file, paste image (Ctrl+V) • PNG, JPG, WEBP"),
-        onFiles: function (files) {
-          if (files && files[0]) handleFileSelect(files[0]);
-        }
-      });
-      d.style.padding = '44px 20px';
-      dropZoneWrap.appendChild(d);
-      return d;
-    }
-    makeDrop(false);
-    var toggle = UI.fileFolderToggle(function (mode) {
-      makeDrop(mode === 'folder');
+    var dropZone = UI.dropzone({
+      accept: 'image/*',
+      onFiles: function (files) {
+        if (files && files[0]) handleFileSelect(files[0]);
+      }
     });
+    dropZone.style.padding = '44px 20px';
 
     // Global Paste Listener (Ctrl+V) support
     function onPaste(e) {
@@ -1857,8 +2103,7 @@
       }
     });
 
-    container.appendChild(toggle);
-    container.appendChild(dropZoneWrap);
+    container.appendChild(dropZone);
     container.appendChild(workspace);
     container.appendChild(bgAiBox.el);
     root.appendChild(container);

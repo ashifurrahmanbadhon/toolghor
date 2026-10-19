@@ -378,34 +378,108 @@
     });
   }
 
+  var filePlusSvg = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>';
+  var folderPlusSvg = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path><line x1="12" y1="10" x2="12" y2="16"></line><line x1="9" y1="13" x2="15" y2="13"></line></svg>';
+
   UI.dropzone = function (o) {
     o = o || {};
-    var inputAttrs = { type: 'file', accept: o.accept || '', multiple: o.multiple ? true : false, hidden: true };
-    if (o.directory) {
-      inputAttrs.webkitdirectory = '';
-      inputAttrs.directory = '';
+    var isMultiple = o.multiple !== false;
+    var showFolder = isMultiple && o.allowFolder !== false;
+
+    var fileInput = UI.el('input', {
+      type: 'file',
+      accept: o.accept || '',
+      multiple: isMultiple ? true : false,
+      hidden: true
+    });
+
+    var folderInput = null;
+    if (showFolder) {
+      folderInput = UI.el('input', {
+        type: 'file',
+        accept: o.accept || '',
+        multiple: true,
+        webkitdirectory: '',
+        directory: '',
+        hidden: true
+      });
+      folderInput.webkitdirectory = true;
     }
-    var input = UI.el('input', inputAttrs);
-    if (o.directory) {
-      input.webkitdirectory = true;
+
+    var defaultHint = o.accept && o.accept.indexOf('image') >= 0
+      ? tr('অথবা আপনার ছবিগুলো এখানে টেনে এনে ছেড়ে দিন', "Or drag and drop your images here")
+      : tr('অথবা আপনার ফাইলগুলো এখানে টেনে এনে ছেড়ে দিন', "Or drag and drop your files here");
+
+    var cardsWrap = UI.el('div', { class: 'drop-cards-wrap' });
+
+    var filesBtn = UI.el('div', { class: 'drop-action-btn drop-btn-files', role: 'button', tabindex: '0' });
+    filesBtn.innerHTML = filePlusSvg + '<span class="drop-btn-text">' + (isMultiple ? tr('ফাইল আপলোড', "Upload Files") : tr('ফাইল আপলোড', "Upload File")) + '</span>';
+    filesBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      fileInput.click();
+    });
+    filesBtn.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+        fileInput.click();
+      }
+    });
+    cardsWrap.appendChild(filesBtn);
+
+    if (showFolder && folderInput) {
+      var folderBtn = UI.el('div', { class: 'drop-action-btn drop-btn-folder', role: 'button', tabindex: '0' });
+      folderBtn.innerHTML = folderPlusSvg + '<span class="drop-btn-text">' + tr('ফোল্ডার আপলোড', "Upload Folder") + '</span>';
+      folderBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        folderInput.click();
+      });
+      folderBtn.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          folderInput.click();
+        }
+      });
+      cardsWrap.appendChild(folderBtn);
     }
-    var defaultLabel = o.directory ? tr('ফোল্ডার বেছে নিন', "Choose folder") : tr('ফাইল বেছে নিন', "Choose a file");
-    var defaultHint = o.directory ? tr('অথবা ফোল্ডার এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a folder here") : tr('অথবা ফাইল এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a file here");
-    var box = UI.el('div', { class: 'drop', tabindex: '0', role: 'button' },
-      UI.icon('upload', 30),
-      UI.el('strong', {}, o.label || defaultLabel),
-      UI.el('span', { class: 'hint' }, o.hint || defaultHint),
-      input);
+
+    var hintEl = UI.el('div', { class: 'drop-subtext' }, o.hint || defaultHint);
+
+    var box = UI.el('div', { class: 'drop drop-modern', tabindex: '0' },
+      cardsWrap,
+      hintEl,
+      fileInput
+    );
+    if (folderInput) box.appendChild(folderInput);
+
     function handle(list) {
       var files = Array.prototype.slice.call(list || []);
       var ok = files.filter(function (f) { return accepted(f, o.accept); });
       if (!ok.length && files.length) { UI.toast(tr('এই ধরনের ফাইল এখানে চলবে না', "This type of file is not supported here")); return; }
       if (!ok.length) return;
-      o.onFiles(o.multiple ? ok : [ok[0]]);
+      o.onFiles(isMultiple ? ok : [ok[0]]);
     }
-    box.addEventListener('click', function (e) { if (e.target !== input) input.click(); });
-    box.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } });
-    input.addEventListener('change', function () { handle(input.files); input.value = ''; });
+
+    box.addEventListener('click', function (e) {
+      if (e.target !== fileInput && (!folderInput || e.target !== folderInput) && !e.target.closest('.drop-action-btn')) {
+        fileInput.click();
+      }
+    });
+    box.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        if (!e.target.closest('.drop-action-btn')) {
+          e.preventDefault();
+          fileInput.click();
+        }
+      }
+    });
+
+    fileInput.addEventListener('change', function () { handle(fileInput.files); fileInput.value = ''; });
+    if (folderInput) {
+      folderInput.addEventListener('change', function () { handle(folderInput.files); folderInput.value = ''; });
+    }
+
     ['dragenter', 'dragover'].forEach(function (ev) { box.addEventListener(ev, function (e) { e.preventDefault(); box.classList.add('over'); }); });
     ['dragleave', 'drop'].forEach(function (ev) { box.addEventListener(ev, function (e) { e.preventDefault(); box.classList.remove('over'); }); });
     box.addEventListener('drop', function (e) {

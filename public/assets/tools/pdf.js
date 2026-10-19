@@ -284,31 +284,18 @@
       },
       onChange: updateState
     });
-    var dropWrap = UI.el('div', { class: 'drop-wrap' });
-    function makeDrop(isFolder) {
-      UI.clear(dropWrap);
-      var d = UI.dropzone({
-        accept: 'application/pdf,.pdf',
-        multiple: true,
-        directory: !!isFolder,
-        label: isFolder ? tr('ফোল্ডার বেছে নিন', "Choose folder") : tr('পিডিএফ ফাইল বেছে নিন', "Choose PDF files"),
-        hint: isFolder ? tr('অথবা ফোল্ডার এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a folder here") : tr('অথবা ফাইল এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a file here"),
-        onFiles: function (fs) {
-          fs.forEach(function (f) {
-            var it = { file: f }; files.push(it);
-            f.arrayBuffer().then(function (b) { return PDFLib.PDFDocument.load(b); })
-              .then(function (d) { it.pages = d.getPageCount(); updateState(); list.redraw(); })
-              .catch(function () { it.bad = true; updateState(); list.redraw(); });
-          });
-          UI.clear(out); list.redraw();
-        }
-      });
-      dropWrap.appendChild(d);
-      return d;
-    }
-    makeDrop(false);
-    var toggle = UI.fileFolderToggle(function (mode) {
-      makeDrop(mode === 'folder');
+    var drop = UI.dropzone({
+      accept: 'application/pdf,.pdf',
+      multiple: true,
+      onFiles: function (fs) {
+        fs.forEach(function (f) {
+          var it = { file: f }; files.push(it);
+          f.arrayBuffer().then(function (b) { return PDFLib.PDFDocument.load(b); })
+            .then(function (d) { it.pages = d.getPageCount(); updateState(); list.redraw(); })
+            .catch(function () { it.bad = true; updateState(); list.redraw(); });
+        });
+        UI.clear(out); list.redraw();
+      }
     });
     async function run() {
       var valid = validFiles();
@@ -358,7 +345,7 @@
       } catch (e) { out.appendChild(UI.notice('err', UI.err(e))); }
       updateState();
     }
-    root.appendChild(UI.el('div', { class: 'stack' }, toggle, dropWrap, list,
+    root.appendChild(UI.el('div', { class: 'stack' }, drop, list,
       UI.el('p', { class: 'lbl' }, tr('কমপক্ষে ২টি ফাইল লাগবে। উপরে/নিচে তীর দিয়ে ক্রম ঠিক করুন।', "You need at least 2 files. Use the up/down arrows to set the order.")), mergeBtn, out));
   };
 
@@ -456,22 +443,9 @@
       { value: 'med', label: tr('মাঝারি (প্রস্তাবিত)', "Medium (recommended)") },
       { value: 'low', label: tr('বেশি কমপ্রেস (ছোট সাইজ)', "Strong compression (smallest size)") }], 'med');
     var go = UI.btn(tr('কমপ্রেস করুন', "Compress"), run, { icon: 'minimize-2', disabled: true });
-    var dropWrap = UI.el('div', { class: 'drop-wrap' });
-    function makeDrop(isFolder) {
-      UI.clear(dropWrap);
-      var d = UI.dropzone({
-        accept: 'application/pdf,.pdf',
-        directory: !!isFolder,
-        label: isFolder ? tr('ফোল্ডার বেছে নিন', "Choose folder") : tr('পিডিএফ ফাইল বেছে নিন', "Choose PDF files"),
-        hint: isFolder ? tr('অথবা ফোল্ডার এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a folder here") : tr('অথবা ফাইল এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a file here"),
-        onFiles: function (fs) { file = fs[0]; UI.clear(out); UI.clear(info); info.appendChild(UI.notice('info', file.name + ' · ' + UI.fmtSize(file.size))); go.disabled = false; }
-      });
-      dropWrap.appendChild(d);
-      return d;
-    }
-    makeDrop(false);
-    var toggle = UI.fileFolderToggle(function (mode) {
-      makeDrop(mode === 'folder');
+    var drop = UI.dropzone({
+      accept: 'application/pdf,.pdf',
+      onFiles: function (fs) { file = fs[0]; UI.clear(out); UI.clear(info); info.appendChild(UI.notice('info', file.name + ' · ' + UI.fmtSize(file.size))); go.disabled = false; }
     });
 
     async function run() {
@@ -523,7 +497,7 @@
     }
 
     root.appendChild(UI.el('div', { class: 'stack' },
-      toggle, dropWrap, info, UI.el('div', { class: 'stack' }, UI.el('span', { class: 'lbl' }, tr('কমপ্রেসের মাত্রা', "Compression level")), level), go, out));
+      drop, info, UI.el('div', { class: 'stack' }, UI.el('span', { class: 'lbl' }, tr('কমপ্রেসের মাত্রা', "Compression level")), level), go, out));
   };
 
   /* ---------------- পিডিএফ → ছবি / JPG ---------------- */
@@ -533,22 +507,9 @@
     var dpi = UI.select([{ value: 100, label: tr('দ্রুত (১০০ DPI)', "Fast (100 DPI)") }, { value: 150, label: tr('স্ট্যান্ডার্ড (১৫০ DPI)', "Standard (150 DPI)") }, { value: 200, label: tr('হাই কোয়ালিটি (২০০ DPI)', "High quality (200 DPI)") }], 150);
     var range = UI.el('input', { type: 'text', placeholder: tr('খালি রাখলে সব পৃষ্ঠা', "Leave empty for all pages") });
     var go = UI.btn(fixedJpg ? tr('JPG বানান', "Create JPG") : tr('ছবি বানান', "Create images"), run, { icon: 'file-image', disabled: true });
-    var dropWrap = UI.el('div', { class: 'drop-wrap' });
-    function makeDrop(isFolder) {
-      UI.clear(dropWrap);
-      var d = UI.dropzone({
-        accept: 'application/pdf,.pdf',
-        directory: !!isFolder,
-        label: isFolder ? tr('ফোল্ডার বেছে নিন', "Choose folder") : tr('পিডিএফ ফাইল বেছে নিন', "Choose PDF files"),
-        hint: isFolder ? tr('অথবা ফোল্ডার এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a folder here") : tr('অথবা ফাইল এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a file here"),
-        onFiles: function (fs) { file = fs[0]; UI.clear(out); UI.clear(info); info.appendChild(UI.notice('info', file.name + ' · ' + UI.fmtSize(file.size))); go.disabled = false; }
-      });
-      dropWrap.appendChild(d);
-      return d;
-    }
-    makeDrop(false);
-    var toggle = UI.fileFolderToggle(function (mode) {
-      makeDrop(mode === 'folder');
+    var drop = UI.dropzone({
+      accept: 'application/pdf,.pdf',
+      onFiles: function (fs) { file = fs[0]; UI.clear(out); UI.clear(info); info.appendChild(UI.notice('info', file.name + ' · ' + UI.fmtSize(file.size))); go.disabled = false; }
     });
     async function run() {
       UI.clear(out); items.forEach(function (it) { URL.revokeObjectURL(it.url); }); items = [];
@@ -605,7 +566,7 @@
       fixedJpg ? null : UI.el('div', { class: 'field' }, UI.el('span', { class: 'lbl' }, tr('ছবির ফরম্যাট', "Image format")), fmt),
       UI.field(tr('মান (রেজোলিউশন)', "Quality (resolution)"), dpi, null, 'fit'),
       UI.field(tr('নির্দিষ্ট পৃষ্ঠা (ঐচ্ছিক)', "Specific pages (optional)"), range, tr('যেমন: 1-3, 5', "e.g. 1-3, 5")));
-    root.appendChild(UI.el('div', { class: 'stack' }, toggle, dropWrap, info, opts, go, out));
+    root.appendChild(UI.el('div', { class: 'stack' }, drop, info, opts, go, out));
   }
   T['pdf-to-image'] = function (root) { pdfToImages(root, false); };
   T['pdf-to-jpg'] = function (root) { pdfToImages(root, true); };
@@ -1567,23 +1528,10 @@
       },
       onChange: function () { go.disabled = items.length < 1; }
     });
-    var dropWrap = UI.el('div', { class: 'drop-wrap' });
-    function makeDrop(isFolder) {
-      UI.clear(dropWrap);
-      var d = UI.dropzone({
-        accept: 'image/*',
-        multiple: true,
-        directory: !!isFolder,
-        label: isFolder ? tr('ফোল্ডার বেছে নিন', "Choose folder") : tr('ছবি বেছে নিন (JPG, PNG, WebP)', "Choose images (JPG, PNG, WebP)"),
-        hint: isFolder ? tr('অথবা ফোল্ডার এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a folder here") : tr('অথবা ফাইল এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a file here"),
-        onFiles: function (fs) { fs.forEach(function (f) { items.push({ file: f, url: URL.createObjectURL(f) }); }); UI.clear(out); list.redraw(); }
-      });
-      dropWrap.appendChild(d);
-      return d;
-    }
-    makeDrop(false);
-    var toggle = UI.fileFolderToggle(function (mode) {
-      makeDrop(mode === 'folder');
+    var drop = UI.dropzone({
+      accept: 'image/*',
+      multiple: true,
+      onFiles: function (fs) { fs.forEach(function (f) { items.push({ file: f, url: URL.createObjectURL(f) }); }); UI.clear(out); list.redraw(); }
     });
     async function run() {
       UI.clear(out); var prog = UI.progress(); out.appendChild(prog); go.disabled = true;
@@ -1622,7 +1570,7 @@
       } catch (e) { UI.clear(out); out.appendChild(UI.notice('err', UI.err(e))); }
       go.disabled = items.length < 1;
     }
-    root.appendChild(UI.el('div', { class: 'stack' }, toggle, dropWrap, list,
+    root.appendChild(UI.el('div', { class: 'stack' }, drop, list,
       UI.el('div', { class: 'row' }, UI.field(tr('পেজ সাইজ', "Page size"), size), UI.field(tr('পেজের দিক', "Orientation"), orient), UI.field(tr('মার্জিন', "Margin"), margin)), go, out));
   };
 })();
