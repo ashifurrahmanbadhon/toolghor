@@ -66,13 +66,26 @@
     var br = UI.select([{ value: '128k', label: tr('১২৮ kbps', "128 kbps") }, { value: '192k', label: tr('১৯২ kbps (প্রস্তাবিত)', "192 kbps (recommended)") }, { value: '256k', label: tr('২৫৬ kbps', "256 kbps") }, { value: '320k', label: tr('৩২০ kbps', "320 kbps") }], '192k');
     var brField = UI.field(tr('অডিও মান', "Audio quality"), br);
     var go = UI.btn(tr('অডিও আলাদা করুন', "Extract audio"), run, { icon: 'audio-lines', disabled: true });
-    var drop = UI.dropzone({
-      accept: 'video/*,audio/*,.mkv,.mov,.avi,.3gp,.flv,.webm,.mp4,.m4v', label: tr('ভিডিও ফাইল বেছে নিন', "Choose a video file"),
-      onFiles: function (fs) {
-        file = fs[0]; UI.clear(out); UI.clear(info);
-        info.appendChild(UI.notice('info', file.name + ' · ' + UI.fmtSize(file.size))); var w = warnBig(file); if (w) info.appendChild(w);
-        go.disabled = false;
-      }
+    var dropWrap = UI.el('div', { class: 'drop-wrap' });
+    function makeDrop(isFolder) {
+      UI.clear(dropWrap);
+      var d = UI.dropzone({
+        accept: 'video/*,audio/*,.mkv,.mov,.avi,.3gp,.flv,.webm,.mp4,.m4v',
+        directory: !!isFolder,
+        label: isFolder ? tr('ফোল্ডার বেছে নিন', "Choose folder") : tr('ভিডিও ফাইল বেছে নিন', "Choose a video file"),
+        hint: isFolder ? tr('অথবা ফোল্ডার এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a folder here") : tr('অথবা ফাইল এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a file here"),
+        onFiles: function (fs) {
+          file = fs[0]; UI.clear(out); UI.clear(info);
+          info.appendChild(UI.notice('info', file.name + ' · ' + UI.fmtSize(file.size))); var w = warnBig(file); if (w) info.appendChild(w);
+          go.disabled = false;
+        }
+      });
+      dropWrap.appendChild(d);
+      return d;
+    }
+    makeDrop(false);
+    var toggle = UI.fileFolderToggle(function (mode) {
+      makeDrop(mode === 'folder');
     });
     async function run() {
       UI.clear(out); var prog = UI.progress(); out.appendChild(prog); go.disabled = true;
@@ -93,7 +106,7 @@
       } catch (e) { UI.clear(out); out.appendChild(UI.notice('err', UI.err(e))); }
       go.disabled = false;
     }
-    root.appendChild(UI.el('div', { class: 'stack' }, drop, info,
+    root.appendChild(UI.el('div', { class: 'stack' }, toggle, dropWrap, info,
       UI.el('div', { class: 'stack' }, UI.el('span', { class: 'lbl' }, tr('অডিও ফরম্যাট', "Audio format")), fmt), brField, go, out));
   };
 

@@ -323,12 +323,78 @@
       return file.type === tk;
     });
   }
+
+  function readEntriesPromise(reader) {
+    return new Promise(function (resolve) {
+      var all = [];
+      function nextBatch() {
+        reader.readEntries(function (entries) {
+          if (!entries || !entries.length) {
+            resolve(all);
+          } else {
+            for (var i = 0; i < entries.length; i++) all.push(entries[i]);
+            nextBatch();
+          }
+        }, function () {
+          resolve(all);
+        });
+      }
+      nextBatch();
+    });
+  }
+
+  function traverseEntry(entry) {
+    return new Promise(function (resolve) {
+      if (!entry) return resolve([]);
+      if (entry.isFile) {
+        entry.file(function (f) {
+          resolve([f]);
+        }, function () {
+          resolve([]);
+        });
+      } else if (entry.isDirectory) {
+        var reader = entry.createReader();
+        readEntriesPromise(reader).then(function (entries) {
+          if (!entries || !entries.length) return resolve([]);
+          var promises = [];
+          for (var i = 0; i < entries.length; i++) {
+            promises.push(traverseEntry(entries[i]));
+          }
+          Promise.all(promises).then(function (nestedArrays) {
+            var collected = [];
+            for (var j = 0; j < nestedArrays.length; j++) {
+              collected = collected.concat(nestedArrays[j]);
+            }
+            resolve(collected);
+          }).catch(function () {
+            resolve([]);
+          });
+        }).catch(function () {
+          resolve([]);
+        });
+      } else {
+        resolve([]);
+      }
+    });
+  }
+
   UI.dropzone = function (o) {
-    var input = UI.el('input', { type: 'file', accept: o.accept || '', multiple: o.multiple ? true : false, hidden: true });
+    o = o || {};
+    var inputAttrs = { type: 'file', accept: o.accept || '', multiple: o.multiple ? true : false, hidden: true };
+    if (o.directory) {
+      inputAttrs.webkitdirectory = '';
+      inputAttrs.directory = '';
+    }
+    var input = UI.el('input', inputAttrs);
+    if (o.directory) {
+      input.webkitdirectory = true;
+    }
+    var defaultLabel = o.directory ? tr('ফোল্ডার বেছে নিন', "Choose folder") : tr('ফাইল বেছে নিন', "Choose a file");
+    var defaultHint = o.directory ? tr('অথবা ফোল্ডার এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a folder here") : tr('অথবা ফাইল এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a file here");
     var box = UI.el('div', { class: 'drop', tabindex: '0', role: 'button' },
       UI.icon('upload', 30),
-      UI.el('strong', {}, o.label || tr('ফাইল বেছে নিন', "Choose a file")),
-      UI.el('span', { class: 'hint' }, o.hint || tr('অথবা ফাইল এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a file here")),
+      UI.el('strong', {}, o.label || defaultLabel),
+      UI.el('span', { class: 'hint' }, o.hint || defaultHint),
       input);
     function handle(list) {
       var files = Array.prototype.slice.call(list || []);
@@ -342,8 +408,52 @@
     input.addEventListener('change', function () { handle(input.files); input.value = ''; });
     ['dragenter', 'dragover'].forEach(function (ev) { box.addEventListener(ev, function (e) { e.preventDefault(); box.classList.add('over'); }); });
     ['dragleave', 'drop'].forEach(function (ev) { box.addEventListener(ev, function (e) { e.preventDefault(); box.classList.remove('over'); }); });
-    box.addEventListener('drop', function (e) { handle(e.dataTransfer && e.dataTransfer.files); });
+    box.addEventListener('drop', function (e) {
+      var dt = e.dataTransfer;
+      if (!dt) return;
+      var items = dt.items;
+      if (items && items.length && typeof items[0].webkitGetAsEntry === 'function') {
+        var promises = [];
+        var hasEntries = false;
+        for (var i = 0; i < items.length; i++) {
+          if (items[i].kind === 'file') {
+            var entry = items[i].webkitGetAsEntry();
+            if (entry) {
+              hasEntries = true;
+              promises.push(traverseEntry(entry));
+            }
+          }
+        }
+        if (hasEntries) {
+          Promise.all(promises).then(function (results) {
+            var allFiles = [];
+            for (var k = 0; k < results.length; k++) {
+              allFiles = allFiles.concat(results[k]);
+            }
+            if (allFiles.length > 0) {
+              handle(allFiles);
+            } else {
+              handle(dt.files);
+            }
+          }).catch(function () {
+            handle(dt.files);
+          });
+          return;
+        }
+      }
+      handle(dt.files);
+    });
     return box;
+  };
+
+  UI.fileFolderToggle = function (onMode, initialMode) {
+    var cur = initialMode === 'folder' ? 'folder' : 'files';
+    return UI.seg([
+      { value: 'files', label: tr('ফাইল', "Files") },
+      { value: 'folder', label: tr('ফোল্ডার', "Folder") }
+    ], cur, function (val) {
+      if (typeof onMode === 'function') onMode(val);
+    });
   };
 
   /* উপর-নিচ করা যায় এমন ফাইল তালিকা */

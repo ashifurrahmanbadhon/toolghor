@@ -29,6 +29,46 @@
     }
     return best;
   }
+  /* টার্গেট সাইজ অনুযায়ী কোয়ালিটি বাইনারি সার্চ (১-১০০, সর্বোচ্চ ১২ বার) ও প্রয়োজনে সাইজ ০.৯ গুণ ছোট করা */
+  async function fitToTargetSize(srcCanvas, mime, targetBytes) {
+    var curCanvas = srcCanvas;
+    var maxSteps = 20;
+    var lastBlob = null;
+    for (var step = 0; step < maxSteps; step++) {
+      var q1Blob = await UI.toBlob(curCanvas, mime, 0.01);
+      lastBlob = q1Blob;
+      if (q1Blob && q1Blob.size <= targetBytes) {
+        var lo = 1, hi = 100, best = q1Blob;
+        for (var iter = 0; iter < 12; iter++) {
+          var mid = Math.round((lo + hi) / 2);
+          var b = await UI.toBlob(curCanvas, mime, mid / 100);
+          if (b && b.size <= targetBytes) {
+            best = b;
+            lo = mid + 1;
+          } else {
+            hi = mid - 1;
+          }
+          if (lo > hi) break;
+        }
+        return { blob: best, w: curCanvas.width, h: curCanvas.height };
+      }
+      var nw = Math.max(1, Math.round(curCanvas.width * 0.9));
+      var nh = Math.max(1, Math.round(curCanvas.height * 0.9));
+      if (nw < 10 || nh < 10 || nw === curCanvas.width || nh === curCanvas.height) {
+        break;
+      }
+      var nc = UI.canvas(nw, nh);
+      var nctx = nc.getContext('2d');
+      if (mime === 'image/jpeg') {
+        nctx.fillStyle = '#fff';
+        nctx.fillRect(0, 0, nw, nh);
+      }
+      nctx.imageSmoothingQuality = 'high';
+      nctx.drawImage(curCanvas, 0, 0, nw, nh);
+      curCanvas = nc;
+    }
+    return { blob: lastBlob, w: curCanvas.width, h: curCanvas.height };
+  }
   function typeFor(file, choice) {
     if (choice === 'orig') {
       if (file.type === 'image/png') return 'png';
@@ -78,11 +118,28 @@
     var target = UI.el('input', { type: 'text', inputmode: 'numeric', placeholder: tr('যেমন: 100', "e.g. 100") });
     var go = UI.btn(tr('কমপ্রেস করুন', "Compress"), run, { icon: 'minimize-2', disabled: true });
     function showList() { UI.clear(listBox); files.forEach(function (f) { listBox.appendChild(UI.el('div', {}, f.name + ' · ' + UI.fmtSize(f.size))); }); go.disabled = !files.length; }
-    var drop = UI.dropzone({ accept: 'image/*', multiple: true, label: tr('ছবি বেছে নিন', "Choose images"), onFiles: function (fs) { files = fs; UI.clear(out); showList(); } });
+    var dropWrap = UI.el('div', { class: 'drop-wrap' });
+    function makeDrop(isFolder) {
+      UI.clear(dropWrap);
+      var d = UI.dropzone({
+        accept: 'image/*',
+        multiple: true,
+        directory: !!isFolder,
+        label: isFolder ? tr('ফোল্ডার বেছে নিন', "Choose folder") : tr('ছবি বেছে নিন', "Choose images"),
+        hint: isFolder ? tr('অথবা ফোল্ডার এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a folder here") : tr('অথবা ফাইল এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a file here"),
+        onFiles: function (fs) { files = fs; UI.clear(out); showList(); }
+      });
+      dropWrap.appendChild(d);
+      return d;
+    }
+    makeDrop(false);
+    var toggle = UI.fileFolderToggle(function (mode) {
+      makeDrop(mode === 'folder');
+    });
     async function run() {
       UI.clear(out); var prog = UI.progress(); out.appendChild(prog); go.disabled = true;
       var activeFiles = files.slice();
-      var dropInput = drop.querySelector('input');
+      var dropInput = dropWrap.querySelector('input');
       if (dropInput) dropInput.disabled = true;
       var rows = [];
       try {
@@ -118,7 +175,7 @@
         go.disabled = !files.length;
       }
     }
-    root.appendChild(UI.el('div', { class: 'stack' }, drop, listBox,
+    root.appendChild(UI.el('div', { class: 'stack' }, toggle, dropWrap, listBox,
       UI.el('div', { class: 'row' },
         UI.field(tr('মান', "Quality"), UI.el('div', {}, q), null),
         UI.field(tr('সর্বোচ্চ প্রস্থ', "Maximum width"), maxw), UI.field(tr('আউটপুট ফরম্যাট', "Output format"), fmt)),
@@ -149,14 +206,27 @@
     [tr('ইনস্টাগ্রাম ১০৮০×১০৮০', "Instagram 1080×1080"), function () { setSize(1080, 1080, true); }], [tr('ফেসবুক শেয়ার ১২০০×৬৩০', "Facebook share 1200×630"), function () { setSize(1200, 630, true); }]].forEach(function (p) {
       presets.appendChild(UI.el('button', { type: 'button', onclick: function () { if (img) p[1](); else UI.toast(tr('আগে একটি ছবি বেছে নিন', "Choose an image first")); } }, p[0]));
     });
-    var drop = UI.dropzone({
-      accept: 'image/*', label: tr('ছবি বেছে নিন', "Choose images"),
-      onFiles: async function (fs) {
-        UI.clear(out); UI.clear(info); file = fs[0];
-        try { img = await UI.readImage(file); } catch (e) { info.appendChild(UI.notice('err', UI.err(e))); return; }
-        ow = img.naturalWidth; oh = img.naturalHeight; wIn.value = ow; hIn.value = oh; go.disabled = false;
-        info.appendChild(UI.notice('info', file.name + ' · ' + UI.n(ow) + '×' + UI.n(oh) + ' px · ' + UI.fmtSize(file.size)));
-      }
+    var dropWrap = UI.el('div', { class: 'drop-wrap' });
+    function makeDrop(isFolder) {
+      UI.clear(dropWrap);
+      var d = UI.dropzone({
+        accept: 'image/*',
+        directory: !!isFolder,
+        label: isFolder ? tr('ফোল্ডার বেছে নিন', "Choose folder") : tr('ছবি বেছে নিন', "Choose images"),
+        hint: isFolder ? tr('অথবা ফোল্ডার এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a folder here") : tr('অথবা ফাইল এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a file here"),
+        onFiles: async function (fs) {
+          UI.clear(out); UI.clear(info); file = fs[0];
+          try { img = await UI.readImage(file); } catch (e) { info.appendChild(UI.notice('err', UI.err(e))); return; }
+          ow = img.naturalWidth; oh = img.naturalHeight; wIn.value = ow; hIn.value = oh; go.disabled = false;
+          info.appendChild(UI.notice('info', file.name + ' · ' + UI.n(ow) + '×' + UI.n(oh) + ' px · ' + UI.fmtSize(file.size)));
+        }
+      });
+      dropWrap.appendChild(d);
+      return d;
+    }
+    makeDrop(false);
+    var toggle = UI.fileFolderToggle(function (mode) {
+      makeDrop(mode === 'folder');
     });
     var logoCheck = UI.el('input', { type: 'checkbox' });
     var logoFile = null, logoImg = null;
@@ -232,7 +302,7 @@
         out.firstChild.appendChild(pv);
       } catch (e) { UI.clear(out); out.appendChild(UI.notice('err', UI.err(e))); }
     }
-    root.appendChild(UI.el('div', { class: 'stack' }, drop, info,
+    root.appendChild(UI.el('div', { class: 'stack' }, toggle, dropWrap, info,
       UI.el('div', { class: 'stack' }, UI.el('span', { class: 'lbl' }, tr('তৈরি মাপ', "Ready-made sizes")), presets),
       UI.el('div', { class: 'row' }, UI.field(tr('প্রস্থ (px)', "Width (px)"), wIn), UI.field(tr('উচ্চতা (px)', "Height (px)"), hIn)),
       UI.el('label', { class: 'check' }, lock, tr(' অনুপাত ঠিক রাখুন', " Keep the aspect ratio")),
@@ -357,11 +427,28 @@
       label: function (it) { return UI.el('span', { class: 'fname', style: { display: 'flex', alignItems: 'center', gap: '10px' } }, UI.el('img', { class: 'thumb', src: it.url, alt: '' }), UI.el('span', {}, it.file.name, UI.el('small', {}, UI.fmtSize(it.file.size)))); },
       onChange: function () { go.disabled = items.length < 2; }
     });
-    var drop = UI.dropzone({ accept: 'image/*', multiple: true, label: tr('ছবি বেছে নিন (২টি বা বেশি)', "Choose images (2 or more)"), onFiles: function (fs) { fs.forEach(function (f) { items.push({ file: f, url: URL.createObjectURL(f) }); }); UI.clear(out); list.redraw(); } });
+    var dropWrap = UI.el('div', { class: 'drop-wrap' });
+    function makeDrop(isFolder) {
+      UI.clear(dropWrap);
+      var d = UI.dropzone({
+        accept: 'image/*',
+        multiple: true,
+        directory: !!isFolder,
+        label: isFolder ? tr('ফোল্ডার বেছে নিন', "Choose folder") : tr('ছবি বেছে নিন (২টি বা বেশি)', "Choose images (2 or more)"),
+        hint: isFolder ? tr('অথবা ফোল্ডার এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a folder here") : tr('অথবা ফাইল এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a file here"),
+        onFiles: function (fs) { fs.forEach(function (f) { items.push({ file: f, url: URL.createObjectURL(f) }); }); UI.clear(out); list.redraw(); }
+      });
+      dropWrap.appendChild(d);
+      return d;
+    }
+    makeDrop(false);
+    var toggle = UI.fileFolderToggle(function (mode) {
+      makeDrop(mode === 'folder');
+    });
     async function run() {
       UI.clear(out); var prog = UI.progress(); out.appendChild(prog); go.disabled = true;
       var activeItems = items.slice();
-      var dropInput = drop.querySelector('input');
+      var dropInput = dropWrap.querySelector('input');
       if (dropInput) dropInput.disabled = true;
       try {
         var imgs = [];
@@ -402,7 +489,7 @@
         go.disabled = items.length < 2;
       }
     }
-    root.appendChild(UI.el('div', { class: 'stack' }, drop, list,
+    root.appendChild(UI.el('div', { class: 'stack' }, toggle, dropWrap, list,
       UI.el('div', { class: 'stack' }, UI.el('span', { class: 'lbl' }, tr('সাজানোর ধরন', "Layout")), layout),
       UI.el('div', { class: 'row' }, UI.field(tr('ছবির মাঝে ফাঁক', "Gap between images"), UI.el('div', {}, gap, gapV)), UI.field(tr('ব্যাকগ্রাউন্ড রং', "Background colour"), bg, null, 'fit'), UI.field(tr('ফরম্যাট', "Format"), fmt, null, 'fit')),
       go, out));
@@ -415,24 +502,53 @@
     var q = UI.el('input', { type: 'range', min: '40', max: '100', value: '90' });
     var qv = UI.el('strong', {}, UI.n(90) + '%');
     q.addEventListener('input', function () { qv.textContent = UI.n(q.value) + '%'; });
+    var targetSize = UI.el('input', { type: 'number', min: '1', placeholder: tr('যেমন: 100', "e.g. 100") });
+    var targetUnit = UI.select([{ value: 'KB', label: 'KB' }, { value: 'MB', label: 'MB' }], 'KB');
     var go = UI.btn(tr('রূপান্তর করুন', "Convert"), run, { icon: 'repeat', disabled: true });
-    var drop = UI.dropzone({
-      accept: 'image/*', multiple: true, label: tr('ছবি বেছে নিন', "Choose images"),
-      onFiles: function (fs) { files = fs; UI.clear(out); UI.clear(listBox); files.forEach(function (f) { listBox.appendChild(UI.el('div', {}, f.name + ' · ' + UI.fmtSize(f.size))); }); go.disabled = false; }
+    var dropWrap = UI.el('div', { class: 'drop-wrap' });
+    function makeDrop(isFolder) {
+      UI.clear(dropWrap);
+      var d = UI.dropzone({
+        accept: 'image/*',
+        multiple: true,
+        directory: !!isFolder,
+        label: isFolder ? tr('ফোল্ডার বেছে নিন', "Choose folder") : tr('ছবি বেছে নিন', "Choose images"),
+        hint: isFolder ? tr('অথবা ফোল্ডার এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a folder here") : tr('অথবা ফাইল এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a file here"),
+        onFiles: function (fs) { files = fs; UI.clear(out); UI.clear(listBox); files.forEach(function (f) { listBox.appendChild(UI.el('div', {}, f.name + ' · ' + UI.fmtSize(f.size))); }); go.disabled = false; }
+      });
+      dropWrap.appendChild(d);
+      return d;
+    }
+    makeDrop(false);
+    var toggle = UI.fileFolderToggle(function (mode) {
+      makeDrop(mode === 'folder');
     });
     async function run() {
       UI.clear(out); var prog = UI.progress(); out.appendChild(prog); go.disabled = true;
       var rows = [];
       try {
         var ext = target.get();
+        var tval = UI.parseNum(targetSize.value);
+        var targetBytes = (tval > 0) ? (targetUnit.value === 'MB' ? tval * 1024 * 1024 : tval * 1024) : 0;
         for (var i = 0; i < files.length; i++) {
           prog.set(i / files.length * 100, UI.n(i + 1) + '/' + UI.n(files.length));
           await UI.yield();
           var f = files[i], img = await UI.readImage(f);
           var c = drawToCanvas(img, img.naturalWidth, img.naturalHeight, ext === 'jpg' ? '#fff' : null);
-          var blob = await UI.toBlob(c, MIME[ext], +q.value / 100);
+          var blob, note = '';
+          if (targetBytes && (ext === 'jpg' || ext === 'webp')) {
+            var r = await fitToTargetSize(c, MIME[ext], targetBytes);
+            blob = r.blob;
+            if (blob.size > targetBytes) {
+              note = tr('(টার্গেটে পৌঁছানো যায়নি)', "(could not reach the target)");
+            } else if (r.w !== img.naturalWidth || r.h !== img.naturalHeight) {
+              note = '(' + UI.n(r.w) + '×' + UI.n(r.h) + ' px)';
+            }
+          } else {
+            blob = await UI.toBlob(c, MIME[ext], +q.value / 100);
+          }
           if (blob.type && blob.type !== MIME[ext]) throw new Error(tr('আপনার ব্রাউজার ', "Your browser cannot save ") + ext.toUpperCase() + tr(' ফরম্যাটে সেভ করতে পারছে না। অন্য ফরম্যাট বেছে নিন।', " format. Choose another format."));
-          rows.push({ name: outName(f, ext, i, files.length), before: f.size, blob: blob, url: URL.createObjectURL(blob) });
+          rows.push({ name: outName(f, ext, i, files.length), before: f.size, blob: blob, note: note, url: URL.createObjectURL(blob) });
           URL.revokeObjectURL(img._url);
         }
         UI.clear(out);
@@ -440,9 +556,20 @@
       } catch (e) { UI.clear(out); out.appendChild(UI.notice('err', UI.err(e))); }
       go.disabled = !files.length;
     }
-    root.appendChild(UI.el('div', { class: 'stack' }, drop, listBox,
+    root.appendChild(UI.el('div', { class: 'stack' }, toggle, dropWrap, listBox,
       UI.el('div', { class: 'stack' }, UI.el('span', { class: 'lbl' }, tr('কোন ফরম্যাটে চান?', "Which format do you want?")), target),
-      UI.el('div', { class: 'row' }, UI.field(tr('মান (JPG/WebP-এর জন্য)', "Quality (for JPG/WebP)"), UI.el('div', {}, q)), UI.el('div', { class: 'field fit' }, UI.el('span', { class: 'lbl' }, tr('বর্তমান: ', "Current: ")), qv)),
+      UI.el('div', { class: 'row' },
+        UI.field(tr('মান (JPG/WebP-এর জন্য)', "Quality (for JPG/WebP)"), UI.el('div', {}, q)),
+        UI.el('div', { class: 'field fit' }, UI.el('span', { class: 'lbl' }, tr('বর্তমান: ', "Current: ")), qv)),
+      UI.el('div', { class: 'row' },
+        UI.field(tr('টার্গেট সাইজ (JPG/WebP, ঐচ্ছিক)', "Target size (JPG/WebP, optional)"),
+          UI.el('div', { style: { display: 'flex', gap: '8px', alignItems: 'center' } },
+            UI.el('div', { style: { flex: '1' } }, targetSize),
+            UI.el('div', { style: { width: '80px' } }, targetUnit)
+          ),
+          tr('দিলে স্লাইডারের বদলে এই সাইজের নিচে আনার চেষ্টা করবে। যেমন ১০০ KB।', "If set, binary-searches quality to fit under this target size. E.g. 100 KB.")
+        )
+      ),
       UI.el('small', { class: 'lbl' }, tr('PNG থেকে JPG করলে স্বচ্ছ অংশ সাদা হয়ে যায়। HEIC ছবি অনেক ব্রাউজারে খোলে না।', "Converting PNG to JPG turns transparent areas white. HEIC images do not open in many browsers.")),
       go, out));
   };
@@ -1645,21 +1772,33 @@
         UI.toast(tr('ছবি লোড করা যায়নি', "Could not read image file"));
         return;
       }
-      dropZone.style.display = 'none';
+      if (dropZoneWrap) dropZoneWrap.style.display = 'none';
+      if (toggle) toggle.style.display = 'none';
       workspace.style.display = 'flex';
       await processImagePipeline(img, file);
     }
 
     // Inviting dropzone matching remove.bg
-    var dropZone = UI.dropzone({
-      accept: 'image/*',
-      label: tr('ছবি আপলোড করুন', "Upload Image"),
-      hint: tr('অথবা ছবি টেনে আনুন, বা পেস্ট করুন (Ctrl+V) • PNG, JPG, WEBP', "or drop a file, paste image (Ctrl+V) • PNG, JPG, WEBP"),
-      onFiles: function (files) {
-        if (files && files[0]) handleFileSelect(files[0]);
-      }
+    var dropZoneWrap = UI.el('div', { class: 'drop-wrap' });
+    function makeDrop(isFolder) {
+      UI.clear(dropZoneWrap);
+      var d = UI.dropzone({
+        accept: 'image/*',
+        directory: !!isFolder,
+        label: isFolder ? tr('ফোল্ডার বেছে নিন', "Choose folder") : tr('ছবি আপলোড করুন', "Upload Image"),
+        hint: isFolder ? tr('অথবা ফোল্ডার এখানে টেনে এনে ছেড়ে দিন', "or drag and drop a folder here") : tr('অথবা ছবি টেনে আনুন, বা পেস্ট করুন (Ctrl+V) • PNG, JPG, WEBP', "or drop a file, paste image (Ctrl+V) • PNG, JPG, WEBP"),
+        onFiles: function (files) {
+          if (files && files[0]) handleFileSelect(files[0]);
+        }
+      });
+      d.style.padding = '44px 20px';
+      dropZoneWrap.appendChild(d);
+      return d;
+    }
+    makeDrop(false);
+    var toggle = UI.fileFolderToggle(function (mode) {
+      makeDrop(mode === 'folder');
     });
-    dropZone.style.padding = '44px 20px';
 
     // Global Paste Listener (Ctrl+V) support
     function onPaste(e) {
@@ -1718,7 +1857,8 @@
       }
     });
 
-    container.appendChild(dropZone);
+    container.appendChild(toggle);
+    container.appendChild(dropZoneWrap);
     container.appendChild(workspace);
     container.appendChild(bgAiBox.el);
     root.appendChild(container);
