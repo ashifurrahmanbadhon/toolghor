@@ -175,22 +175,31 @@
     return tool || '';
   };
 
-  UI.formatDownloadName = function (name) {
-    var tool = UI.getToolSlug();
-    if (!tool) return name || 'download';
+  UI.sanitizeFilename = function (s) {
+    if (!s) return 'file';
+    return String(s)
+      .replace(/[/\\?%*:|"<>]/g, '_')
+      .replace(/[\x00-\x1f\x80-\x9f]/g, '')
+      .replace(/^\.+|\.+$/g, '')
+      .trim() || 'file';
+  };
 
+  UI.formatDownloadName = function (name) {
     var raw = (name || '').trim();
     var ext = '';
     var dotIdx = raw.lastIndexOf('.');
     if (dotIdx >= 0) {
-      ext = raw.slice(dotIdx);
+      ext = raw.slice(dotIdx).replace(/[/\\?%*:|"<>]/g, '');
       raw = raw.slice(0, dotIdx);
     }
+    raw = UI.sanitizeFilename(raw);
 
-    // If already formatted like ToolGhor(...), keep it
+    // If already formatted like ToolGhor(...), keep it safe
     if (/^ToolGhor\(/i.test(raw)) {
       return raw + ext;
     }
+
+    var tool = UI.sanitizeFilename(UI.getToolSlug() || 'download');
 
     // Check if there is a page or indexed suffix (e.g. -page-01, -page-1, -1, etc.)
     var sub = '';

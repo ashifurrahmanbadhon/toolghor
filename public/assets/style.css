@@ -4206,3 +4206,125 @@ img {
   content-visibility: auto;
 }
 
+/* ==========================================================================
+   PART 1 RESPONSIVE AUDIT & ZERO HORIZONTAL OVERFLOW SYSTEM
+   ========================================================================== */
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Tool result tables: readable on mobile via container-only scroll */
+.tbl-wrap,
+.table-responsive,
+.snapyt-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 12px 0;
+  border-radius: 12px;
+}
+.tbl,
+table.tbl {
+  width: 100%;
+  min-width: 440px;
+  border-collapse: collapse;
+}
+.tbl th,
+.tbl td {
+  padding: 10px 12px;
+  vertical-align: middle;
+}
+.tbl td {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Dropzone cards (Upload Files / Folder): stack vertically on narrow screens, side-by-side on desktop */
+@media (max-width: 520px) {
+  .drop-cards-wrap {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 12px !important;
+    align-items: center !important;
+  }
+  .drop-action-btn,
+  .drop.drop-modern.single-file .drop-action-btn {
+    width: 100% !important;
+    max-width: 280px !important;
+    height: 58px !important;
+    min-height: 48px !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    gap: 12px !important;
+    padding: 0 16px !important;
+    border-radius: 14px !important;
+  }
+  .drop-action-btn .drop-icon-box svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+  .drop.drop-modern {
+    padding: 24px 14px !important;
+  }
+  .ci-cards-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Touch targets >= 44px on mobile devices */
+@media (max-width: 768px) {
+  .btn,
+  button.btn,
+  .ci-download-btn,
+  .ci-reset-btn {
+    min-height: 44px;
+  }
+  .seg button {
+    min-height: 44px;
+    padding: 8px 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .pill,
+  .btn-top-about,
+  .btn-api-connect,
+  .btn-request-tool,
+  .btn-theme-toggle {
+    min-height: 44px !important;
+    display: inline-flex;
+    align-items: center;
+  }
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="password"],
+  select {
+    min-height: 44px;
+  }
+  .ci-pill {
+    min-height: 44px;
+    padding: 8px 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Filename text truncation prevention */
+.ci-card-filename,
+.selected-file-name,
+.tbl-filename {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+

@@ -60,6 +60,8 @@ export const metadata: Metadata = {
   },
 };
 
+import VersionUpdateChecker from '@/components/VersionUpdateChecker';
+
 export default function RootLayout({
   children,
 }: {
@@ -103,7 +105,10 @@ export default function RootLayout({
       <body className={`${inter.className} dark`} suppressHydrationWarning>
         <SmoothCursor />
         <BackgroundAnimation />
-        <AppProvider>{children}</AppProvider>
+        <AppProvider>
+          <VersionUpdateChecker />
+          {children}
+        </AppProvider>
         <Analytics />
       </body>
     </html>

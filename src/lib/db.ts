@@ -346,6 +346,42 @@ export async function initDatabase() {
     ON CONFLICT (id) DO NOTHING;
   `;
 
+  // 12. Section: Legal Pages (Privacy Policy, Terms of Service)
+  await sql`
+    CREATE TABLE IF NOT EXISTS section_legal_pages (
+      slug VARCHAR(50) PRIMARY KEY,
+      title_bn TEXT NOT NULL,
+      title_en TEXT NOT NULL,
+      content_bn TEXT NOT NULL,
+      content_en TEXT NOT NULL,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+
+  await sql`
+    INSERT INTO section_legal_pages (slug, title_bn, title_en, content_bn, content_en)
+    VALUES (
+      'privacy',
+      'গোপনীয়তা নীতি (Privacy Policy)',
+      'Privacy Policy',
+      'ToolGhor আপনার গোপনীয়তাকে সর্বোচ্চ অগ্রাধিকার দেয়। আমাদের সকল টুল ব্রাউজারে ক্লায়েন্ট-সাইডে সম্পূর্ণ নিরাপদভাবে চলে। আপনার কোনো ছবি, ডকুমেন্ট বা ব্যক্তিগত ফাইল আমাদের সার্ভারে সংরক্ষণ বা আপলোড করা হয় না।',
+      'ToolGhor prioritizes your privacy above all. All productivity tools run 100% client-side inside your browser. None of your photos, documents, or personal files are stored or uploaded to our servers.'
+    )
+    ON CONFLICT (slug) DO NOTHING;
+  `;
+
+  await sql`
+    INSERT INTO section_legal_pages (slug, title_bn, title_en, content_bn, content_en)
+    VALUES (
+      'terms',
+      'ব্যবহারের শর্তাবলী (Terms of Service)',
+      'Terms of Service',
+      'ToolGhor-এর সমস্ত সেবা সম্পূর্ণ বিনামূল্যে ব্যবহারের জন্য উন্মুক্ত। ব্যবহারকারী তার নিজস্ব ফাইলের সঠিক ব্যবহারের জন্য দায়বদ্ধ। সাইটটি কোনো অবৈধ বা অনৈতিক উদ্দেশ্যে ব্যবহার করা সম্পূর্ণ নিষিদ্ধ।',
+      'All services on ToolGhor are completely free for personal and professional use. Users are solely responsible for the legitimate use of their files. Any illegal or unauthorized usage is strictly prohibited.'
+    )
+    ON CONFLICT (slug) DO NOTHING;
+  `;
+
   isInitialized = true;
   return { success: true };
 }

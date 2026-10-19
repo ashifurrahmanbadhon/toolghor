@@ -737,6 +737,7 @@
     }
 
     async function convertSingleFile(item, opt) {
+      await UI.yield();
       if (!item.img) {
         item.img = await UI.readImage(item.file);
       }
@@ -871,6 +872,7 @@
 
       for (var i = 0; i < items.length; i++) {
         if (runId !== activeRunId) return;
+        await UI.yield();
         var item = items[i];
         if (item.cardEl) {
           item.cardEl.badge.className = 'ci-badge-busy';
