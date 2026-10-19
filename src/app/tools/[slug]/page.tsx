@@ -45,6 +45,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       type: 'website',
       url: `${siteConfig.url}/tools/${tool.slug}`,
+      images: [
+        {
+          url: '/og-image.png',
+          width: 1200,
+          height: 630,
+          alt: `${tool.en} - ToolGhor`,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ['/og-image.png'],
     },
     alternates: {
       canonical: `${siteConfig.url}/tools/${tool.slug}`,
