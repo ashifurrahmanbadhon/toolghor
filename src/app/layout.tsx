@@ -46,6 +46,9 @@ export const metadata: Metadata = {
     description: `${siteConfig.taglineEn}. Everyday productivity and file tools in your browser.`,
     images: ['/og-image.png'],
   },
+  facebook: {
+    appId: process.env.NEXT_PUBLIC_FB_APP_ID || '966242223397117',
+  },
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
