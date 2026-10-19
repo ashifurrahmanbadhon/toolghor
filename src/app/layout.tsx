@@ -73,6 +73,8 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <meta property="fb:app_id" content="966242223397117" />
+        <meta name="fb:app_id" content="966242223397117" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon.png" />
         <link rel="icon" type="image/png" sizes="256x256" href="/assets/logo-icon.png" />
