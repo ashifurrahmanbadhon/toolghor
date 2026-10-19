@@ -24,6 +24,28 @@ export const metadata: Metadata = {
   title: 'ToolGhor – Everyday tools, now on one platform',
   description: `${siteConfig.taglineEn}. Everyday productivity and file tools in your browser.`,
   metadataBase: new URL(siteConfig.url),
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: siteConfig.url,
+    siteName: 'ToolGhor',
+    title: 'ToolGhor – Everyday tools, now on one platform',
+    description: `${siteConfig.taglineEn}. Everyday productivity and file tools in your browser.`,
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'ToolGhor – Everyday tools, now on one platform',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ToolGhor – Everyday tools, now on one platform',
+    description: `${siteConfig.taglineEn}. Everyday productivity and file tools in your browser.`,
+    images: ['/og-image.png'],
+  },
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
