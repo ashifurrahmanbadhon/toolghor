@@ -863,6 +863,8 @@
       function draw() { UI.clear(prev); if (d.photo) prev.appendChild(UI.el('div', { class: 'row', style: { alignItems: 'center' } }, UI.el('img', { class: 'thumb', src: d.photo, alt: '' }), UI.btn(tr('ছবি সরান', "Remove photo"), function () { d.photo = ''; draw(); refresh(); }, { cls: 'danger sm', icon: 'trash-2', iconSize: 16 }))); }
       draw();
       var drop = UI.dropzone({
+        multiple: false,
+        allowFolder: false,
         accept: 'image/*', label: tr('ছবি যোগ করুন (ঐচ্ছিক)', "Add a photo (optional)"), hint: tr('পাসপোর্ট সাইজ ছবি ভালো', "A passport-size photo works well"),
         onFiles: async function (fs) {
           try {

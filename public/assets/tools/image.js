@@ -29,6 +29,55 @@
     }
     return best;
   }
+  function padJpegExact(u8, targetBytes) {
+    if (u8.length >= targetBytes) return u8;
+    if (u8[0] !== 0xFF || u8[1] !== 0xD8) {
+      var out = new Uint8Array(targetBytes);
+      out.set(u8, 0);
+      return out;
+    }
+    var eoi = u8.length - 2;
+    while (eoi > 0 && !(u8[eoi] === 0xFF && u8[eoi + 1] === 0xD9)) eoi--;
+    if (eoi <= 0) eoi = u8.length;
+
+    var diff = targetBytes - u8.length;
+    if (diff < 4) {
+      var out = new Uint8Array(targetBytes);
+      out.set(u8, 0);
+      return out;
+    }
+
+    var out = new Uint8Array(targetBytes);
+    out.set(u8.subarray(0, eoi), 0);
+    var pos = eoi;
+    var remaining = diff;
+
+    while (remaining >= 4) {
+      var chunkLen = Math.min(65535, remaining);
+      if (remaining - chunkLen > 0 && remaining - chunkLen < 4) {
+        chunkLen -= 4;
+      }
+      var payloadLen = chunkLen - 4;
+      out[pos++] = 0xFF;
+      out[pos++] = 0xFE; // COM marker
+      out[pos++] = (chunkLen >> 8) & 0xFF;
+      out[pos++] = chunkLen & 0xFF;
+      out.fill(0x20, pos, pos + payloadLen);
+      pos += payloadLen;
+      remaining -= chunkLen;
+    }
+
+    out.set(u8.subarray(eoi), pos);
+    return out;
+  }
+
+  function padGenericExact(u8, targetBytes) {
+    if (u8.length >= targetBytes) return u8;
+    var out = new Uint8Array(targetBytes);
+    out.set(u8, 0);
+    return out;
+  }
+
   /* টার্গেট সাইজ অনুযায়ী কোয়ালিটি বাইনারি সার্চ (১-১০০, সর্বোচ্চ ১২ বার) ও প্রয়োজনে সাইজ ০.৯ গুণ ছোট করা */
   async function fitToTargetSize(srcCanvas, mime, targetBytes) {
     var curCanvas = srcCanvas;
@@ -295,6 +344,8 @@
     var fmt = UI.select([{ value: 'orig', label: tr('মূল ফরম্যাট', "Original format") }, { value: 'jpg', label: 'JPG' }, { value: 'png', label: 'PNG' }], 'orig');
     var go = UI.btn(tr('ক্রপ করুন', "Crop"), run, { icon: 'crop', disabled: true });
     var drop = UI.dropzone({
+      multiple: false,
+      allowFolder: false,
       accept: 'image/*', label: tr('ছবি বেছে নিন', "Choose images"),
       onFiles: async function (fs) {
         UI.clear(out); UI.clear(stage); file = fs[0];
@@ -711,47 +762,71 @@
 
       var finalBlob = null, finalW = w, finalH = h;
 
-      if (targetBytes > 0 && (ext === 'jpg' || ext === 'jpeg' || ext === 'webp')) {
-        // Test at current dimensions
-        var testCanvas = drawToCanvas(img, w, h, (ext === 'png' || ext === 'webp') ? null : '#fff');
-        var maxBlob = await UI.toBlob(testCanvas, mime, 0.98);
+      if (targetBytes > 0) {
+        // Calculate proportional scale if custom dimensions not given
+        if (!opt.customW && !opt.customH) {
+          if (targetBytes > item.file.size * 1.5) {
+            // Upscale resolution up to 6x (cap at 4608x6144 max for smooth memory)
+            var scale = Math.min(6, Math.max(1.15, Math.sqrt(targetBytes / Math.max(1024, item.file.size * 2))));
+            w = Math.round(ow * scale);
+            h = Math.round(oh * scale);
+            if (w > 4608) { h = Math.round(h * 4608 / w); w = 4608; }
+            if (h > 6144) { w = Math.round(w * 6144 / h); h = 6144; }
+          } else if (targetBytes < item.file.size * 0.75) {
+            // Downscale resolution proportionally for small targets (e.g. 20 KB)
+            var scale = Math.max(0.2, Math.min(0.95, Math.sqrt(targetBytes / item.file.size) * 1.05));
+            w = Math.max(24, Math.round(ow * scale));
+            h = Math.max(24, Math.round(oh * scale));
+          }
+        }
+        finalW = w;
+        finalH = h;
 
-        if (maxBlob.size < targetBytes * 0.92) {
-          // Target size is significantly larger than image at max quality
-          // Upscale canvas resolution to reach target file size (e.g. 768x1024 -> 3072x4096)
-          var scale = Math.min(6, Math.max(1.15, Math.sqrt(targetBytes / Math.max(1024, maxBlob.size))));
-          var upW = Math.round(w * scale);
-          var upH = Math.round(h * scale);
-          if (upW > 8192) { upH = Math.round(upH * 8192 / upW); upW = 8192; }
-          if (upH > 8192) { upW = Math.round(upW * 8192 / upH); upH = 8192; }
+        var c = drawToCanvas(img, w, h, (ext === 'png' || ext === 'webp') ? null : '#fff');
 
-          var upCanvas = drawToCanvas(img, upW, upH, (ext === 'png' || ext === 'webp') ? null : '#fff');
-          var r = await fitToTargetSize(upCanvas, mime, targetBytes);
-          finalBlob = r.blob;
-          finalW = r.w;
-          finalH = r.h;
+        if (ext === 'jpg' || ext === 'jpeg') {
+          // Fast encoding pass
+          var qVal = (targetBytes >= item.file.size) ? 0.96 : Math.max(0.1, Math.min(0.9, targetBytes / item.file.size));
+          var rawBlob = await UI.toBlob(c, mime, qVal);
+
+          if (rawBlob.size < targetBytes) {
+            var buf = await rawBlob.arrayBuffer();
+            var padded = padJpegExact(new Uint8Array(buf), targetBytes);
+            finalBlob = new Blob([padded], { type: mime });
+          } else if (rawBlob.size > targetBytes) {
+            var qLower = Math.max(0.05, qVal * (targetBytes / rawBlob.size) * 0.95);
+            var b2 = await UI.toBlob(c, mime, qLower);
+            if (b2.size < targetBytes) {
+              var buf2 = await b2.arrayBuffer();
+              var padded2 = padJpegExact(new Uint8Array(buf2), targetBytes);
+              finalBlob = new Blob([padded2], { type: mime });
+            } else {
+              finalBlob = b2;
+            }
+          } else {
+            finalBlob = rawBlob;
+          }
+        } else if (ext === 'webp') {
+          var qVal = (targetBytes >= item.file.size) ? 0.95 : Math.max(0.1, Math.min(0.9, targetBytes / item.file.size));
+          var rawBlob = await UI.toBlob(c, mime, qVal);
+          if (rawBlob.size < targetBytes) {
+            var buf = await rawBlob.arrayBuffer();
+            var padded = padGenericExact(new Uint8Array(buf), targetBytes);
+            finalBlob = new Blob([padded], { type: mime });
+          } else {
+            finalBlob = rawBlob;
+          }
         } else {
-          // Target size is smaller or equal -> binary search quality / downscale
-          var r = await fitToTargetSize(testCanvas, mime, targetBytes);
-          finalBlob = r.blob;
-          finalW = r.w;
-          finalH = r.h;
+          // PNG
+          var rawBlob = await UI.toBlob(c, mime, 1);
+          if (rawBlob.size < targetBytes) {
+            var buf = await rawBlob.arrayBuffer();
+            var padded = padGenericExact(new Uint8Array(buf), targetBytes);
+            finalBlob = new Blob([padded], { type: mime });
+          } else {
+            finalBlob = rawBlob;
+          }
         }
-      } else if (targetBytes > 0 && ext === 'png') {
-        var curW = w, curH = h;
-        var c = drawToCanvas(img, curW, curH, null);
-        var b = await UI.toBlob(c, 'image/png');
-        var steps = 0;
-        while (b.size > targetBytes && (curW > 60 && curH > 60) && steps < 12) {
-          steps++;
-          curW = Math.max(30, Math.round(curW * 0.9));
-          curH = Math.max(30, Math.round(curH * 0.9));
-          c = drawToCanvas(img, curW, curH, null);
-          b = await UI.toBlob(c, 'image/png');
-        }
-        finalBlob = b;
-        finalW = curW;
-        finalH = curH;
       } else {
         // Optimal auto-compression
         var qVal = (ext === 'png') ? 1 : (ext === 'webp') ? 0.90 : 0.92;
@@ -1423,6 +1498,8 @@
     }
 
     var dropZone = UI.dropzone({
+      multiple: false,
+      allowFolder: false,
       accept: 'image/*',
       label: tr('পাসপোর্ট ছবি বানাতে ছবি আপলোড করুন', "Upload photo for passport maker"),
       hint: tr('অথবা ছবি টেনে আনুন, বা পেস্ট করুন (Ctrl+V) • ImResizer স্টাইল অটো এআই ক্রপ', "or drop a file, paste image (Ctrl+V) • ImResizer-style Auto AI Crop"),

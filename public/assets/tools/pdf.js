@@ -353,6 +353,8 @@
   T['split-pdf'] = function (root) {
     var st = null, mode = 'range', out = UI.el('div'), box = UI.el('div', { class: 'stack' });
     var drop = UI.dropzone({
+      multiple: false,
+      allowFolder: false,
       accept: 'application/pdf,.pdf', label: tr('পিডিএফ ফাইল বেছে নিন', "Choose PDF files"),
       onFiles: async function (fs) {
         UI.clear(out); UI.clear(box);
@@ -929,6 +931,8 @@
     });
 
     var drop = UI.dropzone({
+      multiple: false,
+      allowFolder: false,
       accept: 'application/pdf,.pdf',
       label: tr('পিডিএফ ফাইল বেছে নিন বা এখানে টেনে আনুন', 'Choose PDF file or drag & drop here'),
       onFiles: async function (fs) {
@@ -1434,6 +1438,8 @@
     var file = null, out = UI.el('div'), info = UI.el('div');
     var go = UI.btn(tr('পিডিএফে রূপান্তর করুন', 'Convert to PDF'), run, { icon: 'file-text', disabled: true });
     var drop = UI.dropzone({
+      multiple: false,
+      allowFolder: false,
       accept: '.docx,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword',
       label: tr('Word ফাইল বেছে নিন (.docx, .doc)', 'Choose Word file (.docx, .doc)'),
       onFiles: function (fs) {

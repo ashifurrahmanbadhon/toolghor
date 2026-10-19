@@ -394,7 +394,14 @@
     };
     window._qrDecoderPasteHandler = pasteH;
     document.addEventListener('paste', pasteH);
-    var drop = UI.dropzone({ accept: 'image/*', label: tr('কিউআর কোডের ছবি বেছে নিন', "Choose a QR code image"), hint: tr('টেনে আনুন, অথবা স্ক্রিনশট কপি করে এখানে পেস্ট (Ctrl+V) করুন', "Drag it here, or copy a screenshot and paste (Ctrl+V)"), onFiles: function (fs) { fromFile(fs[0]); } });
+    var drop = UI.dropzone({
+      multiple: false,
+      allowFolder: false,
+      accept: 'image/*',
+      label: tr('কিউআর কোডের ছবি বেছে নিন', "Choose a QR code image"),
+      hint: tr('টেনে আনুন, অথবা স্ক্রিনশট কপি করে এখানে পেস্ট (Ctrl+V) করুন', "Drag it here, or copy a screenshot and paste (Ctrl+V)"),
+      onFiles: function (fs) { fromFile(fs[0]); }
+    });
 
     function stopCam() { if (raf) cancelAnimationFrame(raf); raf = 0; if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; } UI.clear(camBox); camBox.appendChild(camBtn); }
     var camBtn = UI.btn(tr('ক্যামেরা দিয়ে স্ক্যান করুন', "Scan with camera"), async function () {

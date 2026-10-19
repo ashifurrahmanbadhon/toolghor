@@ -116,6 +116,8 @@
     var qual = UI.select([{ value: 'fast', label: tr('দ্রুত (কম সময়, বড় ফাইল)', "Fast (less time, bigger file)") }, { value: 'good', label: tr('ভালো মান (বেশি সময়)', "Better quality (more time)") }], 'fast');
     var go = UI.btn(tr('ভিডিও বানান', "Create video"), run, { icon: 'smartphone', disabled: true });
     var drop = UI.dropzone({
+      multiple: false,
+      allowFolder: false,
       accept: 'video/*,.mkv,.mov,.3gp,.webm,.mp4,.m4v', label: tr('ভিডিও ফাইল বেছে নিন', "Choose a video file"),
       onFiles: function (fs) { load(fs[0]); }
     });
@@ -776,6 +778,8 @@
     });
 
     var localDrop = UI.dropzone({
+      multiple: false,
+      allowFolder: false,
       accept: 'video/*,audio/*,.mkv,.mov,.avi,.3gp,.flv,.webm,.mp4,.m4v',
       label: tr('ভিডিও ফাইল বেছে নিন বা টেনে আনুন', 'Choose or drag a video file'),
       onFiles: function (files) {

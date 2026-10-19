@@ -378,20 +378,23 @@
     });
   }
 
-  var filePlusSvg = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>';
-  var folderPlusSvg = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path><line x1="12" y1="10" x2="12" y2="16"></line><line x1="9" y1="13" x2="15" y2="13"></line></svg>';
+  var filePlusSvg = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>';
+  var folderPlusSvg = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path><line x1="12" y1="10" x2="12" y2="16"></line><line x1="9" y1="13" x2="15" y2="13"></line></svg>';
 
   UI.dropzone = function (o) {
     o = o || {};
     var isMultiple = o.multiple !== false;
     var showFolder = isMultiple && o.allowFolder !== false;
 
-    var fileInput = UI.el('input', {
+    var fileAttrs = {
       type: 'file',
       accept: o.accept || '',
-      multiple: isMultiple ? true : false,
       hidden: true
-    });
+    };
+    if (isMultiple) {
+      fileAttrs.multiple = true;
+    }
+    var fileInput = UI.el('input', fileAttrs);
 
     var folderInput = null;
     if (showFolder) {
@@ -413,7 +416,7 @@
     var cardsWrap = UI.el('div', { class: 'drop-cards-wrap' });
 
     var filesBtn = UI.el('div', { class: 'drop-action-btn drop-btn-files', role: 'button', tabindex: '0' });
-    filesBtn.innerHTML = filePlusSvg + '<span class="drop-btn-text">' + (isMultiple ? tr('ফাইল আপলোড', "Upload Files") : tr('ফাইল আপলোড', "Upload File")) + '</span>';
+    filesBtn.innerHTML = '<div class="drop-icon-box">' + filePlusSvg + '</div><span class="drop-btn-text">' + (isMultiple ? tr('ফাইল আপলোড', "Upload Files") : tr('ফাইল আপলোড', "Upload File")) + '</span>';
     filesBtn.addEventListener('click', function (e) {
       e.stopPropagation();
       fileInput.click();
@@ -429,7 +432,7 @@
 
     if (showFolder && folderInput) {
       var folderBtn = UI.el('div', { class: 'drop-action-btn drop-btn-folder', role: 'button', tabindex: '0' });
-      folderBtn.innerHTML = folderPlusSvg + '<span class="drop-btn-text">' + tr('ফোল্ডার আপলোড', "Upload Folder") + '</span>';
+      folderBtn.innerHTML = '<div class="drop-icon-box">' + folderPlusSvg + '</div><span class="drop-btn-text">' + tr('ফোল্ডার আপলোড', "Upload Folder") + '</span>';
       folderBtn.addEventListener('click', function (e) {
         e.stopPropagation();
         folderInput.click();
@@ -446,7 +449,7 @@
 
     var hintEl = UI.el('div', { class: 'drop-subtext' }, o.hint || defaultHint);
 
-    var box = UI.el('div', { class: 'drop drop-modern', tabindex: '0' },
+    var box = UI.el('div', { class: 'drop drop-modern' + (showFolder ? ' has-folder' : ' single-file'), tabindex: '0' },
       cardsWrap,
       hintEl,
       fileInput
@@ -486,7 +489,7 @@
       var dt = e.dataTransfer;
       if (!dt) return;
       var items = dt.items;
-      if (items && items.length && typeof items[0].webkitGetAsEntry === 'function') {
+      if (showFolder && items && items.length && typeof items[0].webkitGetAsEntry === 'function') {
         var promises = [];
         var hasEntries = false;
         for (var i = 0; i < items.length; i++) {
