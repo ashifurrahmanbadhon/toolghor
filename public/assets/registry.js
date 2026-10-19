@@ -66,11 +66,11 @@ var REGISTRY = {
       steps: ['এক বা একাধিক ছবি বেছে নিন।', 'মান বাছুন, অথবা টার্গেট সাইজ (KB) লিখুন।', '"কমপ্রেস করুন" চাপুন এবং ডাউনলোড করুন।']
     },
     {
-      slug: 'resize-image', bn: 'ছবির সাইজ পরিবর্তন', en: 'Resize Image', icon: 'scaling', cats: ['images'], group: 'image', needs: [],
-      desc: 'ছবির প্রস্থ-উচ্চতা (পিক্সেল) বদলান',
-      keywords: 'resize image change image size width height pixel ছবি ছোট বড় মাপ',
-      intro: 'ছবির মাপ পিক্সেলে বা শতকরায় বদলান। পাসপোর্ট ছবি ও স্বাক্ষরের জন্য রেডিমেড মাপ আছে।',
-      steps: ['একটি ছবি বেছে নিন।', 'নতুন মাপ লিখুন বা তৈরি মাপ বেছে নিন।', '"মাপ বদলান" চাপুন এবং ডাউনলোড করুন।']
+      slug: 'convert-image', bn: 'ছবির সাইজ পরিবর্তন', en: 'Resize Image', icon: 'scaling', cats: ['images'], group: 'image', needs: ['jszip'],
+      desc: 'ছবির সাইজ, মাপ (px) ও ফরম্যাট পরিবর্তন করুন',
+      keywords: 'resize image convert image photo size mb kb pixel format jpg png webp ছবির সাইজ রিসাইজ কনভার্ট',
+      intro: 'ছবির সাইজ (KB/MB), প্রস্থ-উচ্চতা এবং ফরম্যাট (JPG, PNG, WebP) সহজে পরিবর্তন করুন।',
+      steps: ['এক বা একাধিক ছবি বেছে নিন।', 'টার্গেট সাইজ (KB/MB), মাপ বা ফরম্যাট নির্ধারণ করুন।', 'ডাউনলোড বাটনে ক্লিক করুন।']
     },
     {
       slug: 'crop-image', bn: 'ছবি ক্রপ', en: 'Crop Image', icon: 'crop', cats: ['images'], group: 'image', needs: [],
@@ -85,13 +85,6 @@ var REGISTRY = {
       keywords: 'merge image combine images join photos stitch chobi jora ছবি জোড়া মার্জ',
       intro: 'একাধিক ছবি পাশাপাশি, উপর-নিচ বা গ্রিডে সাজিয়ে একটি ছবি বানান।',
       steps: ['দুই বা তার বেশি ছবি বেছে নিন।', 'সাজানোর ধরন, ফাঁক ও ব্যাকগ্রাউন্ড রং ঠিক করুন।', '"ছবি জুড়ুন" চাপুন এবং ডাউনলোড করুন।']
-    },
-    {
-      slug: 'convert-image', bn: 'ছবির ফরম্যাট পরিবর্তন', en: 'Convert Image', icon: 'repeat', cats: ['images'], group: 'image', needs: ['jszip'],
-      desc: 'JPG, PNG, WebP-এর মধ্যে রূপান্তর করুন',
-      keywords: 'convert image jpg to png png to jpg webp format format change ছবির ফরম্যাট রূপান্তর',
-      intro: 'ছবি JPG, PNG বা WebP ফরম্যাটে রূপান্তর করুন।',
-      steps: ['এক বা একাধিক ছবি বেছে নিন।', 'কোন ফরম্যাটে চান তা বাছুন।', '"রূপান্তর করুন" চাপুন এবং ডাউনলোড করুন।']
     },
     {
       slug: 'passport-photo', bn: 'পাসপোর্ট সাইজ ফটো', en: 'Passport Size Photo', icon: 'id-card', cats: ['images'], group: 'image', needs: [],
@@ -220,10 +213,7 @@ var TOOL_EN = {
   'word-to-pdf': { desc: 'Convert Word (DOCX, DOC) files into high quality PDF documents', intro: 'Convert Word documents (.docx, .doc) to standard PDF files with perfect styling and layout.', steps: ['Press "Choose Word file", or drag and drop your file.', 'Press "Convert to PDF".', 'Download your converted PDF document.'] },
   'jpg-to-pdf': { desc: 'Combine JPG or PNG images into a PDF', intro: 'Make a PDF from one or more images. Handy when you photograph documents and need to submit them.', steps: ['Choose your images (several are fine).', 'Set the order, page size and margin.', 'Press "Create PDF" and download.'] },
   'compress-image': { desc: 'Reduce image size (KB/MB), or hit an exact KB target', intro: 'Make an image smaller while keeping it looking good. If a form asks for a photo under 100 KB, enter the target size.', steps: ['Choose one or more images.', 'Pick the quality, or type a target size in KB.', 'Press "Compress" and download.'] },
-  'resize-image': { desc: 'Change image width and height (pixels)', intro: 'Change an image size in pixels or percent. Ready-made sizes for passport photos and signatures are included.', steps: ['Choose an image.', 'Type the new size or pick a ready-made one.', 'Press "Resize" and download.'] },
-  'crop-image': { desc: 'Cut away the parts of an image you do not need', intro: 'Select the part of the image you want and cut off the rest. Ratios like 1:1, 4:3, 16:9 and passport are included.', steps: ['Choose an image.', 'Drag the box or its corners to set the crop area.', 'Press "Crop" and download.'] },
-  'merge-image': { desc: 'Join several images into one picture', intro: 'Arrange multiple images side by side, top to bottom, or in a grid to make one image.', steps: ['Choose two or more images.', 'Set the layout, gap and background colour.', 'Press "Join images" and download.'] },
-  'convert-image': { desc: 'Convert between JPG, PNG and WebP', intro: 'Convert images to JPG, PNG or WebP format.', steps: ['Choose one or more images.', 'Pick the format you want.', 'Press "Convert" and download.'] },
+  'convert-image': { desc: 'Resize image dimensions (px), target file size (KB/MB) and format', intro: 'Easily resize image dimensions, target file size (KB/MB), and convert formats (JPG, PNG, WebP).', steps: ['Choose one or more images.', 'Set target file size (KB/MB), custom dimensions or format.', 'Click download.'] },
   'passport-photo': { desc: 'Create standard passport size photo with fixed dimensions', intro: 'Create an official standard passport size photo with strictly fixed dimensions (35×45 mm / 413×531 px). Adjust and center your face in the passport frame with white or blue background options.', steps: ['Choose a photo.', 'Position and center your face in the passport frame.', 'Select background color (white, blue, or original).', 'Press "Create Passport Photo" and download.'] },
   'remove-background': { desc: 'Remove image background and make it transparent or colored', intro: 'Erase image background with one click and get a clean transparent PNG or replace it with a solid color. Processed 100% locally in your browser.', steps: ['Choose an image.', 'Select transparent or a background color.', 'Fine-tune sensitivity or touch up with the eraser brush.', 'Download your cutout image.'] },
   'currency-converter': { desc: 'Daily live exchange rates for USD, SAR, AED, EUR, GBP to BDT', intro: 'Convert currencies to BDT and between world currencies based on daily live exchange rates.', steps: ['Enter the amount.', 'Select the from and to currencies.', 'See live exchange rates and calculation instantly.'] },

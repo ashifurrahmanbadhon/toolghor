@@ -250,13 +250,20 @@ export default function ToolRunner({ tool, apiKeys }: ToolRunnerProps) {
 
   return (
     <div className="w-full">
-      {/* Loading indicator */}
+      {/* Loading Skeleton */}
       {loading && (
-        <div className="flex flex-col items-center justify-center py-12 text-zinc-500">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mb-3" />
-          <p className="text-sm font-semibold tracking-wide">
-            {lang === 'bn' ? 'টুলটি প্রস্তুত হচ্ছে…' : 'Preparing tool workspace…'}
-          </p>
+        <div className="w-full border-2 border-dashed border-blue-200/70 dark:border-blue-900/40 rounded-2xl p-10 flex flex-col items-center justify-center gap-4 bg-blue-50/20 dark:bg-blue-950/10 animate-pulse">
+          <div className="flex gap-4">
+            <div className="w-36 h-28 rounded-2xl bg-blue-100/60 dark:bg-blue-900/30 flex flex-col items-center justify-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-blue-200/60 dark:bg-blue-800/40" />
+              <div className="w-20 h-4 rounded bg-blue-200/60 dark:bg-blue-800/40" />
+            </div>
+            <div className="w-36 h-28 rounded-2xl bg-indigo-100/60 dark:bg-indigo-900/30 flex flex-col items-center justify-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-indigo-200/60 dark:bg-indigo-800/40" />
+              <div className="w-20 h-4 rounded bg-indigo-200/60 dark:bg-indigo-800/40" />
+            </div>
+          </div>
+          <div className="w-48 h-3.5 rounded bg-zinc-200/60 dark:bg-zinc-800/40 mt-1" />
         </div>
       )}
 

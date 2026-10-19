@@ -2116,6 +2116,8 @@
 
     // Inviting dropzone matching remove.bg
     var dropZone = UI.dropzone({
+      multiple: false,
+      allowFolder: false,
       accept: 'image/*',
       onFiles: function (files) {
         if (files && files[0]) handleFileSelect(files[0]);

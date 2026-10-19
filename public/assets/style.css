@@ -844,6 +844,35 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
 .rs-min .it .r { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
 .rs-min .it .r span:last-child { font-weight: 400; color: #555; }
 
+/* executive template */
+.rs-exec { padding: 0; min-height: 297mm; }
+.rs-exec .exec-header { background: var(--ac); color: #fff; padding: 14mm 16mm; display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+.rs-exec .exec-header h1 { font-size: 26pt; font-weight: 800; color: #fff; line-height: 1.1; letter-spacing: -0.02em; }
+.rs-exec .exec-header .ttl { font-size: 13pt; color: rgba(255, 255, 255, 0.9); margin-top: 4px; font-weight: 500; }
+.rs-exec .exec-header .photo { width: 34mm; height: 34mm; border-radius: 8px; border: 3px solid rgba(255, 255, 255, 0.85); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
+.rs-exec .exec-body { padding: 12mm 16mm 16mm; }
+.rs-exec .contact-line { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 9.5pt; color: #555; padding-bottom: 10px; border-bottom: 1.5px solid #e2e8f0; margin-bottom: 12px; }
+.rs-exec h2 { font-size: 12pt; font-weight: 700; color: var(--ac); text-transform: uppercase; letter-spacing: 0.05em; border-left: 4px solid var(--ac); padding-left: 8px; margin: 16px 0 8px; }
+.rs-exec .it { margin-bottom: 10px; break-inside: avoid; }
+.rs-exec .it .r { display: flex; justify-content: space-between; gap: 10px; font-weight: 700; font-size: 10.5pt; }
+.rs-exec .it .r span:last-child { font-weight: 500; color: #64748b; font-size: 9.5pt; }
+.rs-exec .skills-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.rs-exec .skill-pill { background: #f1f5f9; color: #1e293b; padding: 3px 10px; border-radius: 12px; font-size: 9pt; font-weight: 500; border: 1px solid #e2e8f0; }
+
+/* creative tech template */
+.rs-crea { padding: 14mm 16mm; min-height: 297mm; }
+.rs-crea .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 12px; }
+.rs-crea h1 { font-size: 27pt; font-weight: 800; color: #0f172a; line-height: 1.1; }
+.rs-crea .ttl { font-size: 13pt; color: var(--ac); font-weight: 600; margin-top: 3px; }
+.rs-crea .photo { width: 32mm; height: 32mm; border-radius: 16px; border: 2px solid var(--ac); }
+.rs-crea .contact-line { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 9.5pt; color: #475569; margin-bottom: 14px; background: #f8fafc; padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; }
+.rs-crea h2 { font-size: 11.5pt; font-weight: 700; color: var(--ac); display: flex; align-items: center; gap: 8px; margin: 16px 0 8px; padding-bottom: 4px; border-bottom: 2px solid var(--ac); }
+.rs-crea .it { background: #fff; border-left: 3px solid var(--ac); padding-left: 10px; margin-bottom: 10px; break-inside: avoid; }
+.rs-crea .it .r { display: flex; justify-content: space-between; gap: 8px; font-weight: 700; font-size: 10.5pt; }
+.rs-crea .it .r span:last-child { font-weight: 500; color: #64748b; font-size: 9.5pt; }
+.rs-crea .skills-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.rs-crea .skill-pill { background: color-mix(in srgb, var(--ac) 10%, #fff); color: var(--ac); padding: 3px 10px; border-radius: 6px; font-size: 9pt; font-weight: 600; }
+
 /* ============ Print (resume) ============ */
 @page { size: A4; margin: 0; }
 #print-area { display: none; }
@@ -4146,6 +4175,34 @@ body.dark .ci-delete-btn {
 html.dark .ci-delete-btn:hover,
 body.dark .ci-delete-btn:hover {
   background: rgba(239, 68, 68, 0.28);
+/* ==========================================================================
+   INSTANT FEEDBACK & PERCEIVED PERFORMANCE OPTIMIZATIONS
+   ========================================================================== */
+a.tool:active,
+button:active,
+.btn:active,
+.drop-action-btn:active,
+.ci-pill:active,
+.ci-download-btn:active,
+.ci-reset-btn:active,
+.chip:active,
+.cat-btn:active {
+  transform: scale(0.975) !important;
+  opacity: 0.88;
+  transition: transform 0.08s ease, opacity 0.08s ease !important;
 }
 
+/* Below-the-fold content visibility for faster LCP and lower initial render cost */
+.tools-grid,
+.creator-section,
+.footer-section,
+footer {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 450px;
+}
+
+/* Layout shift prevention */
+img {
+  content-visibility: auto;
+}
 

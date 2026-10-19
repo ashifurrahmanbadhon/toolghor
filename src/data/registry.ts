@@ -217,19 +217,20 @@ export const TOOLS: ToolItem[] = [
     stepsEn: ['Choose one or more images.', 'Pick the quality, or type a target size in KB.', 'Press "Compress" and download.']
   },
   {
-    slug: 'resize-image',
+    slug: 'convert-image',
     bn: 'ছবির সাইজ পরিবর্তন',
     en: 'Resize Image',
     icon: 'Maximize2',
     cats: ['images'],
     group: 'image',
-    desc: 'ছবির প্রস্থ-উচ্চতা (পিক্সেল) বদলান',
-    descEn: 'Change image width and height (pixels)',
-    keywords: 'resize image change image size width height pixel ছবি ছোট বড় মাপ',
-    intro: 'ছবির মাপ পিক্সেলে বা শতকরায় বদলান। পাসপোর্ট ছবি ও স্বাক্ষরের জন্য রেডিমেড মাপ আছে।',
-    introEn: 'Change an image size in pixels or percent. Ready-made sizes for passport photos and signatures are included.',
-    steps: ['একটি ছবি বেছে নিন।', 'নতুন মাপ লিখুন বা তৈরি মাপ বেছে নিন।', '"মাপ বদলান" চাপুন এবং ডাউনলোড করুন।'],
-    stepsEn: ['Choose an image.', 'Type the new size or pick a ready-made one.', 'Press "Resize" and download.']
+    badge: 'Popular',
+    desc: 'ছবির সাইজ, মাপ (px) ও ফরম্যাট পরিবর্তন করুন',
+    descEn: 'Resize image dimensions (px), target file size (KB/MB) and format',
+    keywords: 'resize image convert image photo size mb kb pixel format jpg png webp ছবির সাইজ রিসাইজ কনভার্ট',
+    intro: 'ছবির সাইজ (KB/MB), প্রস্থ-উচ্চতা এবং ফরম্যাট (JPG, PNG, WebP) সহজে পরিবর্তন করুন।',
+    introEn: 'Easily resize image dimensions, target file size (KB/MB), and convert formats (JPG, PNG, WebP).',
+    steps: ['এক বা একাধিক ছবি বেছে নিন।', 'টার্গেট সাইজ (KB/MB), মাপ বা ফরম্যাট নির্ধারণ করুন।', 'ডাউনলোড বাটনে ক্লিক করুন।'],
+    stepsEn: ['Choose one or more images.', 'Set target file size (KB/MB), custom dimensions or format.', 'Click download.']
   },
   {
     slug: 'crop-image',
@@ -260,21 +261,6 @@ export const TOOLS: ToolItem[] = [
     introEn: 'Arrange multiple images side by side, top to bottom, or in a grid to make one image.',
     steps: ['দুই বা তার বেশি ছবি বেছে নিন।', 'সাজানোর ধরন, ফাঁক ও ব্যাকগ্রাউন্ড রং ঠিক করুন।', '"ছবি জুড়ুন" চাপুন এবং ডাউনলোড করুন।'],
     stepsEn: ['Choose two or more images.', 'Set the layout, gap and background colour.', 'Press "Join images" and download.']
-  },
-  {
-    slug: 'convert-image',
-    bn: 'ছবির ফরম্যাট পরিবর্তন',
-    en: 'Convert Image',
-    icon: 'RefreshCw',
-    cats: ['images'],
-    group: 'image',
-    desc: 'JPG, PNG, WebP-এর মধ্যে রূপান্তর করুন',
-    descEn: 'Convert between JPG, PNG and WebP',
-    keywords: 'convert image jpg to png png to jpg webp format format change ছবির ফরম্যাট রূপান্তর',
-    intro: 'ছবি JPG, PNG বা WebP ফরম্যাটে রূপান্তর করুন।',
-    introEn: 'Convert images to JPG, PNG or WebP format.',
-    steps: ['এক বা একাধিক ছবি বেছে নিন।', 'কোন ফরম্যাটে চান তা বাছুন।', '"রূপান্তর করুন" চাপুন এবং ডাউনলোড করুন।'],
-    stepsEn: ['Choose one or more images.', 'Pick the format you want.', 'Press "Convert" and download.']
   },
   {
     slug: 'passport-photo',

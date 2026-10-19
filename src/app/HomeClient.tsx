@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ToolCard from '@/components/ToolCard';
@@ -32,6 +33,21 @@ export default function HomeClient({ initialData }: HomeClientProps) {
   const [activeChip, setActiveChip] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchWrapRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  // Debounced search input
+  const [searchInput, setSearchInput] = useState(searchQuery);
+
+  useEffect(() => {
+    setSearchInput(searchQuery);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, 150);
+    return () => clearTimeout(handler);
+  }, [searchInput, setSearchQuery]);
 
   // Notice Banner dismiss state
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -128,7 +144,7 @@ export default function HomeClient({ initialData }: HomeClientProps) {
     }
   }, []);
 
-  // Idle prefetch tool scripts so opening any tool is instantaneous
+  // Idle prefetch tool scripts and top-6 most-used routes so opening any tool is instantaneous
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const prefetchUrls = [
@@ -138,6 +154,14 @@ export default function HomeClient({ initialData }: HomeClientProps) {
       `/assets/tools/qr.js?v=${ASSET_VERSION}`,
       `/assets/tools/media.js?v=${ASSET_VERSION}`,
       `/assets/tools/resume.js?v=${ASSET_VERSION}`,
+    ];
+    const topRoutes = [
+      '/tools/convert-image',
+      '/tools/compress-image',
+      '/tools/remove-background',
+      '/tools/merge-pdf',
+      '/tools/compress-pdf',
+      '/tools/resume-builder',
     ];
     const idleCallback = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 800));
     const handle = idleCallback(() => {
@@ -150,13 +174,18 @@ export default function HomeClient({ initialData }: HomeClientProps) {
           document.head.appendChild(l);
         }
       });
+      topRoutes.forEach((route) => {
+        try {
+          router.prefetch(route);
+        } catch {}
+      });
     });
     return () => {
       if ((window as any).cancelIdleCallback && typeof handle === 'number') {
         (window as any).cancelIdleCallback(handle);
       }
     };
-  }, []);
+  }, [router]);
 
   // Compute active categories list based on database status
   const activeCategories = useMemo(() => {
@@ -310,26 +339,18 @@ export default function HomeClient({ initialData }: HomeClientProps) {
     e.preventDefault();
     if (searchQuery.trim()) {
       setSearchQuery('');
+      setSearchInput('');
       setShowSuggestions(false);
     }
 
     if (catId === 'all') {
       toggleAll();
-      const bar = document.getElementById('allExpandBar');
-      if (bar) {
-        bar.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
     } else {
-      // Expand only the selected category
+      // Expand only the selected category with stable scroll position
       const next: Record<string, boolean> = {};
       allCategoryIds.forEach((id) => (next[id] = id === catId));
       setExpandedCats(next);
       setActiveChip(catId);
-
-      const targetSec = document.getElementById(`cat-${catId}`);
-      if (targetSec) {
-        targetSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
     }
   };
 
@@ -516,8 +537,8 @@ export default function HomeClient({ initialData }: HomeClientProps) {
                   data-form-type="other"
                   aria-label="Search tools"
                   aria-controls="sugg"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   onFocus={() => {
                     if (searchQuery.trim()) setShowSuggestions(true);
                   }}

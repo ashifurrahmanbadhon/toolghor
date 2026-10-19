@@ -59,14 +59,27 @@ export default function ToolCard({ tool, category }: ToolCardProps) {
       media: `/assets/tools/media.js?v=${ASSET_VERSION}`,
       resume: `/assets/tools/resume.js?v=${ASSET_VERSION}`,
     };
+    const toPreload: string[] = [];
     const scriptUrl = groupScriptMap[tool.group];
-    if (scriptUrl && !document.querySelector(`script[src="${scriptUrl}"]`)) {
-      const s = document.createElement('script');
-      s.src = scriptUrl;
-      s.async = true;
-      s.onload = () => s.setAttribute('data-loaded', 'true');
-      document.body.appendChild(s);
+    if (scriptUrl) toPreload.push(scriptUrl);
+
+    if (tool.group === 'pdf' || tool.slug.includes('pdf')) {
+      toPreload.push('/assets/vendor/pdf-lib.min.js', '/assets/vendor/jszip.min.js', '/assets/vendor/pdf.min.js');
+    } else if (tool.group === 'image' || tool.slug === 'convert-image') {
+      toPreload.push('/assets/vendor/jszip.min.js');
+    } else if (tool.group === 'qr') {
+      toPreload.push('/assets/vendor/qrcode.js', '/assets/vendor/jsQR.js');
     }
+
+    toPreload.forEach((src) => {
+      if (!document.querySelector(`link[href="${src}"]`) && !document.querySelector(`script[src="${src}"]`)) {
+        const link = document.createElement('link');
+        link.rel = 'prefetch';
+        link.as = 'script';
+        link.href = src;
+        document.head.appendChild(link);
+      }
+    });
   };
 
   const handleToolClick = () => {
@@ -85,7 +98,8 @@ export default function ToolCard({ tool, category }: ToolCardProps) {
       data-slug={tool.slug}
       href={`/tools/${tool.slug}`}
       prefetch={true}
-      onMouseEnter={preloadToolAssets}
+      onPointerEnter={preloadToolAssets}
+      onFocus={preloadToolAssets}
       onPointerDown={preloadToolAssets}
       onClick={handleToolClick}
     >

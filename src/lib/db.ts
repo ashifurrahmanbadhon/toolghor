@@ -148,6 +148,12 @@ export async function initDatabase() {
       ON CONFLICT (slug) DO NOTHING;
     `;
   }
+  await sql`DELETE FROM section_tools WHERE slug = 'resize-image'`;
+  await sql`
+    UPDATE section_tools 
+    SET title_bn = 'ছবির সাইজ পরিবর্তন', title_en = 'Resize Image' 
+    WHERE slug = 'convert-image'
+  `;
 
   // 5. Section: Footer & Social Links (including WhatsApp Floating Action Button)
   await sql`

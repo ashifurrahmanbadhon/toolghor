@@ -11,7 +11,9 @@
     { id: 'professional', label: tr('প্রফেশনাল', "Professional"), note: tr('এক কলাম, পরিষ্কার', "Single column, clean") },
     { id: 'modern', label: tr('মডার্ন সাইডবার', "Modern sidebar"), note: tr('রঙিন সাইডবার, ছবিসহ', "Coloured sidebar, with photo") },
     { id: 'classic', label: tr('বাংলাদেশি স্ট্যান্ডার্ড সিভি', "Bangladeshi standard CV"), note: tr('ছবি ও ব্যক্তিগত তথ্যসহ', "With photo and personal details") },
-    { id: 'minimal', label: tr('মিনিমাল', "Minimal"), note: tr('হালকা ও আধুনিক', "Light and modern") }
+    { id: 'minimal', label: tr('মিনিমাল', "Minimal"), note: tr('হালকা ও আধুনিক', "Light and modern") },
+    { id: 'executive', label: tr('এক্সিকিউটিভ', "Executive"), note: tr('কর্পোরেট হেডার ও গ্রিড লেআউট', "Corporate header & grid layout") },
+    { id: 'creative', label: tr('ক্রিয়েটিভ টেক', "Creative Tech"), note: tr('আধুনিক ব্যাজ ও কার্ড স্টাইল', "Modern badges & card style") }
   ];
   var COLORS = ['#0e7a5a', '#2557d6', '#7a2e8e', '#c0392b', '#1f2d3d', '#b06a00'];
   var PERSONAL_LABELS = [tr('পিতার নাম', "Father's name"), tr('মাতার নাম', "Mother's name"), tr('জন্ম তারিখ', "Date of birth"), tr('জাতীয়তা', "Nationality"), tr('ধর্ম', "Religion"), tr('বৈবাহিক অবস্থা', "Marital status"), tr('জাতীয় পরিচয়পত্র নম্বর', "National ID number"), tr('স্থায়ী ঠিকানা', "Permanent address")];
@@ -116,7 +118,36 @@
       sec(L.personal, px.map(function (p) { return '<div>' + esc(p.label) + ': ' + esc(p.value) + '</div>'; }).join('')) +
       sec(L.ref, d.references.trim() ? bullets(d.references) : '') + '</div>';
   }
-  var RENDER = { professional: renderPro, modern: renderMod, classic: renderCls, minimal: renderMin };
+  function renderExec(d, L) {
+    var ex = filled(d.exp, ['role', 'company', 'details']), ed = filled(d.edu, ['degree', 'school']), sk = chips(d.skills), lg = chips(d.languages), px = filled(d.extra, ['value']);
+    return '<div class="paper rs-exec" style="--ac:' + d.color + '">' +
+      '<div class="exec-header"><div><h1>' + esc(d.name || tr('আপনার নাম', "Your Name")) + '</h1>' + (d.title ? '<div class="ttl">' + esc(d.title) + '</div>' : '') + '</div>' + photoImg(d, 'photo') + '</div>' +
+      '<div class="exec-body">' +
+      '<div class="contact-line">' + contacts(d).map(function (c) { return '<span>' + esc(c) + '</span>'; }).join('') + '</div>' +
+      (d.summary.trim() ? '<h2>' + L.summary + '</h2><p>' + esc(d.summary) + '</p>' : '') +
+      (ex.length ? '<h2>' + L.exp + '</h2>' + ex.map(function (e) { return '<div class="it"><div class="r"><span>' + esc(e.role) + (e.company ? ' – ' + esc(e.company) : '') + '</span><span>' + esc(e.period) + '</span></div>' + bullets(e.details) + '</div>'; }).join('') : '') +
+      (ed.length ? '<h2>' + L.edu + '</h2>' + ed.map(function (e) { return '<div class="it"><div class="r"><span>' + esc(e.degree) + (e.school ? ' – ' + esc(e.school) : '') + '</span><span>' + esc(e.period) + '</span></div>' + (e.result ? '<div class="muted">' + esc(e.result) + '</div>' : '') + '</div>'; }).join('') : '') +
+      (sk.length ? '<h2>' + L.skills + '</h2><div class="skills-chips">' + sk.map(function (s) { return '<span class="skill-pill">' + esc(s) + '</span>'; }).join('') + '</div>' : '') +
+      (lg.length ? '<h2>' + L.lang + '</h2><p>' + lg.map(esc).join(' · ') + '</p>' : '') +
+      (px.length ? '<h2>' + L.personal + '</h2>' + px.map(function (p) { return '<div><b>' + esc(p.label) + ':</b> ' + esc(p.value) + '</div>'; }).join('') : '') +
+      (d.references.trim() ? '<h2>' + L.ref + '</h2>' + bullets(d.references) : '') +
+      '</div></div>';
+  }
+  function renderCrea(d, L) {
+    var ex = filled(d.exp, ['role', 'company', 'details']), ed = filled(d.edu, ['degree', 'school']), sk = chips(d.skills), lg = chips(d.languages), px = filled(d.extra, ['value']);
+    return '<div class="paper rs-crea" style="--ac:' + d.color + '">' +
+      '<div class="head"><div><h1>' + esc(d.name || tr('আপনার নাম', "Your Name")) + '</h1>' + (d.title ? '<div class="ttl">' + esc(d.title) + '</div>' : '') + '</div>' + photoImg(d, 'photo') + '</div>' +
+      '<div class="contact-line">' + contacts(d).map(function (c) { return '<span>' + esc(c) + '</span>'; }).join('') + '</div>' +
+      (d.summary.trim() ? '<h2>' + L.summary + '</h2><p>' + esc(d.summary) + '</p>' : '') +
+      (ex.length ? '<h2>' + L.exp + '</h2>' + ex.map(function (e) { return '<div class="it"><div class="r"><span>' + esc(e.role) + (e.company ? ' @ ' + esc(e.company) : '') + '</span><span>' + esc(e.period) + '</span></div>' + bullets(e.details) + '</div>'; }).join('') : '') +
+      (ed.length ? '<h2>' + L.edu + '</h2>' + ed.map(function (e) { return '<div class="it"><div class="r"><span>' + esc(e.degree) + '</span><span>' + esc(e.period) + '</span></div><div class="muted">' + esc(e.school) + (e.result ? ' · ' + esc(e.result) : '') + '</div></div>'; }).join('') : '') +
+      (sk.length ? '<h2>' + L.skills + '</h2><div class="skills-chips">' + sk.map(function (s) { return '<span class="skill-pill">' + esc(s) + '</span>'; }).join('') + '</div>' : '') +
+      (lg.length ? '<h2>' + L.lang + '</h2><p>' + lg.map(esc).join(' · ') + '</p>' : '') +
+      (px.length ? '<h2>' + L.personal + '</h2>' + px.map(function (p) { return '<div><b>' + esc(p.label) + ':</b> ' + esc(p.value) + '</div>'; }).join('') : '') +
+      (d.references.trim() ? '<h2>' + L.ref + '</h2>' + bullets(d.references) : '') +
+      '</div>';
+  }
+  var RENDER = { professional: renderPro, modern: renderMod, classic: renderCls, minimal: renderMin, executive: renderExec, creative: renderCrea };
   function render(d, tpl) { return RENDER[tpl || d.tpl](d, LABELS[d.lang || 'en']); }
 
   /* ---------- UI ---------- */

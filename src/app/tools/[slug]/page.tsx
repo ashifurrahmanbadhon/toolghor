@@ -1,5 +1,5 @@
 import React from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { TOOLS, TOOLS_BY_SLUG } from '@/data/registry';
@@ -25,6 +25,11 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  if (slug === 'resize-image') {
+    return {
+      title: `Resize Image | ${siteConfig.name}`,
+    };
+  }
   const tool = TOOLS_BY_SLUG[slug];
 
   if (!tool) {
@@ -68,6 +73,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ToolPage({ params }: Props) {
   const { slug } = await params;
+  if (slug === 'resize-image') {
+    permanentRedirect('/tools/convert-image');
+  }
   const tool = TOOLS_BY_SLUG[slug];
 
   if (!tool) {
