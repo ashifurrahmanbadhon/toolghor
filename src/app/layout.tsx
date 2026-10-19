@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, Hind_Siliguri } from 'next/font/google';
 import './globals.css';
 import { AppProvider } from '@/context/AppContext';
-import { siteConfig } from '@/data/config';
+import { siteConfig, ASSET_VERSION } from '@/data/config';
 import BackgroundAnimation from '@/components/BackgroundAnimation';
 import SmoothCursor from '@/components/SmoothCursor';
 import { Analytics } from '@vercel/analytics/next';
@@ -94,11 +94,11 @@ export default function RootLayout({
             `,
           }}
         />
-        <link rel="stylesheet" href="/assets/style.css" />
-        <script src="/assets/config.js" defer></script>
-        <script src="/assets/registry.js" defer></script>
-        <script src="/assets/icons.js" defer></script>
-        <script src="/assets/ui.js" defer></script>
+        <link rel="stylesheet" href={`/assets/style.css?v=${ASSET_VERSION}`} />
+        <script src={`/assets/config.js?v=${ASSET_VERSION}`} defer></script>
+        <script src={`/assets/registry.js?v=${ASSET_VERSION}`} defer></script>
+        <script src={`/assets/icons.js?v=${ASSET_VERSION}`} defer></script>
+        <script src={`/assets/ui.js?v=${ASSET_VERSION}`} defer></script>
       </head>
       <body className={`${inter.className} dark`} suppressHydrationWarning>
         <SmoothCursor />

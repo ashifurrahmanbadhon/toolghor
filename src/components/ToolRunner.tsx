@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ToolItem } from '@/data/registry';
 import { useApp } from '@/context/AppContext';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { ASSET_VERSION } from '@/data/config';
 
 interface ToolRunnerProps {
   tool: ToolItem;
@@ -119,14 +120,14 @@ export default function ToolRunner({ tool, apiKeys }: ToolRunnerProps) {
         setLoading(true);
         setError(null);
 
-        // Tool group script map
+        // Tool group script map with asset versioning to avoid stale cache
         const groupScriptMap: Record<string, string> = {
-          pdf: '/assets/tools/pdf.js',
-          image: '/assets/tools/image.js',
-          calc: '/assets/tools/calc.js',
-          qr: '/assets/tools/qr.js',
-          media: '/assets/tools/media.js',
-          resume: '/assets/tools/resume.js',
+          pdf: `/assets/tools/pdf.js?v=${ASSET_VERSION}`,
+          image: `/assets/tools/image.js?v=${ASSET_VERSION}`,
+          calc: `/assets/tools/calc.js?v=${ASSET_VERSION}`,
+          qr: `/assets/tools/qr.js?v=${ASSET_VERSION}`,
+          media: `/assets/tools/media.js?v=${ASSET_VERSION}`,
+          resume: `/assets/tools/resume.js?v=${ASSET_VERSION}`,
         };
 
         const applyApiConfig = (cfg: any) => {
@@ -143,10 +144,10 @@ export default function ToolRunner({ tool, apiKeys }: ToolRunnerProps) {
 
         // All required scripts (core, vendor, tool group) loaded in PARALLEL
         const scriptPromises: Promise<void>[] = [];
-        if (!w.SITE_CONFIG) scriptPromises.push(loadScript('/assets/config.js'));
-        if (!w.CATEGORIES) scriptPromises.push(loadScript('/assets/registry.js'));
-        if (!w.ICONS) scriptPromises.push(loadScript('/assets/icons.js'));
-        if (!w.UI) scriptPromises.push(loadScript('/assets/ui.js'));
+        if (!w.SITE_CONFIG) scriptPromises.push(loadScript(`/assets/config.js?v=${ASSET_VERSION}`));
+        if (!w.CATEGORIES) scriptPromises.push(loadScript(`/assets/registry.js?v=${ASSET_VERSION}`));
+        if (!w.ICONS) scriptPromises.push(loadScript(`/assets/icons.js?v=${ASSET_VERSION}`));
+        if (!w.UI) scriptPromises.push(loadScript(`/assets/ui.js?v=${ASSET_VERSION}`));
 
         if (tool.group === 'pdf' || tool.slug.includes('pdf')) {
           if (!w.PDFLib) scriptPromises.push(loadScript('/assets/vendor/pdf-lib.min.js'));

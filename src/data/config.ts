@@ -35,6 +35,8 @@ export interface SiteConfig {
   };
 }
 
+export const ASSET_VERSION = '20261019_v2';
+
 export const siteConfig: SiteConfig = {
   name: 'ToolGhor',
   nameEn: 'ToolGhor',

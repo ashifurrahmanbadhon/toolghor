@@ -7,6 +7,7 @@ import Footer from '@/components/Footer';
 import ToolCard from '@/components/ToolCard';
 import { CATEGORIES as DEFAULT_CATEGORIES, TOOLS as DEFAULT_TOOLS, ToolItem, Category } from '@/data/registry';
 import { useApp } from '@/context/AppContext';
+import { ASSET_VERSION } from '@/data/config';
 
 interface HomeClientProps {
   initialData: any;
@@ -131,12 +132,12 @@ export default function HomeClient({ initialData }: HomeClientProps) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const prefetchUrls = [
-      '/assets/tools/calc.js',
-      '/assets/tools/image.js',
-      '/assets/tools/pdf.js',
-      '/assets/tools/qr.js',
-      '/assets/tools/media.js',
-      '/assets/tools/resume.js',
+      `/assets/tools/calc.js?v=${ASSET_VERSION}`,
+      `/assets/tools/image.js?v=${ASSET_VERSION}`,
+      `/assets/tools/pdf.js?v=${ASSET_VERSION}`,
+      `/assets/tools/qr.js?v=${ASSET_VERSION}`,
+      `/assets/tools/media.js?v=${ASSET_VERSION}`,
+      `/assets/tools/resume.js?v=${ASSET_VERSION}`,
     ];
     const idleCallback = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 800));
     const handle = idleCallback(() => {

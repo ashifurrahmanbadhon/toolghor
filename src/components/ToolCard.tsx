@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ToolItem } from '@/data/registry';
 import { useApp } from '@/context/AppContext';
+import { ASSET_VERSION } from '@/data/config';
 
 const TOOL_ICONS: Record<string, string> = {
   'merge-pdf': '<path d="m8 6 4-4 4 4" /> <path d="M12 2v10.3a4 4 0 0 1-1.172 2.872L4 22" /> <path d="m20 22-5-5" />',
@@ -51,12 +52,12 @@ export default function ToolCard({ tool, category }: ToolCardProps) {
   const preloadToolAssets = () => {
     if (typeof window === 'undefined') return;
     const groupScriptMap: Record<string, string> = {
-      pdf: '/assets/tools/pdf.js',
-      image: '/assets/tools/image.js',
-      calc: '/assets/tools/calc.js',
-      qr: '/assets/tools/qr.js',
-      media: '/assets/tools/media.js',
-      resume: '/assets/tools/resume.js',
+      pdf: `/assets/tools/pdf.js?v=${ASSET_VERSION}`,
+      image: `/assets/tools/image.js?v=${ASSET_VERSION}`,
+      calc: `/assets/tools/calc.js?v=${ASSET_VERSION}`,
+      qr: `/assets/tools/qr.js?v=${ASSET_VERSION}`,
+      media: `/assets/tools/media.js?v=${ASSET_VERSION}`,
+      resume: `/assets/tools/resume.js?v=${ASSET_VERSION}`,
     };
     const scriptUrl = groupScriptMap[tool.group];
     if (scriptUrl && !document.querySelector(`script[src="${scriptUrl}"]`)) {
