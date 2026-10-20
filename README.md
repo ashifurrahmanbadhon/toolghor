@@ -1,6 +1,6 @@
 # ToolGhor (টুলঘর) 🛠️
 
-**ToolGhor** is a privacy-first, ultra-fast online utility platform powered by **Next.js 16 (App Router)** and **Tailwind CSS**. It provides **28+ everyday tools** across 6 categories with 100% in-browser processing, multi-language support (Bangla & English), and an integrated **Admin Console**.
+**ToolGhor** is a privacy-first, ultra-fast online utility platform powered by **Next.js 16 (App Router)** and **Tailwind CSS**. It provides **27 everyday tools** across 6 categories with 100% in-browser processing, multi-language support (Bangla & English), and an integrated **Admin Console**.
 
 ---
 
