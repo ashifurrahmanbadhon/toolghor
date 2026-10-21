@@ -81,8 +81,8 @@ export async function initDatabase() {
     VALUES (
       1,
       false,
-      '📢 স্বাগতম ToolGhor-এ! ২৮+ দরকারি অনলাইন টুল ব্রাউজারে সম্পূর্ণ বিনামূল্যে ব্যবহার করুন।',
-      '📢 Welcome to ToolGhor! 28+ fast & secure web tools right inside your browser.',
+      '📢 স্বাগতম ToolGhor-এ! ২৬টি দরকারি অনলাইন টুল ব্রাউজারে সম্পূর্ণ বিনামূল্যে ব্যবহার করুন।',
+      '📢 Welcome to ToolGhor! 26 fast & secure web tools right inside your browser.',
       'info'
     )
     ON CONFLICT (id) DO NOTHING;
@@ -148,11 +148,11 @@ export async function initDatabase() {
       ON CONFLICT (slug) DO NOTHING;
     `;
   }
-  await sql`DELETE FROM section_tools WHERE slug = 'resize-image'`;
+  await sql`DELETE FROM section_tools WHERE slug = 'convert-image'`;
   await sql`
     UPDATE section_tools 
-    SET title_bn = 'ছবির সাইজ পরিবর্তন', title_en = 'Resize Image' 
-    WHERE slug = 'convert-image'
+    SET title_bn = 'ছবির সাইজ পরিবর্তন', title_en = 'Resize Image', desc_bn = 'ছবির রেজোলিউশন ও ফাইলের মাপ পরিবর্তন করুন', desc_en = 'Resize image resolution and target file size'
+    WHERE slug = 'resize-image'
   `;
 
   // 5. Section: Footer & Social Links (including WhatsApp Floating Action Button)

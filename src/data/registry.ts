@@ -217,7 +217,7 @@ export const TOOLS: ToolItem[] = [
     stepsEn: ['Choose one or more images.', 'Pick the quality, or type a target size in KB.', 'Press "Compress" and download.']
   },
   {
-    slug: 'convert-image',
+    slug: 'resize-image',
     bn: 'ছবির সাইজ পরিবর্তন',
     en: 'Resize Image',
     icon: 'Maximize2',

@@ -221,120 +221,6 @@
       go, out));
   };
 
-  /* ---------------- রিসাইজ ---------------- */
-  T['resize-image'] = function (root) {
-    var img = null, ow = 0, oh = 0, file = null, out = UI.el('div'), info = UI.el('div');
-    var wIn = UI.el('input', { type: 'number', min: '1', inputmode: 'numeric' });
-    var hIn = UI.el('input', { type: 'number', min: '1', inputmode: 'numeric' });
-    var lock = UI.el('input', { type: 'checkbox', checked: true });
-    var fitSel = UI.select([{ value: 'cover', label: tr('ছবি না বিকৃত করে কেটে মেলান (Cover)', "Keep the picture undistorted by cropping (Cover)") }, { value: 'stretch', label: tr('টেনে মেলান (বিকৃত হতে পারে)', "Stretch to fit (may distort)") }], 'cover');
-    var fitField = UI.field(tr('অনুপাত না মিললে', "If the ratio does not match"), fitSel);
-    var fmt = UI.select([{ value: 'orig', label: tr('মূল ফরম্যাট', "Original format") }, { value: 'jpg', label: 'JPG' }, { value: 'png', label: 'PNG' }, { value: 'webp', label: 'WebP' }], 'orig');
-    var go = UI.btn(tr('মাপ বদলান', "Resize"), run, { icon: 'scaling', disabled: true });
-    function sync() { fitField.hidden = lock.checked; }
-    lock.addEventListener('change', sync); sync();
-    wIn.addEventListener('input', function () { if (lock.checked && ow && wIn.value) hIn.value = Math.max(1, Math.round(UI.parseNum(wIn.value) * oh / ow)); });
-    hIn.addEventListener('input', function () { if (lock.checked && oh && hIn.value) wIn.value = Math.max(1, Math.round(UI.parseNum(hIn.value) * ow / oh)); });
-    function setSize(w, h, unlock) { wIn.value = w; hIn.value = h; if (unlock) { lock.checked = false; sync(); } }
-    var presets = UI.el('div', { class: 'seg' });
-    [[tr('৫০%', "50%"), function () { setSize(Math.round(ow / 2), Math.round(oh / 2)); }], [tr('৭৫%', "75%"), function () { setSize(Math.round(ow * .75), Math.round(oh * .75)); }], [tr('২৫%', "25%"), function () { setSize(Math.round(ow / 4), Math.round(oh / 4)); }],
-    [tr('ছবি ৩০০×৩০০', "Photo 300×300"), function () { setSize(300, 300, true); }], [tr('স্বাক্ষর ৩০০×৮০', "Signature 300×80"), function () { setSize(300, 80, true); }],
-    [tr('ইনস্টাগ্রাম ১০৮০×১০৮০', "Instagram 1080×1080"), function () { setSize(1080, 1080, true); }], [tr('ফেসবুক শেয়ার ১২০০×৬৩০', "Facebook share 1200×630"), function () { setSize(1200, 630, true); }]].forEach(function (p) {
-      presets.appendChild(UI.el('button', { type: 'button', onclick: function () { if (img) p[1](); else UI.toast(tr('আগে একটি ছবি বেছে নিন', "Choose an image first")); } }, p[0]));
-    });
-    var drop = UI.dropzone({
-      accept: 'image/*',
-      onFiles: async function (fs) {
-        UI.clear(out); UI.clear(info); file = fs[0];
-        try { img = await UI.readImage(file); } catch (e) { info.appendChild(UI.notice('err', UI.err(e))); return; }
-        ow = img.naturalWidth; oh = img.naturalHeight; wIn.value = ow; hIn.value = oh; go.disabled = false;
-        info.appendChild(UI.notice('info', file.name + ' · ' + UI.n(ow) + '×' + UI.n(oh) + ' px · ' + UI.fmtSize(file.size)));
-      }
-    });
-    var logoCheck = UI.el('input', { type: 'checkbox' });
-    var logoFile = null, logoImg = null;
-    var logoInput = UI.el('input', { type: 'file', accept: 'image/*', style: { display: 'none' } });
-    var logoPickBtn = UI.btn(tr('লোগো বেছে নিন', "Choose logo"), function () { logoInput.click(); }, { cls: 'sm', icon: 'image' });
-    var logoName = UI.el('small', { class: 'lbl' }, tr('কোনো লোগো নির্বাচন করা হয়নি', "No logo selected"));
-    logoInput.addEventListener('change', async function () {
-      if (logoInput.files && logoInput.files[0]) {
-        logoFile = logoInput.files[0];
-        try {
-          logoImg = await UI.readImage(logoFile);
-          logoName.textContent = '✓ ' + logoFile.name;
-        } catch (e) {
-          UI.toast(tr('লোগো লোড করা যায়নি', "Failed to load logo"));
-        }
-      }
-    });
-    var logoPos = UI.select([
-      { value: 'bottom-right', label: tr('নিচে ডানে', "Bottom Right") },
-      { value: 'bottom-left', label: tr('নিচে বামে', "Bottom Left") },
-      { value: 'top-right', label: tr('উপরে ডানে', "Top Right") },
-      { value: 'top-left', label: tr('উপরে বামে', "Top Left") },
-      { value: 'center', label: tr('মাঝখানে', "Center") }
-    ], 'bottom-right');
-    var logoOpacity = UI.el('input', { type: 'range', min: '10', max: '100', value: '90' });
-    var logoBox = UI.el('div', { class: 'stack', style: { padding: '12px', border: '1px dashed var(--bdr)', borderRadius: '8px', background: 'var(--bg-card)' } },
-      logoInput,
-      UI.el('div', { class: 'row', style: { alignItems: 'center', gap: '10px' } }, logoPickBtn, logoName),
-      UI.el('div', { class: 'row' },
-        UI.field(tr('লোগোর অবস্থান', "Logo position"), logoPos),
-        UI.field(tr('স্বচ্ছতা (Opacity %)', "Opacity %"), logoOpacity)
-      )
-    );
-    logoBox.hidden = true;
-    logoCheck.addEventListener('change', function () {
-      logoBox.hidden = !logoCheck.checked;
-    });
-
-    async function run() {
-      UI.clear(out);
-      try {
-        var w = Math.round(UI.parseNum(wIn.value)), h = Math.round(UI.parseNum(hIn.value));
-        if (!(w > 0 && h > 0)) throw new Error(tr('প্রস্থ ও উচ্চতা সঠিকভাবে লিখুন।', "Enter the width and height correctly."));
-        if (w * h > 120e6) throw new Error(tr('এত বড় মাপ ব্রাউজারে বানানো যাবে না। ছোট মাপ দিন।', "That size is too large for the browser. Enter a smaller size."));
-        var ext = typeFor(file, fmt.value), mime = MIME[ext];
-        var c = UI.canvas(w, h), ctx = c.getContext('2d');
-        if (ext === 'jpg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); }
-        ctx.imageSmoothingQuality = 'high';
-        if (lock.checked || fitSel.value === 'stretch') ctx.drawImage(img, 0, 0, w, h);
-        else {
-          var s = Math.max(w / ow, h / oh), sw = w / s, sh = h / s;
-          ctx.drawImage(img, (ow - sw) / 2, (oh - sh) / 2, sw, sh, 0, 0, w, h);
-        }
-        if (logoCheck.checked && logoImg) {
-          var pad = Math.max(12, Math.round(Math.min(w, h) * 0.03));
-          var maxLw = w * 0.28, maxLh = h * 0.28;
-          var scale = Math.min(maxLw / logoImg.naturalWidth, maxLh / logoImg.naturalHeight, 1);
-          var lw = Math.round(logoImg.naturalWidth * scale), lh = Math.round(logoImg.naturalHeight * scale);
-          var lx = w - lw - pad, ly = h - lh - pad;
-          var pos = logoPos.value;
-          if (pos === 'bottom-left') { lx = pad; ly = h - lh - pad; }
-          else if (pos === 'top-right') { lx = w - lw - pad; ly = pad; }
-          else if (pos === 'top-left') { lx = pad; ly = pad; }
-          else if (pos === 'center') { lx = Math.round((w - lw) / 2); ly = Math.round((h - lh) / 2); }
-          ctx.save();
-          ctx.globalAlpha = (+logoOpacity.value) / 100;
-          ctx.drawImage(logoImg, lx, ly, lw, lh);
-          ctx.restore();
-        }
-        var blob = await UI.toBlob(c, mime, 0.92);
-        UI.done(out, blob, UI.baseName(file.name) + '-' + w + 'x' + h + '.' + ext, tr('✓ নতুন মাপ: ', "✓ New size: ") + UI.n(w) + '×' + UI.n(h) + ' px · ' + UI.fmtSize(blob.size));
-        var pv = UI.el('img', { src: URL.createObjectURL(blob), alt: tr('প্রিভিউ', "Preview"), style: { maxWidth: '100%', maxHeight: '320px', borderRadius: '8px', marginTop: '12px' } });
-        out.firstChild.appendChild(pv);
-      } catch (e) { UI.clear(out); out.appendChild(UI.notice('err', UI.err(e))); }
-    }
-    root.appendChild(UI.el('div', { class: 'stack' }, drop, info,
-      UI.el('div', { class: 'stack' }, UI.el('span', { class: 'lbl' }, tr('তৈরি মাপ', "Ready-made sizes")), presets),
-      UI.el('div', { class: 'row' }, UI.field(tr('প্রস্থ (px)', "Width (px)"), wIn), UI.field(tr('উচ্চতা (px)', "Height (px)"), hIn)),
-      UI.el('label', { class: 'check' }, lock, tr(' অনুপাত ঠিক রাখুন', " Keep the aspect ratio")),
-      fitField,
-      UI.el('label', { class: 'check' }, logoCheck, tr(' ছবিতে লোগো বা ওয়াটারমার্ক যোগ করুন (ঐচ্ছিক)', " Add logo or watermark to image (optional)")),
-      logoBox,
-      UI.el('div', { class: 'row' }, UI.field(tr('ফরম্যাট', "Format"), fmt)), go, out));
-  };
-
   /* ---------------- ক্রপ ---------------- */
   T['crop-image'] = function (root) {
     var img = null, file = null, ratio = 0, out = UI.el('div'), stage = UI.el('div'), sizeInfo = UI.el('small', { class: 'lbl' }, '');
@@ -508,7 +394,7 @@
   };
 
   /* ---------------- কনভার্ট ---------------- */
-  T['convert-image'] = function (root) {
+  T['resize-image'] = function (root) {
     var items = [];
     var currentFormat = 'jpg';
     var activeRunId = 0;
@@ -639,7 +525,7 @@
       });
       if (!validBlobs.length) return;
       var z = await UI.zip(validBlobs);
-      UI.download(z, 'ToolGhor(convert-image).zip');
+      UI.download(z, 'ToolGhor(resize-image).zip');
     });
 
     var resultsHead = UI.el('div', { class: 'ci-results-head' },

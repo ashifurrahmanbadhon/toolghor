@@ -156,7 +156,7 @@ export default function HomeClient({ initialData }: HomeClientProps) {
       `/assets/tools/resume.js?v=${ASSET_VERSION}`,
     ];
     const topRoutes = [
-      '/tools/convert-image',
+      '/tools/resize-image',
       '/tools/compress-image',
       '/tools/remove-background',
       '/tools/merge-pdf',

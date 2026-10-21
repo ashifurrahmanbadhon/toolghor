@@ -9,9 +9,9 @@
 - ⚡ **Next.js 16 App Router & Turbopack:** Blazing fast performance with SSR and SSG.
 - 🔒 **100% In-Browser Privacy:** All document, image, and calculation operations run in the user's browser without uploading files to third-party servers.
 - 🌐 **Dual Language Support:** Full support for both Bangla (বাংলা) and English.
-- 📄 **28+ Powerful Tools:**
+- 📄 **26 Powerful Tools:**
   - **Document Tools:** Merge PDF, Split PDF, Compress PDF, PDF to Image, PDF to Word (DOCX), Word to PDF, JPG to PDF.
-  - **Image Tools:** Compress Image, Resize, Crop, Merge, Format Conversion, Passport Photo Maker, Background Remover.
+  - **Image Tools:** Compress Image, Resize Image (Dimensions, Format & Target Size), Crop, Merge, Passport Photo Maker, Background Remover.
   - **Calculators:** Live Currency Converter, BMI Calculator, Unit Converter, Percentage, Age, Time Zone Converter.
   - **QR Tools:** QR Code Generator, QR Code Decoder / Scanner.
   - **Media Tools:** YouTube HD Downloader (MP4/MP3), Audio Extractor, Social Video Cropper.
