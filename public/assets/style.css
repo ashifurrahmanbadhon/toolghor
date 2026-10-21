@@ -19,6 +19,7 @@
   --font-display: var(--font-inter), var(--font-hind-siliguri), 'Hind Siliguri', system-ui, sans-serif;
   --font-body: var(--font-inter), var(--font-hind-siliguri), 'Hind Siliguri', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
+[hidden] { display: none !important; }
 :root[data-theme="dark"],
 html[data-theme="dark"],
 html.dark,

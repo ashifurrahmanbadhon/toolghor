@@ -244,7 +244,7 @@
 
     // 2. Containers for both modes
     var onlineSection = UI.el('div', { class: 'stack' });
-    var localSection = UI.el('div', { class: 'stack' });
+    var localSection = UI.el('div', { class: 'stack', style: { display: 'none' } });
     localSection.hidden = true;
 
     mainContainer.appendChild(onlineSection);
@@ -255,7 +255,9 @@
       btnOnline.classList.toggle('active', mode === 'online');
       btnLocal.classList.toggle('active', mode === 'local');
       onlineSection.hidden = mode !== 'online';
+      onlineSection.style.display = mode === 'online' ? '' : 'none';
       localSection.hidden = mode !== 'local';
+      localSection.style.display = mode === 'local' ? '' : 'none';
     }
 
     // ========================================================
