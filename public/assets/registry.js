@@ -186,7 +186,7 @@ var REGISTRY = {
     },
     {
       slug: 'cv-templates', bn: 'সিভি টেমপ্লেট', en: 'CV Templates', icon: 'layout-template', cats: ['resume'], group: 'resume', needs: [],
-      desc: 'বাংলাদেশি সিভিসহ ৪টি টেমপ্লেট থেকে বেছে নিন',
+      desc: 'বাংলাদেশি সিভিসহ ৬টি টেমপ্লেট থেকে বেছে নিন',
       keywords: 'cv template biodata template bd cv format সিভি টেমপ্লেট বায়োডাটা',
       intro: 'ছবিসহ বাংলাদেশি স্টাইল, সাইডবার, মিনিমালসহ কয়েকটি টেমপ্লেট দেখে পছন্দেরটি বেছে নিন।',
       steps: ['পছন্দের টেমপ্লেট বেছে নিন।', 'নিজের তথ্য লিখুন।', '"পিডিএফ ডাউনলোড" চাপুন।']
@@ -228,7 +228,7 @@ var TOOL_EN = {
   'audio-extractor': { desc: 'Pull MP3, M4A or WAV audio out of a video', intro: 'Take just the sound from any video file and save it as MP3, M4A or WAV.', steps: ['Choose a video file.', 'Pick the audio format and quality.', 'Press "Extract audio" and download.'] },
   'social-video-cropper': { desc: 'Crop video to Reels, Shorts and Instagram sizes', intro: 'Crop a video to 9:16 (Reels/Shorts), 1:1, 4:5 or 16:9.', steps: ['Choose a video.', 'Pick the platform size and set the crop position.', 'Press "Create video" and download.'] },
   'resume-builder': { desc: 'Fill a form, get a clean resume and save it as PDF', intro: 'Enter your details, watch the resume preview next to the form, then save it as a PDF.', steps: ['Fill in your details in the form.', 'Pick a template and colour.', 'Press "Download PDF" and choose "Save as PDF" in the print window.'] },
-  'cv-templates': { desc: 'Choose from 4 templates, including a Bangladeshi-style CV', intro: 'Look through templates, including a Bangladeshi-style CV with photo, a sidebar layout and a minimal one, and pick your favourite.', steps: ['Pick a template.', 'Enter your details.', 'Press "Download PDF".'] }
+  'cv-templates': { desc: 'Choose from 6 templates, including a Bangladeshi-style CV', intro: 'Look through templates, including a Bangladeshi-style CV with photo, a sidebar layout and a minimal one, and pick your favourite.', steps: ['Pick a template.', 'Enter your details.', 'Press "Download PDF".'] }
 };
 REGISTRY.tools.forEach(function (t) { var e = TOOL_EN[t.slug]; if (e) { t.descEn = e.desc; t.introEn = e.intro; t.stepsEn = e.steps; } });
 REGISTRY.bySlug = {};

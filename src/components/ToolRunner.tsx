@@ -145,7 +145,7 @@ export default function ToolRunner({ tool, apiKeys }: ToolRunnerProps) {
         // All required scripts (core, vendor, tool group) loaded in PARALLEL
         const scriptPromises: Promise<void>[] = [];
         if (!w.SITE_CONFIG) scriptPromises.push(loadScript(`/assets/config.js?v=${ASSET_VERSION}`));
-        if (!w.CATEGORIES) scriptPromises.push(loadScript(`/assets/registry.js?v=${ASSET_VERSION}`));
+        if (!w.REGISTRY) scriptPromises.push(loadScript(`/assets/registry.js?v=${ASSET_VERSION}`));
         if (!w.ICONS) scriptPromises.push(loadScript(`/assets/icons.js?v=${ASSET_VERSION}`));
         if (!w.UI) scriptPromises.push(loadScript(`/assets/ui.js?v=${ASSET_VERSION}`));
 

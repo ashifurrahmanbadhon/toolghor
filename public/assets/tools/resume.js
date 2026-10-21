@@ -68,87 +68,97 @@
   /* ---------- টেমপ্লেট রেন্ডার ---------- */
   function renderPro(d, L) {
     var ex = filled(d.exp, ['role', 'company', 'details']), ed = filled(d.edu, ['degree', 'school']), sk = chips(d.skills), lg = chips(d.languages), px = filled(d.extra, ['value']);
+    var sum = (d.summary || '').trim(), ref = (d.references || '').trim();
     return '<div class="paper rs-pro" style="--ac:' + d.color + '">' +
       '<div class="head"><div><h1>' + esc(d.name || tr('আপনার নাম', "Your Name")) + '</h1>' + (d.title ? '<div class="ttl">' + esc(d.title) + '</div>' : '') +
       '<div class="contact-line">' + contacts(d).map(function (c) { return '<span>' + esc(c) + '</span>'; }).join('') + '</div></div>' + photoImg(d) + '</div>' +
-      (d.summary.trim() ? '<h2>' + L.summary + '</h2><p>' + esc(d.summary) + '</p>' : '') +
+      (sum ? '<h2>' + L.summary + '</h2><p>' + esc(sum) + '</p>' : '') +
       (ex.length ? '<h2>' + L.exp + '</h2>' + ex.map(function (e) { return '<div class="it"><div class="r"><span>' + esc(e.role) + (e.company ? ' – ' + esc(e.company) : '') + '</span><span>' + esc(e.period) + '</span></div>' + bullets(e.details) + '</div>'; }).join('') : '') +
       (ed.length ? '<h2>' + L.edu + '</h2>' + ed.map(function (e) { return '<div class="it"><div class="r"><span>' + esc(e.degree) + (e.school ? ' – ' + esc(e.school) : '') + '</span><span>' + esc(e.period) + '</span></div>' + (e.result ? '<div class="muted">' + esc(e.result) + '</div>' : '') + '</div>'; }).join('') : '') +
       (sk.length ? '<h2>' + L.skills + '</h2><p>' + sk.map(esc).join(' · ') + '</p>' : '') +
       (lg.length ? '<h2>' + L.lang + '</h2><p>' + lg.map(esc).join(' · ') + '</p>' : '') +
       (px.length ? '<h2>' + L.personal + '</h2>' + px.map(function (p) { return '<div>' + esc(p.label) + ': ' + esc(p.value) + '</div>'; }).join('') : '') +
-      (d.references.trim() ? '<h2>' + L.ref + '</h2>' + bullets(d.references) : '') + '</div>';
+      (ref ? '<h2>' + L.ref + '</h2>' + bullets(ref) : '') + '</div>';
   }
   function renderMod(d, L) {
     var ex = filled(d.exp, ['role', 'company', 'details']), ed = filled(d.edu, ['degree', 'school']), sk = chips(d.skills), lg = chips(d.languages), px = filled(d.extra, ['value']);
+    var sum = (d.summary || '').trim(), ref = (d.references || '').trim();
     return '<div class="paper rs-mod" style="--ac:' + d.color + '"><aside>' + photoImg(d) +
       (contacts(d).length ? '<h3>' + L.contact + '</h3>' + contacts(d).map(function (c) { return '<p>' + esc(c) + '</p>'; }).join('') : '') +
       (sk.length ? '<h3>' + L.skills + '</h3><ul>' + sk.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul>' : '') +
       (lg.length ? '<h3>' + L.lang + '</h3><ul>' + lg.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul>' : '') +
       (px.length ? '<h3>' + L.personal + '</h3>' + px.map(function (p) { return '<p><b>' + esc(p.label) + ':</b> ' + esc(p.value) + '</p>'; }).join('') : '') +
       '</aside><main><h1>' + esc(d.name || tr('আপনার নাম', "Your Name")) + '</h1>' + (d.title ? '<div class="ttl">' + esc(d.title) + '</div>' : '') +
-      (d.summary.trim() ? '<h2>' + L.summary + '</h2><p>' + esc(d.summary) + '</p>' : '') +
+      (sum ? '<h2>' + L.summary + '</h2><p>' + esc(sum) + '</p>' : '') +
       (ex.length ? '<h2>' + L.exp + '</h2>' + ex.map(function (e) { return '<div class="it"><div class="r"><span>' + esc(e.role) + '</span><span>' + esc(e.period) + '</span></div>' + (e.company ? '<div class="muted">' + esc(e.company) + '</div>' : '') + bullets(e.details) + '</div>'; }).join('') : '') +
       (ed.length ? '<h2>' + L.edu + '</h2>' + ed.map(function (e) { return '<div class="it"><div class="r"><span>' + esc(e.degree) + '</span><span>' + esc(e.period) + '</span></div><div class="muted">' + esc(e.school) + (e.result ? ' · ' + esc(e.result) : '') + '</div></div>'; }).join('') : '') +
-      (d.references.trim() ? '<h2>' + L.ref + '</h2>' + bullets(d.references) : '') + '</main></div>';
+      (ref ? '<h2>' + L.ref + '</h2>' + bullets(ref) : '') + '</main></div>';
   }
   function renderCls(d, L) {
     var ex = filled(d.exp, ['role', 'company', 'details']), ed = filled(d.edu, ['degree', 'school']), sk = chips(d.skills), lg = chips(d.languages), px = filled(d.extra, ['value']);
-    return '<div class="paper rs-cls" style="--ac:' + d.color + '"><div style="text-align:center;font-weight:700;letter-spacing:.08em;font-size:10pt;margin-bottom:4mm">' + L.cls_title + '</div>' +
+    var sum = (d.summary || '').trim(), ref = (d.references || '').trim();
+    return '<div class="paper rs-cls" style="--ac:' + d.color + '"><div style="text-align:center;font-weight:700;letter-spacing:.08em;font-size:10pt;margin-bottom:4mm">' + (L.cls_title || 'CURRICULUM VITAE') + '</div>' +
       '<div class="head"><div><h1>' + esc(d.name || tr('আপনার নাম', "Your Name")) + '</h1>' + (d.title ? '<div class="ttl">' + esc(d.title) + '</div>' : '') +
       '<div style="margin-top:6px">' + contacts(d).map(function (c) { return '<div>' + esc(c) + '</div>'; }).join('') + '</div></div>' + photoImg(d) + '</div>' +
-      (d.summary.trim() ? '<h2>' + L.summary + '</h2><p>' + esc(d.summary) + '</p>' : '') +
+      (sum ? '<h2>' + L.summary + '</h2><p>' + esc(sum) + '</p>' : '') +
       (ed.length ? '<h2>' + L.edu + '</h2><table class="edu"><tr><th>' + L.degree + '</th><th>' + L.inst + '</th><th>' + L.year + '</th><th>' + L.result + '</th></tr>' + ed.map(function (e) { return '<tr><td>' + esc(e.degree) + '</td><td>' + esc(e.school) + '</td><td>' + esc(e.period) + '</td><td>' + esc(e.result) + '</td></tr>'; }).join('') + '</table>' : '') +
       (ex.length ? '<h2>' + L.exp + '</h2>' + ex.map(function (e) { return '<div class="it"><b>' + esc(e.role) + '</b>' + (e.company ? ', ' + esc(e.company) : '') + (e.period ? ' <span class="muted">(' + esc(e.period) + ')</span>' : '') + bullets(e.details) + '</div>'; }).join('') : '') +
       (sk.length ? '<h2>' + L.skills + '</h2><p>' + sk.map(esc).join(', ') + '</p>' : '') +
       (lg.length ? '<h2>' + L.lang + '</h2><p>' + lg.map(esc).join(', ') + '</p>' : '') +
       (px.length ? '<h2>' + L.personal + '</h2><table>' + px.map(function (p) { return '<tr><td>' + esc(p.label) + '</td><td>: ' + esc(p.value) + '</td></tr>'; }).join('') + '</table>' : '') +
-      (d.references.trim() ? '<h2>' + L.ref + '</h2>' + bullets(d.references) : '') + '</div>';
+      (ref ? '<h2>' + L.ref + '</h2>' + bullets(ref) : '') + '</div>';
   }
   function renderMin(d, L) {
     var ex = filled(d.exp, ['role', 'company', 'details']), ed = filled(d.edu, ['degree', 'school']), sk = chips(d.skills), lg = chips(d.languages), px = filled(d.extra, ['value']);
+    var sum = (d.summary || '').trim(), ref = (d.references || '').trim();
     function sec(t, body) { return body ? '<div class="sec"><h2>' + t + '</h2><div>' + body + '</div></div>' : ''; }
     return '<div class="paper rs-min" style="--ac:' + d.color + '"><div class="head"><div><h1>' + esc(d.name || tr('আপনার নাম', "Your Name")) + '</h1>' + (d.title ? '<div class="ttl">' + esc(d.title) + '</div>' : '') + '</div>' + photoImg(d) + '</div>' +
       '<div class="contact-line">' + contacts(d).map(function (c) { return '<span>' + esc(c) + '</span>'; }).join('') + '</div>' +
-      sec(L.summary, d.summary.trim() ? '<p>' + esc(d.summary) + '</p>' : '') +
+      sec(L.summary, sum ? '<p>' + esc(sum) + '</p>' : '') +
       sec(L.exp, ex.map(function (e) { return '<div class="it"><div class="r"><span>' + esc(e.role) + (e.company ? ', ' + esc(e.company) : '') + '</span><span>' + esc(e.period) + '</span></div>' + bullets(e.details) + '</div>'; }).join('')) +
       sec(L.edu, ed.map(function (e) { return '<div class="it"><div class="r"><span>' + esc(e.degree) + (e.school ? ', ' + esc(e.school) : '') + '</span><span>' + esc(e.period) + '</span></div>' + (e.result ? '<div class="muted">' + esc(e.result) + '</div>' : '') + '</div>'; }).join('')) +
       sec(L.skills, sk.length ? '<p>' + sk.map(esc).join(' · ') + '</p>' : '') +
       sec(L.lang, lg.length ? '<p>' + lg.map(esc).join(' · ') + '</p>' : '') +
       sec(L.personal, px.map(function (p) { return '<div>' + esc(p.label) + ': ' + esc(p.value) + '</div>'; }).join('')) +
-      sec(L.ref, d.references.trim() ? bullets(d.references) : '') + '</div>';
+      sec(L.ref, ref ? bullets(ref) : '') + '</div>';
   }
   function renderExec(d, L) {
     var ex = filled(d.exp, ['role', 'company', 'details']), ed = filled(d.edu, ['degree', 'school']), sk = chips(d.skills), lg = chips(d.languages), px = filled(d.extra, ['value']);
+    var sum = (d.summary || '').trim(), ref = (d.references || '').trim();
     return '<div class="paper rs-exec" style="--ac:' + d.color + '">' +
       '<div class="exec-header"><div><h1>' + esc(d.name || tr('আপনার নাম', "Your Name")) + '</h1>' + (d.title ? '<div class="ttl">' + esc(d.title) + '</div>' : '') + '</div>' + photoImg(d, 'photo') + '</div>' +
       '<div class="exec-body">' +
       '<div class="contact-line">' + contacts(d).map(function (c) { return '<span>' + esc(c) + '</span>'; }).join('') + '</div>' +
-      (d.summary.trim() ? '<h2>' + L.summary + '</h2><p>' + esc(d.summary) + '</p>' : '') +
+      (sum ? '<h2>' + L.summary + '</h2><p>' + esc(sum) + '</p>' : '') +
       (ex.length ? '<h2>' + L.exp + '</h2>' + ex.map(function (e) { return '<div class="it"><div class="r"><span>' + esc(e.role) + (e.company ? ' – ' + esc(e.company) : '') + '</span><span>' + esc(e.period) + '</span></div>' + bullets(e.details) + '</div>'; }).join('') : '') +
       (ed.length ? '<h2>' + L.edu + '</h2>' + ed.map(function (e) { return '<div class="it"><div class="r"><span>' + esc(e.degree) + (e.school ? ' – ' + esc(e.school) : '') + '</span><span>' + esc(e.period) + '</span></div>' + (e.result ? '<div class="muted">' + esc(e.result) + '</div>' : '') + '</div>'; }).join('') : '') +
       (sk.length ? '<h2>' + L.skills + '</h2><div class="skills-chips">' + sk.map(function (s) { return '<span class="skill-pill">' + esc(s) + '</span>'; }).join('') + '</div>' : '') +
       (lg.length ? '<h2>' + L.lang + '</h2><p>' + lg.map(esc).join(' · ') + '</p>' : '') +
       (px.length ? '<h2>' + L.personal + '</h2>' + px.map(function (p) { return '<div><b>' + esc(p.label) + ':</b> ' + esc(p.value) + '</div>'; }).join('') : '') +
-      (d.references.trim() ? '<h2>' + L.ref + '</h2>' + bullets(d.references) : '') +
+      (ref ? '<h2>' + L.ref + '</h2>' + bullets(ref) : '') +
       '</div></div>';
   }
   function renderCrea(d, L) {
     var ex = filled(d.exp, ['role', 'company', 'details']), ed = filled(d.edu, ['degree', 'school']), sk = chips(d.skills), lg = chips(d.languages), px = filled(d.extra, ['value']);
+    var sum = (d.summary || '').trim(), ref = (d.references || '').trim();
     return '<div class="paper rs-crea" style="--ac:' + d.color + '">' +
       '<div class="head"><div><h1>' + esc(d.name || tr('আপনার নাম', "Your Name")) + '</h1>' + (d.title ? '<div class="ttl">' + esc(d.title) + '</div>' : '') + '</div>' + photoImg(d, 'photo') + '</div>' +
       '<div class="contact-line">' + contacts(d).map(function (c) { return '<span>' + esc(c) + '</span>'; }).join('') + '</div>' +
-      (d.summary.trim() ? '<h2>' + L.summary + '</h2><p>' + esc(d.summary) + '</p>' : '') +
+      (sum ? '<h2>' + L.summary + '</h2><p>' + esc(sum) + '</p>' : '') +
       (ex.length ? '<h2>' + L.exp + '</h2>' + ex.map(function (e) { return '<div class="it"><div class="r"><span>' + esc(e.role) + (e.company ? ' @ ' + esc(e.company) : '') + '</span><span>' + esc(e.period) + '</span></div>' + bullets(e.details) + '</div>'; }).join('') : '') +
       (ed.length ? '<h2>' + L.edu + '</h2>' + ed.map(function (e) { return '<div class="it"><div class="r"><span>' + esc(e.degree) + '</span><span>' + esc(e.period) + '</span></div><div class="muted">' + esc(e.school) + (e.result ? ' · ' + esc(e.result) : '') + '</div></div>'; }).join('') : '') +
       (sk.length ? '<h2>' + L.skills + '</h2><div class="skills-chips">' + sk.map(function (s) { return '<span class="skill-pill">' + esc(s) + '</span>'; }).join('') + '</div>' : '') +
       (lg.length ? '<h2>' + L.lang + '</h2><p>' + lg.map(esc).join(' · ') + '</p>' : '') +
       (px.length ? '<h2>' + L.personal + '</h2>' + px.map(function (p) { return '<div><b>' + esc(p.label) + ':</b> ' + esc(p.value) + '</div>'; }).join('') : '') +
-      (d.references.trim() ? '<h2>' + L.ref + '</h2>' + bullets(d.references) : '') +
+      (ref ? '<h2>' + L.ref + '</h2>' + bullets(ref) : '') +
       '</div>';
   }
   var RENDER = { professional: renderPro, modern: renderMod, classic: renderCls, minimal: renderMin, executive: renderExec, creative: renderCrea };
-  function render(d, tpl) { return RENDER[tpl || d.tpl](d, LABELS[d.lang || 'en']); }
+  function render(d, tpl) {
+    var renderer = RENDER[tpl || d.tpl] || renderPro;
+    var langLabels = LABELS[d.lang || 'en'] || LABELS.en;
+    return renderer(d, langLabels);
+  }
 
   /* ---------- UI ---------- */
 
@@ -430,13 +440,23 @@
     var frame = UI.el('div', { class: 'paper-frame' }), tplBox = UI.el('div'), form = UI.el('div', { class: 'rb-form' });
     function fit() {
       var p = frame.firstChild; if (!p) return;
-      var s = frame.clientWidth / (210 * 3.7795275591); // 210mm → px
-      p.style.transform = 'scale(' + s + ')'; frame.style.height = (p.offsetHeight * s) + 'px';
+      var w = frame.clientWidth;
+      if (w > 0) {
+        var s = w / (210 * 3.7795275591); // 210mm → px
+        p.style.transform = 'scale(' + s + ')';
+        frame.style.height = (p.offsetHeight * s) + 'px';
+      }
     }
     function refresh() {
       frame.innerHTML = render(d); fit(); persist(); updateCvScoreBadge();
     }
     window.addEventListener('resize', fit);
+    if (typeof window !== 'undefined' && window.ResizeObserver) {
+      try {
+        var roFrame = new ResizeObserver(fit);
+        roFrame.observe(frame);
+      } catch (e) { }
+    }
 
     /* AI Resume Assistant Modal */
     function openAiResumeModal(initialTab, contextRole) {
@@ -828,14 +848,45 @@
       UI.clear(tplBox);
       if (gallery) {
         var wrap = UI.el('div', { class: 'tpl-pick' });
+        var cards = [];
         TEMPLATES.forEach(function (t) {
           var thumb = UI.el('div', { class: 'tpl-thumb' });
           thumb.innerHTML = render(Object.assign({}, SAMPLE_FULL(), { color: d.color, lang: d.lang }), t.id);
-          var card = UI.el('button', { type: 'button', class: 'tpl-card', 'aria-pressed': String(d.tpl === t.id), onclick: function () { d.tpl = t.id; drawTpl(); refresh(); } }, thumb, UI.el('strong', {}, t.label), UI.el('small', { class: 'lbl', style: { display: 'block' } }, t.note));
+          var card = UI.el('button', {
+            type: 'button',
+            class: 'tpl-card',
+            'aria-pressed': String(d.tpl === t.id),
+            onclick: function () {
+              d.tpl = t.id;
+              cards.forEach(function (item) {
+                item.el.setAttribute('aria-pressed', String(item.id === d.tpl));
+              });
+              refresh();
+            }
+          }, thumb, UI.el('strong', {}, t.label), UI.el('small', { class: 'lbl', style: { display: 'block' } }, t.note));
+          cards.push({ id: t.id, el: card });
           wrap.appendChild(card);
-          setTimeout(function () { var p = thumb.firstChild; if (p && thumb.clientWidth) p.style.transform = 'scale(' + (thumb.clientWidth / 793.7) + ')'; }, 0);
         });
         tplBox.appendChild(wrap);
+
+        function fitThumbs() {
+          var thumbs = wrap.querySelectorAll('.tpl-thumb');
+          for (var i = 0; i < thumbs.length; i++) {
+            var th = thumbs[i], p = th.firstChild;
+            if (p && th.clientWidth > 0) {
+              p.style.transform = 'scale(' + (th.clientWidth / 793.7) + ')';
+            }
+          }
+        }
+        setTimeout(fitThumbs, 0);
+        setTimeout(fitThumbs, 150);
+        window.addEventListener('resize', fitThumbs);
+        if (typeof window !== 'undefined' && window.ResizeObserver) {
+          try {
+            var roThumbs = new ResizeObserver(fitThumbs);
+            roThumbs.observe(wrap);
+          } catch (e) { }
+        }
       } else {
         tplBox.appendChild(UI.seg(TEMPLATES.map(function (t) { return { value: t.id, label: t.label }; }), d.tpl, function (v) { d.tpl = v; refresh(); }));
       }

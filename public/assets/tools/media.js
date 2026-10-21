@@ -1,6 +1,6 @@
 /* ভিডিও ও অডিও টুলস (ffmpeg.wasm, ব্রাউজারেই চলে) */
 (function () {
-  var UI = window.UI, T = window.Tools;
+  var UI = window.UI, T = window.Tools, tr = UI.tr;
   var CORE = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
   var ff = null, loading = null;
   var isFFmpegBusy = false;
