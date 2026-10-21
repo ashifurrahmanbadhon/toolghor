@@ -1,11 +1,75 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useLayoutEffect, useEffect } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+
 export default function Header() {
   const { lang, setLang } = useApp();
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const enBtnRef = useRef<HTMLButtonElement | null>(null);
+  const bnBtnRef = useRef<HTMLButtonElement | null>(null);
+  const thumbRef = useRef<HTMLSpanElement | null>(null);
+  const hasUserInteracted = useRef(false);
+
+  useIsomorphicLayoutEffect(() => {
+    const activeBtn = lang === 'en' ? enBtnRef.current : bnBtnRef.current;
+    const thumb = thumbRef.current;
+    const container = containerRef.current;
+    if (!activeBtn || !thumb) return;
+
+    const left = activeBtn.offsetLeft;
+    const width = activeBtn.offsetWidth;
+    const top = activeBtn.offsetTop;
+    const height = activeBtn.offsetHeight;
+
+    if (!hasUserInteracted.current) {
+      // First mount / initial hydration: place thumb directly under active button with zero transition
+      thumb.style.transition = 'none';
+      thumb.style.transform = `translateX(${left}px)`;
+      thumb.style.width = `${width}px`;
+      if (top) thumb.style.top = `${top}px`;
+      if (height) thumb.style.height = `${height}px`;
+
+      // Force synchronous reflow
+      void thumb.offsetHeight;
+
+      // Re-enable smooth transition for future clicks
+      thumb.style.transition = '';
+      if (container) container.classList.add('is-ready');
+    } else {
+      // User-initiated click: smoothly glide and resize thumb
+      thumb.style.transform = `translateX(${left}px)`;
+      thumb.style.width = `${width}px`;
+      if (top) thumb.style.top = `${top}px`;
+      if (height) thumb.style.height = `${height}px`;
+    }
+  }, [lang]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const activeBtn = lang === 'en' ? enBtnRef.current : bnBtnRef.current;
+      const thumb = thumbRef.current;
+      if (!activeBtn || !thumb) return;
+
+      thumb.style.transition = 'none';
+      thumb.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
+      thumb.style.width = `${activeBtn.offsetWidth}px`;
+      if (activeBtn.offsetTop) thumb.style.top = `${activeBtn.offsetTop}px`;
+      if (activeBtn.offsetHeight) thumb.style.height = `${activeBtn.offsetHeight}px`;
+      void thumb.offsetHeight;
+      thumb.style.transition = '';
+    };
+
+    window.addEventListener('resize', handleResize, { passive: true });
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      document.fonts.ready.then(handleResize).catch(() => {});
+    }
+    return () => window.removeEventListener('resize', handleResize);
+  }, [lang]);
 
   const handleOpenAbout = () => {
     const w = window as any;
@@ -82,36 +146,45 @@ export default function Header() {
           </button>
 
           {/* Language Switcher */}
-          <div className="lang" role="group" aria-label="Language">
+          <div ref={containerRef} className="lang" role="group" aria-label="Language">
             <span className="lang-ic" aria-hidden="true">
               🌐
             </span>
-            {lang === 'en' ? (
-              <span className="on" aria-current="true" lang="en">
-                EN
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setLang('en')}
-                title="English"
-              >
-                EN
-              </button>
-            )}
-            {lang === 'bn' ? (
-              <span className="on" aria-current="true" lang="bn">
-                বাংলা
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setLang('bn')}
-                title="বাংলা"
-              >
-                বাংলা
-              </button>
-            )}
+            <span
+              ref={thumbRef}
+              className="lang-thumb"
+              aria-hidden="true"
+            />
+            <button
+              ref={enBtnRef}
+              type="button"
+              className={`lang-btn ${lang === 'en' ? 'on' : ''}`}
+              aria-pressed={lang === 'en'}
+              onClick={() => {
+                if (lang !== 'en') {
+                  hasUserInteracted.current = true;
+                  setLang('en');
+                }
+              }}
+              title="English"
+            >
+              EN
+            </button>
+            <button
+              ref={bnBtnRef}
+              type="button"
+              className={`lang-btn ${lang === 'bn' ? 'on' : ''}`}
+              aria-pressed={lang === 'bn'}
+              onClick={() => {
+                if (lang !== 'bn') {
+                  hasUserInteracted.current = true;
+                  setLang('bn');
+                }
+              }}
+              title="বাংলা"
+            >
+              বাংলা
+            </button>
           </div>
 
 
