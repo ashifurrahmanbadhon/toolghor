@@ -94,7 +94,6 @@ export default function Header() {
               <button
                 type="button"
                 onClick={() => setLang('en')}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 10px' }}
                 title="English"
               >
                 EN
@@ -108,7 +107,6 @@ export default function Header() {
               <button
                 type="button"
                 onClick={() => setLang('bn')}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 10px' }}
                 title="বাংলা"
               >
                 বাংলা

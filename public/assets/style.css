@@ -925,9 +925,10 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
 /* ============ Language switch ============ */
 .lang { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); padding: 2px 4px 2px 9px; gap: 3px; min-height: 36px; }
 .lang-ic { font-size: 15px; line-height: 1; user-select: none; margin-right: 2px; }
-.lang a, .lang span:not(.lang-ic) { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 999px; font-size: 13.5px; line-height: 1.3; text-decoration: none; color: var(--ink-2); min-height: 28px; }
-.lang a:hover { color: var(--paddy-d); background: color-mix(in srgb, var(--paddy) 10%, transparent); }
-.lang .on { background: var(--paddy); color: #fff; font-weight: 600; }
+.lang a, .lang button, .lang span:not(.lang-ic) { display: inline-flex; align-items: center; justify-content: center; padding: 4px 10px; border-radius: 999px; font-size: 13.5px; line-height: 1.3; text-decoration: none; color: var(--ink-2); min-height: 28px; transition: all .2s ease; cursor: pointer; background: none; border: none; font: inherit; user-select: none; box-sizing: border-box; }
+.lang button:hover, .lang a:hover { color: var(--paddy-d); background: color-mix(in srgb, var(--paddy) 10%, transparent); transform: translateY(-1px); }
+.lang button:active, .lang a:active { transform: translateY(0); }
+.lang .on { background: var(--paddy); color: #fff; font-weight: 600; cursor: default; transform: none !important; }
 @media (prefers-color-scheme: dark) { .lang .on { color: #06241a; } }
 
 /* ============ AI API Connect Button ============ */
