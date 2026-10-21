@@ -67,6 +67,8 @@
     var brField = UI.field(tr('অডিও মান', "Audio quality"), br);
     var go = UI.btn(tr('অডিও আলাদা করুন', "Extract audio"), run, { icon: 'audio-lines', disabled: true });
     var drop = UI.dropzone({
+      multiple: false,
+      allowFolder: false,
       accept: 'video/*,audio/*,.mkv,.mov,.avi,.3gp,.flv,.webm,.mp4,.m4v',
       onFiles: function (fs) {
         file = fs[0]; UI.clear(out); UI.clear(info);

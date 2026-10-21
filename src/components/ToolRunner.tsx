@@ -248,21 +248,38 @@ export default function ToolRunner({ tool, apiKeys }: ToolRunnerProps) {
     };
   }, [tool.slug, tool.group, lang, retryCount]);
 
+  const isMultiUpload = ['merge-pdf', 'jpg-to-pdf', 'compress-image', 'resize-image', 'merge-image'].includes(tool.slug);
+  const isFormTool = tool.group === 'calc' || tool.slug === 'qr-generator' || tool.slug === 'currency-converter' || tool.group === 'resume';
+
   return (
     <div className="w-full">
       {/* Loading Skeleton */}
       {loading && (
         <div className="w-full border-2 border-dashed border-blue-200/70 dark:border-blue-900/40 rounded-2xl p-10 flex flex-col items-center justify-center gap-4 bg-blue-50/20 dark:bg-blue-950/10 animate-pulse">
-          <div className="flex gap-4">
-            <div className="w-36 h-28 rounded-2xl bg-blue-100/60 dark:bg-blue-900/30 flex flex-col items-center justify-center gap-2">
+          {isFormTool ? (
+            <div className="w-full max-w-md flex flex-col gap-3 items-center">
+              <div className="w-3/4 h-5 rounded-lg bg-blue-100/60 dark:bg-blue-900/30" />
+              <div className="w-full h-11 rounded-xl bg-blue-100/50 dark:bg-blue-900/20" />
+              <div className="w-full h-11 rounded-xl bg-blue-100/50 dark:bg-blue-900/20" />
+              <div className="w-32 h-10 rounded-xl bg-blue-200/60 dark:bg-blue-800/40 mt-1" />
+            </div>
+          ) : isMultiUpload ? (
+            <div className="flex gap-4">
+              <div className="w-36 h-28 rounded-2xl bg-blue-100/60 dark:bg-blue-900/30 flex flex-col items-center justify-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-200/60 dark:bg-blue-800/40" />
+                <div className="w-20 h-4 rounded bg-blue-200/60 dark:bg-blue-800/40" />
+              </div>
+              <div className="w-36 h-28 rounded-2xl bg-indigo-100/60 dark:bg-indigo-900/30 flex flex-col items-center justify-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-indigo-200/60 dark:bg-indigo-800/40" />
+                <div className="w-20 h-4 rounded bg-indigo-200/60 dark:bg-indigo-800/40" />
+              </div>
+            </div>
+          ) : (
+            <div className="w-40 h-32 rounded-2xl bg-blue-100/60 dark:bg-blue-900/30 flex flex-col items-center justify-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-blue-200/60 dark:bg-blue-800/40" />
-              <div className="w-20 h-4 rounded bg-blue-200/60 dark:bg-blue-800/40" />
+              <div className="w-24 h-4 rounded bg-blue-200/60 dark:bg-blue-800/40" />
             </div>
-            <div className="w-36 h-28 rounded-2xl bg-indigo-100/60 dark:bg-indigo-900/30 flex flex-col items-center justify-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-indigo-200/60 dark:bg-indigo-800/40" />
-              <div className="w-20 h-4 rounded bg-indigo-200/60 dark:bg-indigo-800/40" />
-            </div>
-          </div>
+          )}
           <div className="w-48 h-3.5 rounded bg-zinc-200/60 dark:bg-zinc-800/40 mt-1" />
         </div>
       )}

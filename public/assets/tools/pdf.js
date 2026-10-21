@@ -446,6 +446,8 @@
       { value: 'low', label: tr('বেশি কমপ্রেস (ছোট সাইজ)', "Strong compression (smallest size)") }], 'med');
     var go = UI.btn(tr('কমপ্রেস করুন', "Compress"), run, { icon: 'minimize-2', disabled: true });
     var drop = UI.dropzone({
+      multiple: false,
+      allowFolder: false,
       accept: 'application/pdf,.pdf',
       onFiles: function (fs) { file = fs[0]; UI.clear(out); UI.clear(info); info.appendChild(UI.notice('info', file.name + ' · ' + UI.fmtSize(file.size))); go.disabled = false; }
     });
@@ -510,6 +512,8 @@
     var range = UI.el('input', { type: 'text', placeholder: tr('খালি রাখলে সব পৃষ্ঠা', "Leave empty for all pages") });
     var go = UI.btn(fixedJpg ? tr('JPG বানান', "Create JPG") : tr('ছবি বানান', "Create images"), run, { icon: 'file-image', disabled: true });
     var drop = UI.dropzone({
+      multiple: false,
+      allowFolder: false,
       accept: 'application/pdf,.pdf',
       onFiles: function (fs) { file = fs[0]; UI.clear(out); UI.clear(info); info.appendChild(UI.notice('info', file.name + ' · ' + UI.fmtSize(file.size))); go.disabled = false; }
     });
