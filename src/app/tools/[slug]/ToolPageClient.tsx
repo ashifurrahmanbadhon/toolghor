@@ -103,7 +103,7 @@ export default function ToolPageClient({ tool, relatedTools, apiKeys }: ToolPage
 
         {/* Main Tool Runner Panel */}
         <div className="panel">
-          <ToolRunner tool={tool} apiKeys={apiKeys} />
+          <ToolRunner key={tool.slug} tool={tool} apiKeys={apiKeys} />
         </div>
 
         {/* How to use */}

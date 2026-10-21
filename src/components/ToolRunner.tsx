@@ -15,15 +15,7 @@ export default function ToolRunner({ tool, apiKeys }: ToolRunnerProps) {
   const { lang } = useApp();
   const rootRef = useRef<HTMLDivElement>(null);
   const lastTrackedSlug = useRef<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const w = window as any;
-      if (w.Tools && typeof w.Tools[tool.slug] === 'function') {
-        return false;
-      }
-    }
-    return true;
-  });
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
@@ -84,6 +76,10 @@ export default function ToolRunner({ tool, apiKeys }: ToolRunnerProps) {
     async function initTool() {
       try {
         const w = window as any;
+
+        if (rootRef.current) {
+          rootRef.current.innerHTML = '';
+        }
 
         // Ensure root element setup
         if (!document.body.getAttribute('data-root')) {
@@ -239,6 +235,9 @@ export default function ToolRunner({ tool, apiKeys }: ToolRunnerProps) {
 
     return () => {
       isCancelled = true;
+      if (rootRef.current) {
+        rootRef.current.innerHTML = '';
+      }
       if (typeof window !== 'undefined') {
         const w = window as any;
         if (w.UI && typeof w.UI.removeInAppBanner === 'function') {
