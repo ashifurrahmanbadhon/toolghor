@@ -63,6 +63,15 @@ export async function POST(req: NextRequest) {
       DO UPDATE SET count = tool_analytics.count + 1, last_used = CURRENT_TIMESTAMP;
     `;
 
+    try {
+      await sql`
+        INSERT INTO tool_usage_daily (slug, used_date, count)
+        VALUES (${slug}, CURRENT_DATE, 1)
+        ON CONFLICT (slug, used_date)
+        DO UPDATE SET count = tool_usage_daily.count + 1;
+      `;
+    } catch {}
+
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error('[Analytics Track Exception]:', err?.message);

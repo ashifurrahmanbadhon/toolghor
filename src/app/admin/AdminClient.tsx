@@ -57,6 +57,8 @@ interface AnnouncementSection {
   type: string;
   link_url?: string;
   link_text?: string;
+  duration_days?: string;
+  expires_at?: string | null;
 }
 
 interface CategoryRow {
@@ -274,6 +276,10 @@ export default function AdminConsole() {
   });
 
   const [analytics, setAnalytics] = useState<Record<string, number>>({});
+  const [periodicAnalytics, setPeriodicAnalytics] = useState<
+    Record<string, { this_week: number; last_week: number; this_month: number; last_month: number }>
+  >({});
+  const [usagePeriod, setUsagePeriod] = useState<'all' | 'this_month' | 'last_month' | 'this_week' | 'last_week'>('all');
   const [lastUpdatedTime, setLastUpdatedTime] = useState<string>('');
   const [hoveredBar, setHoveredBar] = useState<{ name: string; count: number } | null>(null);
   const [policies, setPolicies] = useState<Record<string, PolicySection>>(DEFAULT_POLICY_SECTIONS);
@@ -436,6 +442,7 @@ export default function AdminConsole() {
         }
         if (data.policies) setPolicies(data.policies);
         if (data.analytics) setAnalytics(data.analytics);
+        if (data.periodicAnalytics) setPeriodicAnalytics(data.periodicAnalytics);
 
         try {
           const now = new Date();
@@ -1817,14 +1824,34 @@ export default function AdminConsole() {
           </div>
           {/* TAB 1: OVERVIEW (RESTYLED MODERN SAAS ANALYTICS DASHBOARD) */}
           {activeTab === 'overview' && (() => {
-            const totalToolUses = Object.values(analytics).reduce((a, b) => a + Number(b || 0), 0);
+            const getToolCount = (slug: string) => {
+              if (usagePeriod === 'all') return Number(analytics[slug] || 0);
+              const p = periodicAnalytics[slug];
+              if (!p) return 0;
+              if (usagePeriod === 'this_month') return p.this_month;
+              if (usagePeriod === 'last_month') return p.last_month;
+              if (usagePeriod === 'this_week') return p.this_week;
+              if (usagePeriod === 'last_week') return p.last_week;
+              return Number(analytics[slug] || 0);
+            };
+
+            const periodNames: Record<string, string> = {
+              all: 'All Time',
+              this_month: 'This Month',
+              last_month: 'Last Month',
+              this_week: 'This Week',
+              last_week: 'Last Week',
+            };
+
+            const totalLifetimeUses = Object.values(analytics).reduce((a, b) => a + Number(b || 0), 0);
             const sortedTools = [...tools]
-              .map((t) => ({ ...t, count: Number(analytics[t.slug] || 0) }))
+              .map((t) => ({ ...t, count: getToolCount(t.slug) }))
               .sort((a, b) => b.count - a.count);
             const topTool = sortedTools[0];
             const topToolsList = sortedTools.slice(0, 5);
             const chartTools = sortedTools.slice(0, 10);
             const maxChartCount = Math.max(...chartTools.map((t) => t.count), 1);
+            const totalUsesForPeriod = sortedTools.reduce((a, b) => a + b.count, 0);
             const activeToolsLive = tools.filter((t) => t.is_active).length;
             const activeCatsLive = categories.filter((c) => c.is_active).length;
 
@@ -1896,11 +1923,11 @@ export default function AdminConsole() {
                   </div>
                 </div>
 
-                {/* 2 — KPI Card Row (4 Cards) */}
+                {/* 2 — KPI Card Row (3 Cards: Total Tool Uses, Most Used Tool, Active Tools) */}
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
                     gap: '16px',
                     marginBottom: '28px',
                   }}
@@ -1940,9 +1967,9 @@ export default function AdminConsole() {
                           letterSpacing: '-0.02em',
                         }}
                       >
-                        {totalToolUses.toLocaleString()}
+                        {totalLifetimeUses.toLocaleString()}
                       </div>
-                      <span style={{ fontSize: '12px', color: '#64748b' }}>all time</span>
+                      <span style={{ fontSize: '12px', color: '#64748b' }}>all time lifetime</span>
                     </div>
                     <div
                       style={{
@@ -1988,7 +2015,7 @@ export default function AdminConsole() {
                           letterSpacing: '0.06em',
                         }}
                       >
-                        Most Used Tool
+                        #1 Top Tool ({periodNames[usagePeriod]})
                       </span>
                       <div
                         title={topTool?.title_en || 'None yet'}
@@ -2006,7 +2033,7 @@ export default function AdminConsole() {
                         {topTool ? topTool.title_en : 'None yet'}
                       </div>
                       <span style={{ fontSize: '12px', color: '#64748b' }}>
-                        {(topTool?.count || 0).toLocaleString()} uses
+                        {(topTool?.count || 0).toLocaleString()} uses in {periodNames[usagePeriod]}
                       </span>
                     </div>
                     <div
@@ -2089,67 +2116,6 @@ export default function AdminConsole() {
                       <Wrench size={18} />
                     </div>
                   </div>
-
-                  {/* Card 4: Policy Sections */}
-                  <div
-                    style={{
-                      background: '#111827',
-                      border: '1px solid #1f2937',
-                      borderRadius: '16px',
-                      padding: '22px',
-                      position: 'relative',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
-                    }}
-                  >
-                    <div>
-                      <span
-                        style={{
-                          fontSize: '12px',
-                          color: '#94a3b8',
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.06em',
-                        }}
-                      >
-                        Policy Sections
-                      </span>
-                      <div
-                        style={{
-                          fontSize: '34px',
-                          fontWeight: 900,
-                          color: '#10b981',
-                          margin: '8px 0 4px',
-                          letterSpacing: '-0.02em',
-                        }}
-                      >
-                        9
-                      </div>
-                      <span style={{ fontSize: '12px', color: '#64748b' }}>
-                        Terms &amp; Policies
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        position: 'absolute',
-                        right: '18px',
-                        bottom: '18px',
-                        width: '38px',
-                        height: '38px',
-                        borderRadius: '10px',
-                        background: 'rgba(16, 185, 129, 0.12)',
-                        border: '1px solid rgba(16, 185, 129, 0.25)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#10b981',
-                      }}
-                    >
-                      <FileText size={18} />
-                    </div>
-                  </div>
                 </div>
 
                 {/* 3 — Chart Card "Usage by Tool" */}
@@ -2170,40 +2136,117 @@ export default function AdminConsole() {
                       alignItems: 'center',
                       marginBottom: '20px',
                       flexWrap: 'wrap',
-                      gap: '8px',
+                      gap: '12px',
                     }}
                   >
                     <div>
-                      <h2 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 2px', color: '#f8fafc' }}>
-                        Usage by Tool
-                      </h2>
-                      <p style={{ fontSize: '12.5px', color: '#64748b', margin: 0 }}>
-                        Top {chartTools.length} tools ranked by lifetime launches
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <h2 style={{ fontSize: '17px', fontWeight: 700, margin: 0, color: '#f8fafc' }}>
+                          Usage by Tool
+                        </h2>
+                        <span
+                          style={{
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            background: 'rgba(16, 185, 129, 0.15)',
+                            color: '#10b981',
+                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                          }}
+                        >
+                          {periodNames[usagePeriod]}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: '12.5px', color: '#94a3b8', margin: '4px 0 0' }}>
+                        Top {chartTools.length} tools ranked by {periodNames[usagePeriod].toLowerCase()} launches ({totalUsesForPeriod.toLocaleString()} total)
                       </p>
                     </div>
 
+                    {/* Time Period Filter Tabs */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: '#0b0f19',
+                        border: '1px solid #1f2937',
+                        padding: '4px',
+                        borderRadius: '10px',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      {(
+                        [
+                          { id: 'all', label: 'All Time' },
+                          { id: 'this_month', label: 'This Month' },
+                          { id: 'last_month', label: 'Last Month' },
+                          { id: 'this_week', label: 'This Week' },
+                          { id: 'last_week', label: 'Last Week' },
+                        ] as const
+                      ).map((period) => {
+                        const isCurrent = usagePeriod === period.id;
+                        return (
+                          <button
+                            key={period.id}
+                            type="button"
+                            onClick={() => setUsagePeriod(period.id)}
+                            style={{
+                              padding: '6px 12px',
+                              borderRadius: '7px',
+                              border: isCurrent ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid transparent',
+                              background: isCurrent ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
+                              color: isCurrent ? '#10b981' : '#94a3b8',
+                              fontWeight: isCurrent ? 700 : 500,
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {period.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Summary Callout Banner for Current Selected Period */}
+                  <div
+                    style={{
+                      background: 'rgba(11, 15, 25, 0.65)',
+                      border: '1px solid #1e293b',
+                      borderRadius: '10px',
+                      padding: '10px 14px',
+                      marginBottom: '16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                      fontSize: '12.5px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '15px' }}>🏆</span>
+                      <span style={{ color: '#94a3b8' }}>
+                        Top tool in <strong style={{ color: '#f8fafc' }}>{periodNames[usagePeriod]}</strong>:
+                      </span>
+                      <strong style={{ color: '#38bdf8' }}>{topTool ? topTool.title_en : 'None'}</strong>
+                      <span style={{ color: '#10b981', fontWeight: 700 }}>
+                        ({(topTool?.count || 0).toLocaleString()} uses)
+                      </span>
+                    </div>
+
                     {hoveredBar && (
-                      <div
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          background: '#0b0f19',
-                          border: '1px solid #334155',
-                          padding: '4px 12px',
-                          borderRadius: '8px',
-                          fontSize: '12.5px',
-                        }}
-                      >
-                        <span style={{ color: '#f8fafc', fontWeight: 600 }}>{hoveredBar.name}</span>
-                        <span style={{ color: '#10b981', fontWeight: 800 }}>
-                          {hoveredBar.count.toLocaleString()} uses
-                        </span>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#cbd5e1' }}>
+                        <span>Focused: <strong>{hoveredBar.name}</strong></span>
+                        <span style={{ color: '#10b981', fontWeight: 800 }}>{hoveredBar.count.toLocaleString()} uses</span>
                       </div>
                     )}
                   </div>
 
-                  {totalToolUses === 0 ? (
+                  {totalUsesForPeriod === 0 ? (
                     <div
                       style={{
                         padding: '60px 20px',
@@ -2212,7 +2255,7 @@ export default function AdminConsole() {
                         fontSize: '14px',
                       }}
                     >
-                      No tool usage recorded yet
+                      No tool usage recorded for {periodNames[usagePeriod]}
                     </div>
                   ) : (
                     <div style={{ position: 'relative', width: '100%', overflowX: 'auto', paddingTop: '10px' }}>
@@ -2338,154 +2381,48 @@ export default function AdminConsole() {
                   )}
                 </div>
 
-                {/* 4 — Bottom Row, Two Cards Side by Side (Stacked on Mobile) */}
+                {/* 4 — Bottom Section: Clean Full-Width Quick Status (Top Tools removed as requested) */}
                 <div
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                    gap: '20px',
+                    background: '#111827',
+                    border: '1px solid #1f2937',
+                    borderRadius: '18px',
+                    padding: '24px',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
                   }}
                 >
-                  {/* Left: Top Tools List with share bar */}
-                  <div
-                    style={{
-                      background: '#111827',
-                      border: '1px solid #1f2937',
-                      borderRadius: '18px',
-                      padding: '24px',
-                      boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '18px',
-                      }}
-                    >
-                      <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: '#f8fafc' }}>
-                        Top Tools
-                      </h2>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('analytics')}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#10b981',
-                          fontSize: '13px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          textDecoration: 'underline',
-                        }}
-                      >
-                        View All →
-                      </button>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                      {topToolsList.map((t, idx) => {
-                        const sharePct = totalToolUses > 0 ? (t.count / totalToolUses) * 100 : 0;
-                        return (
-                          <div
-                            key={t.slug}
-                            style={{
-                              background: '#0b0f19',
-                              border: '1px solid #1e293b',
-                              borderRadius: '12px',
-                              padding: '12px 14px',
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: '6px',
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span
-                                  style={{
-                                    fontSize: '12px',
-                                    fontWeight: 800,
-                                    color: idx === 0 ? '#fbbf24' : idx === 1 ? '#94a3b8' : idx === 2 ? '#b45309' : '#64748b',
-                                  }}
-                                >
-                                  #{idx + 1}
-                                </span>
-                                <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#f8fafc' }}>
-                                  {t.title_en}
-                                </span>
-                              </div>
-                              <span style={{ fontSize: '13px', fontWeight: 800, color: '#10b981' }}>
-                                {t.count.toLocaleString()}
-                              </span>
-                            </div>
-
-                            {/* Slim share bar */}
-                            <div
-                              style={{
-                                width: '100%',
-                                height: '4px',
-                                background: '#1e293b',
-                                borderRadius: '999px',
-                                overflow: 'hidden',
-                              }}
-                            >
-                              <div
-                                style={{
-                                  width: `${sharePct}%`,
-                                  height: '100%',
-                                  background: 'linear-gradient(90deg, #10b981, #38bdf8)',
-                                  borderRadius: '999px',
-                                }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h2 style={{ fontSize: '17px', fontWeight: 700, margin: 0, color: '#f8fafc' }}>
+                      Platform Quick Status
+                    </h2>
+                    <span style={{ fontSize: '12.5px', color: '#10b981', fontWeight: 600 }}>
+                      ● All systems operational
+                    </span>
                   </div>
 
-                  {/* Right: Quick Status */}
-                  <div
-                    style={{
-                      background: '#111827',
-                      border: '1px solid #1f2937',
-                      borderRadius: '18px',
-                      padding: '24px',
-                      boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    <div>
-                      <h2 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 16px', color: '#f8fafc' }}>
-                        Quick Status
-                      </h2>
-
-                      {/* Notice Banner Status */}
-                      <div
-                        style={{
-                          background: '#0b0f19',
-                          border: '1px solid #1e293b',
-                          borderRadius: '12px',
-                          padding: '12px 14px',
-                          marginBottom: '14px',
-                        }}
-                      >
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+                    {/* Notice Banner Status */}
+                    <div
+                      style={{
+                        background: '#0b0f19',
+                        border: '1px solid #1e293b',
+                        borderRadius: '12px',
+                        padding: '14px 16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div>
                         <div
                           style={{
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            marginBottom: '4px',
+                            marginBottom: '6px',
                           }}
                         >
-                          <span style={{ fontSize: '13px', fontWeight: 600, color: '#cbd5e1' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: '#cbd5e1' }}>
                             Notice Banner
                           </span>
                           <span
@@ -2506,7 +2443,7 @@ export default function AdminConsole() {
                           style={{
                             fontSize: '12px',
                             color: '#64748b',
-                            margin: 0,
+                            margin: '0 0 8px',
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -2517,119 +2454,139 @@ export default function AdminConsole() {
                         </p>
                       </div>
 
-                      {/* API Keys Configuration Status (Flags Only — Never secret values) */}
-                      <div
-                        style={{
-                          background: '#0b0f19',
-                          border: '1px solid #1e293b',
-                          borderRadius: '12px',
-                          padding: '12px 14px',
-                          marginBottom: '20px',
-                        }}
-                      >
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#cbd5e1', marginBottom: '8px' }}>
-                          Cloud API Integrations
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ color: apiKeys.removebg_active && apiKeys.removebg_key ? '#10b981' : '#64748b', fontWeight: 700 }}>
-                              {apiKeys.removebg_active && apiKeys.removebg_key ? '✓' : '—'}
-                            </span>
-                            <span style={{ color: '#94a3b8' }}>remove.bg</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ color: apiKeys.convertapi_active && apiKeys.convertapi_token ? '#10b981' : '#64748b', fontWeight: 700 }}>
-                              {apiKeys.convertapi_active && apiKeys.convertapi_token ? '✓' : '—'}
-                            </span>
-                            <span style={{ color: '#94a3b8' }}>ConvertAPI</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ color: apiKeys.ilovepdf_active && (apiKeys.ilovepdf_public_key || apiKeys.ilovepdf_secret_key) ? '#10b981' : '#64748b', fontWeight: 700 }}>
-                              {apiKeys.ilovepdf_active && (apiKeys.ilovepdf_public_key || apiKeys.ilovepdf_secret_key) ? '✓' : '—'}
-                            </span>
-                            <span style={{ color: '#94a3b8' }}>iLovePDF</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ color: apiKeys.gemini_active && apiKeys.gemini_key ? '#10b981' : '#64748b', fontWeight: 700 }}>
-                              {apiKeys.gemini_active && apiKeys.gemini_key ? '✓' : '—'}
-                            </span>
-                            <span style={{ color: '#94a3b8' }}>Gemini / OpenAI</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Quick Link Buttons to Existing Editors */}
-                    <div>
-                      <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-                        Quick Editors
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('hero')}
-                          style={{
-                            padding: '7px 12px',
-                            borderRadius: '8px',
-                            background: '#1f2937',
-                            border: '1px solid #374151',
-                            color: '#e2e8f0',
-                            fontSize: '12.5px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Content
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('tools')}
-                          style={{
-                            padding: '7px 12px',
-                            borderRadius: '8px',
-                            background: '#1f2937',
-                            border: '1px solid #374151',
-                            color: '#e2e8f0',
-                            fontSize: '12.5px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Tools
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('policies')}
-                          style={{
-                            padding: '7px 12px',
-                            borderRadius: '8px',
-                            background: '#1f2937',
-                            border: '1px solid #374151',
-                            color: '#e2e8f0',
-                            fontSize: '12.5px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Terms &amp; Policies
-                        </button>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid #1e293b' }}>
+                        <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>
+                          Duration: <strong style={{ color: '#f8fafc' }}>{announcement.duration_days ? (announcement.duration_days === 'unlimited' ? 'Unlimited' : `${announcement.duration_days} Days`) : 'Unlimited'}</strong>
+                        </span>
                         <button
                           type="button"
                           onClick={() => setActiveTab('announcement')}
                           style={{
-                            padding: '7px 12px',
-                            borderRadius: '8px',
-                            background: '#1f2937',
-                            border: '1px solid #374151',
-                            color: '#e2e8f0',
-                            fontSize: '12.5px',
+                            background: 'none',
+                            border: 'none',
+                            color: '#10b981',
+                            fontSize: '12px',
                             fontWeight: 600,
                             cursor: 'pointer',
+                            textDecoration: 'underline',
                           }}
                         >
-                          Announcement
+                          Edit Banner →
                         </button>
                       </div>
+                    </div>
+
+                    {/* API Integrations Status */}
+                    <div
+                      style={{
+                        background: '#0b0f19',
+                        border: '1px solid #1e293b',
+                        borderRadius: '12px',
+                        padding: '14px 16px',
+                      }}
+                    >
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#cbd5e1', marginBottom: '8px' }}>
+                        Cloud API Integrations
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ color: apiKeys.removebg_active && apiKeys.removebg_key ? '#10b981' : '#64748b', fontWeight: 700 }}>
+                            {apiKeys.removebg_active && apiKeys.removebg_key ? '✓' : '—'}
+                          </span>
+                          <span style={{ color: '#94a3b8' }}>remove.bg</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ color: apiKeys.convertapi_active && apiKeys.convertapi_token ? '#10b981' : '#64748b', fontWeight: 700 }}>
+                            {apiKeys.convertapi_active && apiKeys.convertapi_token ? '✓' : '—'}
+                          </span>
+                          <span style={{ color: '#94a3b8' }}>ConvertAPI</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ color: apiKeys.ilovepdf_active && (apiKeys.ilovepdf_public_key || apiKeys.ilovepdf_secret_key) ? '#10b981' : '#64748b', fontWeight: 700 }}>
+                            {apiKeys.ilovepdf_active && (apiKeys.ilovepdf_public_key || apiKeys.ilovepdf_secret_key) ? '✓' : '—'}
+                          </span>
+                          <span style={{ color: '#94a3b8' }}>iLovePDF</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ color: apiKeys.gemini_active && apiKeys.gemini_key ? '#10b981' : '#64748b', fontWeight: 700 }}>
+                            {apiKeys.gemini_active && apiKeys.gemini_key ? '✓' : '—'}
+                          </span>
+                          <span style={{ color: '#94a3b8' }}>Gemini / OpenAI</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Link Buttons to Existing Editors */}
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                      Quick Management Shortcuts
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('hero')}
+                        style={{
+                          padding: '7px 14px',
+                          borderRadius: '8px',
+                          background: '#1f2937',
+                          border: '1px solid #374151',
+                          color: '#e2e8f0',
+                          fontSize: '12.5px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Hero Section
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('tools')}
+                        style={{
+                          padding: '7px 14px',
+                          borderRadius: '8px',
+                          background: '#1f2937',
+                          border: '1px solid #374151',
+                          color: '#e2e8f0',
+                          fontSize: '12.5px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Tools Manager ({tools.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('policies')}
+                        style={{
+                          padding: '7px 14px',
+                          borderRadius: '8px',
+                          background: '#1f2937',
+                          border: '1px solid #374151',
+                          color: '#e2e8f0',
+                          fontSize: '12.5px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Terms &amp; Policies (9)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('announcement')}
+                        style={{
+                          padding: '7px 14px',
+                          borderRadius: '8px',
+                          background: '#1f2937',
+                          border: '1px solid #374151',
+                          color: '#e2e8f0',
+                          fontSize: '12.5px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Announcement Banner
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -2849,28 +2806,91 @@ export default function AdminConsole() {
                   }}
                   style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
                 >
-                  <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
-                      Banner Type
-                    </label>
-                    <select
-                      value={announcement.type}
-                      onChange={(e) => setAnnouncement({ ...announcement, type: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        borderRadius: '10px',
-                        background: '#0b0f19',
-                        border: '1px solid #334155',
-                        color: '#f8fafc',
-                        fontSize: '14px',
-                      }}
-                    >
-                      <option value="info">Info (Blue)</option>
-                      <option value="warning">Warning (Yellow/Amber)</option>
-                      <option value="success">Success (Green)</option>
-                      <option value="danger">Urgent Alert (Red)</option>
-                    </select>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
+                        Banner Type
+                      </label>
+                      <select
+                        value={announcement.type}
+                        onChange={(e) => setAnnouncement({ ...announcement, type: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          borderRadius: '10px',
+                          background: '#0b0f19',
+                          border: '1px solid #334155',
+                          color: '#f8fafc',
+                          fontSize: '14px',
+                        }}
+                      >
+                        <option value="info">Info (Blue)</option>
+                        <option value="warning">Warning (Yellow/Amber)</option>
+                        <option value="success">Success (Green)</option>
+                        <option value="danger">Urgent Alert (Red)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <label style={{ fontSize: '13px', fontWeight: 700, color: '#cbd5e1' }}>
+                          Display Duration (Auto-Off)
+                        </label>
+                        {announcement.expires_at ? (
+                          <span
+                            style={{
+                              fontSize: '11.5px',
+                              fontWeight: 700,
+                              color: new Date(announcement.expires_at).getTime() > Date.now() ? '#10b981' : '#ef4444',
+                            }}
+                          >
+                            {new Date(announcement.expires_at).getTime() > Date.now()
+                              ? `Auto-off: ${new Date(announcement.expires_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`
+                              : '⚠️ Expired (Auto-off)'}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '11.5px', color: '#64748b' }}>♾️ Unlimited</span>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px' }}>
+                        {[
+                          { val: '1', label: '1 Day' },
+                          { val: '3', label: '3 Days' },
+                          { val: '7', label: '7 Days' },
+                          { val: '15', label: '15 Days' },
+                          { val: '30', label: '30 Days' },
+                          { val: 'unlimited', label: 'Unlimited' },
+                        ].map((opt) => {
+                          const isSelected = (announcement.duration_days || 'unlimited') === opt.val;
+                          return (
+                            <button
+                              key={opt.val}
+                              type="button"
+                              onClick={() => setAnnouncement({ ...announcement, duration_days: opt.val })}
+                              style={{
+                                padding: '10px 4px',
+                                borderRadius: '8px',
+                                background: isSelected ? 'rgba(16, 185, 129, 0.2)' : '#0b0f19',
+                                border: `1px solid ${isSelected ? '#10b981' : '#334155'}`,
+                                color: isSelected ? '#10b981' : '#94a3b8',
+                                fontWeight: isSelected ? 700 : 500,
+                                fontSize: '11px',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                                textAlign: 'center',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p style={{ fontSize: '11.5px', color: '#64748b', margin: '6px 0 0' }}>
+                        টাইম সিলেক্ট করলে নির্ধারিত সময় পর ব্যানার স্বয়ংক্রিয়ভাবে ওয়েবসাইট থেকে অফ হয়ে যাবে।
+                      </p>
+                    </div>
                   </div>
 
                   <div>

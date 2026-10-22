@@ -431,7 +431,9 @@ export default function HomeClient({ initialData }: HomeClientProps) {
       : heroConfig?.search_placeholder_en || 'What do you need? e.g. PDF, image, QR, age…';
 
   const announcementConfig = publicData?.announcement;
-  const isAnnouncementActive = announcementConfig ? announcementConfig.is_active : false;
+  const isAnnouncementActive = announcementConfig
+    ? Boolean(announcementConfig.is_active && (!announcementConfig.expires_at || new Date(announcementConfig.expires_at).getTime() > Date.now()))
+    : false;
   const announcementText = lang === 'bn' ? announcementConfig?.text_bn : announcementConfig?.text_en;
   const bannerStyle = getBannerStyle(announcementConfig?.type || 'info');
 

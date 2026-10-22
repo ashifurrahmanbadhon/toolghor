@@ -57,6 +57,27 @@ export async function GET(req: NextRequest) {
       analyticsMap[r.slug] = Number(r.count || 0);
     });
 
+    let periodicAnalytics: Record<string, { this_week: number; last_week: number; this_month: number; last_month: number }> = {};
+    try {
+      const periodicRows = await sql`
+        SELECT slug,
+          COALESCE(SUM(CASE WHEN used_date >= CURRENT_DATE - INTERVAL '6 days' THEN count ELSE 0 END), 0)::int AS this_week,
+          COALESCE(SUM(CASE WHEN used_date >= CURRENT_DATE - INTERVAL '13 days' AND used_date < CURRENT_DATE - INTERVAL '6 days' THEN count ELSE 0 END), 0)::int AS last_week,
+          COALESCE(SUM(CASE WHEN used_date >= DATE_TRUNC('month', CURRENT_DATE) THEN count ELSE 0 END), 0)::int AS this_month,
+          COALESCE(SUM(CASE WHEN used_date >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month') AND used_date < DATE_TRUNC('month', CURRENT_DATE) THEN count ELSE 0 END), 0)::int AS last_month
+        FROM tool_usage_daily
+        GROUP BY slug;
+      `;
+      periodicRows.forEach((r: any) => {
+        periodicAnalytics[r.slug] = {
+          this_week: Number(r.this_week || 0),
+          last_week: Number(r.last_week || 0),
+          this_month: Number(r.this_month || 0),
+          last_month: Number(r.last_month || 0),
+        };
+      });
+    } catch {}
+
     const policySections = await getAllPolicySections();
 
     return NextResponse.json({
@@ -75,6 +96,7 @@ export async function GET(req: NextRequest) {
       },
       policies: policySections,
       analytics: analyticsMap,
+      periodicAnalytics,
     });
   } catch (error: any) {
     console.error('[Database Error in /api/admin/data GET]:', error);
@@ -150,7 +172,14 @@ export async function POST(req: NextRequest) {
 
     // 2. Update Announcement section independently
     if (action === 'update_announcement') {
-      const { is_active, text_bn, text_en, type, link_url, link_text } = payload;
+      const { is_active, text_bn, text_en, type, link_url, link_text, duration_days } = payload;
+      let expires_at: string | null = null;
+      if (duration_days && duration_days !== 'unlimited') {
+        const days = parseInt(duration_days, 10);
+        if (!isNaN(days) && days > 0) {
+          expires_at = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+        }
+      }
       await sql`
         UPDATE section_announcement
         SET
@@ -160,6 +189,8 @@ export async function POST(req: NextRequest) {
           type = ${type || 'info'},
           link_url = ${link_url ?? ''},
           link_text = ${link_text ?? ''},
+          duration_days = ${duration_days || 'unlimited'},
+          expires_at = ${expires_at},
           updated_at = CURRENT_TIMESTAMP
         WHERE id = 1;
       `;
