@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useLayoutEffect, useEffect } from 'react';
+import React, { useRef, useLayoutEffect, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 
@@ -14,6 +14,30 @@ export default function Header() {
   const bnBtnRef = useRef<HTMLButtonElement | null>(null);
   const thumbRef = useRef<HTMLSpanElement | null>(null);
   const hasUserInteracted = useRef(false);
+
+  // Mobile three-dot menu state
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isMenuOpen]);
 
   useIsomorphicLayoutEffect(() => {
     const activeBtn = lang === 'en' ? enBtnRef.current : bnBtnRef.current;
@@ -129,6 +153,7 @@ export default function Header() {
           </picture>
         </Link>
 
+        {/* Desktop Header Actions (Pill Row - Desktop Only) */}
         <div className="top-actions" style={{ marginInlineStart: 'auto' }}>
           {/* About Button */}
           <button
@@ -187,7 +212,6 @@ export default function Header() {
             </button>
           </div>
 
-
           {/* Connect API Keys */}
           <button
             type="button"
@@ -233,6 +257,129 @@ export default function Header() {
             </span>
             <span>{lang === 'bn' ? 'টুলের অনুরোধ' : 'Request a Tool'}</span>
           </button>
+        </div>
+
+        {/* Mobile Three-Dot (⋮) Menu (Mobile Only, Single Top-Right Row) */}
+        <div ref={mobileMenuRef} className="mobile-menu-wrap">
+          <button
+            type="button"
+            className={`btn-mobile-menu ${isMenuOpen ? 'open' : ''}`}
+            aria-label="Navigation menu"
+            aria-expanded={isMenuOpen}
+            onClick={() => setIsMenuOpen((prev) => !prev)}
+            title={lang === 'bn' ? 'মেনু' : 'Menu'}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="5" r="2.2" />
+              <circle cx="12" cy="12" r="2.2" />
+              <circle cx="12" cy="19" r="2.2" />
+            </svg>
+          </button>
+
+          {isMenuOpen && (
+            <div className="mobile-menu-dropdown" role="menu">
+              {/* 1. About */}
+              <button
+                type="button"
+                className="mobile-menu-item"
+                role="menuitem"
+                onClick={() => {
+                  handleOpenAbout();
+                  setIsMenuOpen(false);
+                }}
+              >
+                <span className="mobile-menu-ic" aria-hidden="true">ℹ️</span>
+                <span>{lang === 'bn' ? 'আমাদের সম্পর্কে' : 'About'}</span>
+              </button>
+
+              {/* 2. Language Switcher (EN / বাংলা) */}
+              <div className="mobile-menu-lang-row">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="mobile-menu-ic" aria-hidden="true">🌐</span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--ink)' }}>
+                    {lang === 'bn' ? 'ভাষা' : 'Language'}
+                  </span>
+                </div>
+                <div className="mobile-menu-lang-toggle" role="group" aria-label="Language">
+                  <button
+                    type="button"
+                    className={`mobile-lang-btn ${lang === 'en' ? 'active' : ''}`}
+                    onClick={() => {
+                      if (lang !== 'en') {
+                        hasUserInteracted.current = true;
+                        setLang('en');
+                      }
+                    }}
+                  >
+                    EN
+                  </button>
+                  <button
+                    type="button"
+                    className={`mobile-lang-btn ${lang === 'bn' ? 'active' : ''}`}
+                    onClick={() => {
+                      if (lang !== 'bn') {
+                        hasUserInteracted.current = true;
+                        setLang('bn');
+                      }
+                    }}
+                  >
+                    বাংলা
+                  </button>
+                </div>
+              </div>
+
+              {/* 3. API Keys */}
+              <button
+                type="button"
+                className="mobile-menu-item"
+                role="menuitem"
+                onClick={() => {
+                  handleOpenAiKeys();
+                  setIsMenuOpen(false);
+                }}
+              >
+                <span className="mobile-menu-ic" aria-hidden="true">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" />
+                    <path d="M20 2v4" />
+                    <path d="M22 4h-4" />
+                    <circle cx="4" cy="20" r="2" />
+                  </svg>
+                </span>
+                <span>{lang === 'bn' ? 'এপিআই কি' : 'API Keys'}</span>
+              </button>
+
+              {/* 4. Request a Tool */}
+              <button
+                type="button"
+                className="mobile-menu-item"
+                role="menuitem"
+                onClick={() => {
+                  handleOpenRequestTool();
+                  setIsMenuOpen(false);
+                }}
+              >
+                <span className="mobile-menu-ic" aria-hidden="true">🛠️</span>
+                <span>{lang === 'bn' ? 'টুলের অনুরোধ' : 'Request a Tool'}</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

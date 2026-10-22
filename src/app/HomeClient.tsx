@@ -415,81 +415,27 @@ export default function HomeClient({ initialData }: HomeClientProps) {
         <aside
           role="region"
           aria-label="Notice banner"
+          className="announcement-banner"
           style={{
             background: bannerStyle.bg,
             color: '#ffffff',
             borderBottom: `1px solid ${bannerStyle.border}`,
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
-            padding: '10px 16px',
-            fontSize: '13.5px',
-            fontWeight: 600,
-            boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
-            position: 'relative',
-            zIndex: 40,
-            animation: 'fadeIn 0.3s ease-out',
           }}
         >
-          <div
-            className="wrap"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '12px',
-              flexWrap: 'wrap',
-              position: 'relative',
-              paddingRight: '32px',
-            }}
-          >
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '3px 8px',
-                borderRadius: '999px',
-                background: 'rgba(0,0,0,0.22)',
-                fontSize: '11px',
-                fontWeight: 800,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-              }}
-            >
+          <div className="wrap announcement-wrap">
+            <span className="announcement-badge">
               {bannerStyle.badgeText}
             </span>
-            <span style={{ letterSpacing: '0.01em' }}>{announcementText}</span>
+            <span className="announcement-text">{announcementText}</span>
 
             <button
               type="button"
+              className="announcement-close"
               onClick={() => setBannerDismissed(true)}
               aria-label="Dismiss banner"
               title="Dismiss"
-              style={{
-                position: 'absolute',
-                right: '0',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'transparent',
-                border: 'none',
-                color: 'rgba(255,255,255,0.85)',
-                cursor: 'pointer',
-                fontSize: '16px',
-                padding: '4px 8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: '6px',
-                transition: 'color 0.2s, background 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = '#ffffff';
-                e.currentTarget.style.background = 'rgba(255,255,255,0.18)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'rgba(255,255,255,0.85)';
-                e.currentTarget.style.background = 'transparent';
-              }}
             >
               ✕
             </button>
