@@ -3,6 +3,7 @@ import { Inter, Hind_Siliguri } from 'next/font/google';
 import './globals.css';
 import { AppProvider } from '@/context/AppContext';
 import { siteConfig, ASSET_VERSION } from '@/data/config';
+import FloatingAdminPanel from '@/components/FloatingAdminPanel';
 import BackgroundAnimation from '@/components/BackgroundAnimation';
 import SmoothCursor from '@/components/SmoothCursor';
 import { Analytics } from '@vercel/analytics/next';
@@ -107,6 +108,7 @@ export default function RootLayout({
         <BackgroundAnimation />
         <AppProvider>
           <VersionUpdateChecker />
+          <FloatingAdminPanel />
           {children}
         </AppProvider>
         <Analytics />

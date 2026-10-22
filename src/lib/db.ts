@@ -81,8 +81,8 @@ export async function initDatabase() {
     VALUES (
       1,
       false,
-      '📢 স্বাগতম ToolGhor-এ! ২৬টি দরকারি অনলাইন টুল ব্রাউজারে সম্পূর্ণ বিনামূল্যে ব্যবহার করুন।',
-      '📢 Welcome to ToolGhor! 26 fast & secure web tools right inside your browser.',
+      '📢 স্বাগতম ToolGhor-এ! ২৭টি দরকারি অনলাইন টুল ব্রাউজারে সম্পূর্ণ বিনামূল্যে ব্যবহার করুন।',
+      '📢 Welcome to ToolGhor! 27 fast & secure web tools right inside your browser.',
       'info'
     )
     ON CONFLICT (id) DO NOTHING;

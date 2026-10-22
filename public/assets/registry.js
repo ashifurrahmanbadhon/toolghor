@@ -105,7 +105,7 @@ var REGISTRY = {
       desc: 'ছবি থেকে AI লেবেল ও মেটাডেটা (C2PA, EXIF, XMP) মুছে ফেলুন — ফ্রি, ব্রাউজারেই, কোনো আপলোড ছাড়াই।',
       keywords: 'remove ai label metadata cleaner c2pa exif xmp cleaner ai photo detector instagram ai label tiktok etsy ai info মুছে ফেলুন এআই মেটাডেটা',
       intro: 'সোশ্যাল মিডিয়া (Instagram, TikTok, Facebook ইত্যাদি) ছবির গোপন মেটাডেটা পড়ে "Made with AI" বা AI Info লেবেল দেখায়। এই টুল দিয়ে ছবির C2PA, EXIF, XMP, IPTC ও টেক্সট চাঙ্ক ১০০% আপনার ব্রাউজারেই নিরাপদভাবে মুছে ফেলুন।',
-      steps: ['এক বা একাধিক ছবি (JPG, PNG, WebP) বেছে নিন।', 'মেটাডেটা চেকারে C2PA, EXIF, XMP স্ট্যাটাস দেখুন।', '"মেটাডেটা মুছুন" বাটন চাপুন এবং ক্লিন করা ছবি ডাউনলোড করুন।']
+      steps: ['এক বা একাধিক ছবি (JPG, PNG, WebP) বেছে নিন বা ড্রপ করুন।', 'টুলটি স্বয়ংক্রিয়ভাবে সমস্ত AI লেবেল ও মেটাডেটা মুছে ফেলবে।', 'ভেরিফিকেশন স্ট্যাটাস দেখে এক ক্লিকে ক্লিন ছবি ডাউনলোড করুন।']
     },
     {
       slug: 'currency-converter', bn: 'লাইভ কারেন্সি কনভার্টার', en: 'Live Currency Converter', icon: 'coins', cats: ['calculators'], group: 'calc', needs: [],

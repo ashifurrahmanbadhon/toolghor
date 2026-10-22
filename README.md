@@ -1,6 +1,6 @@
 # ToolGhor (টুলঘর) 🛠️
 
-**ToolGhor** is a privacy-first, ultra-fast online utility platform powered by **Next.js 16 (App Router)** and **Tailwind CSS**. It provides **26 everyday tools** across 6 categories with 100% in-browser processing, multi-language support (Bangla & English), and an integrated **Admin Console**.
+**ToolGhor** is a privacy-first, ultra-fast online utility platform powered by **Next.js 16 (App Router)** and **Tailwind CSS**. It provides **27 everyday tools** across 6 categories with 100% in-browser processing, multi-language support (Bangla & English), and an integrated **Admin Console**.
 
 ---
 
@@ -9,9 +9,9 @@
 - ⚡ **Next.js 16 App Router & Turbopack:** Blazing fast performance with SSR and SSG.
 - 🔒 **100% In-Browser Privacy:** All document, image, and calculation operations run in the user's browser without uploading files to third-party servers.
 - 🌐 **Dual Language Support:** Full support for both Bangla (বাংলা) and English.
-- 📄 **26 Powerful Tools:**
+- 📄 **27 Powerful Tools:**
   - **Document Tools:** Merge PDF, Split PDF, Compress PDF, PDF to Image, PDF to Word (DOCX), Word to PDF, JPG to PDF.
-  - **Image Tools:** Compress Image, Resize Image (Dimensions, Format & Target Size), Crop, Merge, Passport Photo Maker, Background Remover.
+  - **Image Tools:** Remove AI Label, Compress Image, Resize Image (Dimensions, Format, Target Size & Megapixels), Crop, Merge, Passport Photo Maker, Background Remover.
   - **Calculators:** Live Currency Converter, BMI Calculator, Unit Converter, Percentage, Age, Time Zone Converter.
   - **QR Tools:** QR Code Generator, QR Code Decoder / Scanner.
   - **Media Tools:** YouTube HD Downloader (MP4/MP3), Audio Extractor, Social Video Cropper.

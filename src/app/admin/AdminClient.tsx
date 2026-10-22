@@ -217,8 +217,8 @@ export default function AdminConsole() {
 
   const [announcement, setAnnouncement] = useState<AnnouncementSection>({
     is_active: false,
-    text_bn: '📢 স্বাগতম ToolGhor-এ! ২৬টি দরকারি অনলাইন টুল ব্রাউজারে সম্পূর্ণ বিনামূল্যে ব্যবহার করুন।',
-    text_en: '📢 Welcome to ToolGhor! 26 fast & secure web tools right inside your browser.',
+    text_bn: '📢 স্বাগতম ToolGhor-এ! ২৭টি দরকারি অনলাইন টুল ব্রাউজারে সম্পূর্ণ বিনামূল্যে ব্যবহার করুন।',
+    text_en: '📢 Welcome to ToolGhor! 27 fast & secure web tools right inside your browser.',
     type: 'info',
   });
 
@@ -464,6 +464,14 @@ export default function AdminConsole() {
       if (isAuthSession === 'true' || isAuthLocal === 'true') {
         setIsAuthenticated(true);
         fetchAllSections();
+      }
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const tabParam = params.get('tab') as MenuTab;
+        const validTabs: MenuTab[] = ['overview', 'hero', 'announcement', 'categories', 'tools', 'footer', 'creator', 'apis', 'policies', 'analytics', 'profile'];
+        if (tabParam && validTabs.includes(tabParam)) {
+          setActiveTab(tabParam);
+        }
       }
     } catch {}
   }, []);

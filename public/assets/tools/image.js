@@ -2263,14 +2263,7 @@
   /* ---------------- Remove AI Label (Metadata Cleaner) ---------------- */
   T['remove-ai-label'] = function (root) {
     var files = [];
-    var scans = [];
     var out = UI.el('div', { class: 'stack' });
-    var listBox = UI.el('div', { class: 'stack' });
-    var go = UI.btn(tr('মেটাডেটা ও AI লেবেল মুছুন', "Clean Metadata & Remove AI Labels"), run, {
-      icon: 'shield-check',
-      disabled: true,
-      cls: 'btn-primary'
-    });
 
     var honestyNote = UI.el('div', {
       class: 'ai-honesty-note',
@@ -2516,103 +2509,11 @@
       };
     }
 
-    async function renderPreScanList() {
-      UI.clear(listBox);
-      scans = [];
-
-      var headerBar = UI.el('div', {
-        style: {
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '10px',
-          padding: '8px 4px'
-        }
-      },
-        UI.el('div', { style: { fontWeight: '700', fontSize: '15px', color: 'var(--ink)' } },
-          '📸 ' + UI.n(files.length) + tr(' টি ছবি নির্বাচন করা হয়েছে', ' photos selected')
-        ),
-        go
-      );
-
-      var tableWrap = UI.el('div', { class: 'tbl-wrap' });
-      var table = UI.el('table', { class: 'tbl' });
-      var tbody = UI.el('tbody');
-      table.appendChild(UI.el('thead', {}, UI.el('tr', {},
-        UI.el('th', { style: { width: '52px' } }, ''),
-        UI.el('th', {}, tr('ফাইল', 'File')),
-        UI.el('th', {}, tr('সাইজ', 'Size')),
-        UI.el('th', {}, tr('শনাক্ত মেটাডেটা / AI লেবেল', 'Detected Metadata / AI Labels'))
-      )));
-      table.appendChild(tbody);
-      tableWrap.appendChild(table);
-
-      listBox.appendChild(headerBar);
-      listBox.appendChild(tableWrap);
-
-      for (var i = 0; i < files.length; i++) {
-        var f = files[i];
-        var thumbUrl = URL.createObjectURL(f);
-        var u8 = null;
-        try {
-          var buf = await f.arrayBuffer();
-          u8 = new Uint8Array(buf);
-        } catch (e) {}
-
-        var scan = u8 ? scanImageMetadata(u8) : { tags: [], aiMarkers: [] };
-        scans.push({ file: f, thumbUrl: thumbUrl, scan: scan });
-
-        var chipGroup = UI.el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' } });
-        var allFound = scan.tags.concat(scan.aiMarkers);
-
-        if (allFound.length > 0) {
-          allFound.forEach(function (tag) {
-            chipGroup.appendChild(UI.el('span', {
-              class: 'pill',
-              style: {
-                padding: '3px 9px',
-                fontSize: '11.5px',
-                fontWeight: '600',
-                background: 'rgba(239, 68, 68, 0.14)',
-                color: '#f87171',
-                borderColor: 'rgba(239, 68, 68, 0.35)',
-                borderRadius: '6px'
-              }
-            }, tag + ' ✓ ' + tr('শনাক্ত', 'found')));
-          });
-        } else {
-          chipGroup.appendChild(UI.el('span', {
-            class: 'pill',
-            style: {
-              padding: '3px 9px',
-              fontSize: '11.5px',
-              fontWeight: '600',
-              background: 'rgba(16, 185, 129, 0.14)',
-              color: '#34d399',
-              borderColor: 'rgba(16, 185, 129, 0.35)',
-              borderRadius: '6px'
-            }
-          }, tr('কোনো AI বা মেটাডেটা পাওয়া যায়নি — ইতোমধ্যে ক্লিন', 'No AI/metadata markers found — already clean')));
-        }
-
-        tbody.appendChild(UI.el('tr', {},
-          UI.el('td', {}, UI.el('img', { class: 'thumb', src: thumbUrl, alt: '' })),
-          UI.el('td', { style: { overflowWrap: 'anywhere', fontWeight: '500' } }, f.name),
-          UI.el('td', {}, UI.fmtSize(f.size)),
-          UI.el('td', {}, chipGroup)
-        ));
-      }
-
-      go.disabled = !files.length;
-    }
-
     async function run() {
       if (!files.length) return;
       UI.clear(out);
       var prog = UI.progress();
       out.appendChild(prog);
-      go.disabled = true;
 
       var dropInputs = drop.querySelectorAll('input');
       dropInputs.forEach(function (inp) { inp.disabled = true; });
@@ -2655,7 +2556,6 @@
         out.appendChild(UI.notice('err', UI.err(err)));
       } finally {
         dropInputs.forEach(function (inp) { inp.disabled = false; });
-        go.disabled = !files.length;
       }
     }
 
@@ -2771,10 +2671,7 @@
 
       actionsBar.appendChild(UI.btn(tr('নতুন ছবি নির্বাচন করুন', 'Add More Photos'), function () {
         files = [];
-        scans = [];
-        UI.clear(listBox);
         UI.clear(out);
-        go.disabled = true;
       }, { icon: 'refresh-cw' }));
 
       resWrap.appendChild(actionsBar);
@@ -2810,11 +2707,10 @@
         }
 
         files = validImages;
-        UI.clear(out);
-        await renderPreScanList();
+        await run();
       }
     });
 
-    root.appendChild(UI.el('div', { class: 'stack' }, drop, listBox, out, honestyNote));
+    root.appendChild(UI.el('div', { class: 'stack' }, drop, out, honestyNote));
   };
 })();
