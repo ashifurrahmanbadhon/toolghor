@@ -459,7 +459,17 @@ export default function HomeClient({ initialData }: HomeClientProps) {
             <span className="announcement-badge">
               {bannerStyle.badgeText}
             </span>
-            <span className="announcement-text">{announcementText}</span>
+            <span className="announcement-text">
+              <span>{announcementText}</span>
+              {(announcementConfig?.link_url || announcementText?.includes('Remove AI Label') || announcementText?.includes('AI লেবেল রিমুভার')) && (
+                <Link
+                  href={announcementConfig?.link_url || '/tools/remove-ai-label'}
+                  className="announcement-link"
+                >
+                  {announcementConfig?.link_text || (lang === 'bn' ? 'ব্যবহার করুন →' : 'Try Tool →')}
+                </Link>
+              )}
+            </span>
 
             <button
               type="button"

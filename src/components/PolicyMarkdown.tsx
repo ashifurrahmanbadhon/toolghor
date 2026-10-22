@@ -50,7 +50,7 @@ const KNOWN_SUBHEADS = new Set([
 export default function PolicyMarkdown({ content }: PolicyMarkdownProps) {
   if (!content) return null;
 
-  // Split into blocks by double newlines or single newlines
+  // Split into lines
   const lines = content.replace(/\r\n/g, '\n').split('\n');
 
   const elements: React.ReactNode[] = [];
@@ -59,7 +59,7 @@ export default function PolicyMarkdown({ content }: PolicyMarkdownProps) {
   const flushList = (keyPrefix: number) => {
     if (currentList.length > 0) {
       elements.push(
-        <ul key={`ul-${keyPrefix}`} className="policy-list">
+        <ul key={`ul-${keyPrefix}`} className="policy-doc-list">
           {currentList.map((item, idx) => (
             <li key={`li-${idx}`}>{renderInline(item)}</li>
           ))}
@@ -77,7 +77,7 @@ export default function PolicyMarkdown({ content }: PolicyMarkdownProps) {
     return parts.map((part, i) => {
       if (part.match(emailRegex)) {
         return (
-          <a key={i} href={`mailto:${part}`} className="policy-link">
+          <a key={i} href={`mailto:${part}`} className="policy-doc-link">
             {part}
           </a>
         );
@@ -94,12 +94,12 @@ export default function PolicyMarkdown({ content }: PolicyMarkdownProps) {
       return;
     }
 
-    // Markdown subheads (## or ### or known section subhead)
+    // Markdown subheads (## or ### or recognized section subhead)
     if (trimmed.startsWith('## ') || trimmed.startsWith('### ') || KNOWN_SUBHEADS.has(trimmed)) {
       flushList(index);
       const headingText = trimmed.replace(/^#+\s*/, '');
       elements.push(
-        <h3 key={`h3-${index}`} className="policy-subhead">
+        <h3 key={`h3-${index}`} className="policy-doc-subhead">
           {headingText}
         </h3>
       );
@@ -116,7 +116,7 @@ export default function PolicyMarkdown({ content }: PolicyMarkdownProps) {
     // Regular line or paragraph
     flushList(index);
     elements.push(
-      <p key={`p-${index}`} className="policy-para">
+      <p key={`p-${index}`} className="policy-doc-para">
         {renderInline(trimmed)}
       </p>
     );
@@ -124,5 +124,5 @@ export default function PolicyMarkdown({ content }: PolicyMarkdownProps) {
 
   flushList(lines.length);
 
-  return <div className="policy-body-content">{elements}</div>;
+  return <div className="policy-doc-body">{elements}</div>;
 }

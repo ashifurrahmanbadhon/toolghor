@@ -55,6 +55,8 @@ interface AnnouncementSection {
   text_bn: string;
   text_en: string;
   type: string;
+  link_url?: string;
+  link_text?: string;
 }
 
 interface CategoryRow {
@@ -2300,6 +2302,49 @@ export default function AdminConsole() {
                     />
                   </div>
 
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
+                        Clickable Link URL (optional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. /tools/remove-ai-label"
+                        value={announcement.link_url || ''}
+                        onChange={(e) => setAnnouncement({ ...announcement, link_url: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          borderRadius: '10px',
+                          background: '#0b0f19',
+                          border: '1px solid #334155',
+                          color: '#f8fafc',
+                          fontSize: '14px',
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
+                        Link Button Text (optional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Try Tool →"
+                        value={announcement.link_text || ''}
+                        onChange={(e) => setAnnouncement({ ...announcement, link_text: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          borderRadius: '10px',
+                          background: '#0b0f19',
+                          border: '1px solid #334155',
+                          color: '#f8fafc',
+                          fontSize: '14px',
+                        }}
+                      />
+                    </div>
+                  </div>
+
                   {/* Live Banner Preview */}
                   <div style={{ padding: '16px', background: '#0b0f19', borderRadius: '12px', border: '1px solid #1f2937' }}>
                     <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -2345,7 +2390,14 @@ export default function AdminConsole() {
                           ? '✨ Update'
                           : 'ℹ️ Info'}
                       </span>
-                      <span>{announcement.text_en || announcement.text_bn || 'Your banner notification text preview...'}</span>
+                      <span>
+                        {announcement.text_en || announcement.text_bn || 'Your banner notification text preview...'}
+                        {announcement.link_url && (
+                          <span style={{ marginLeft: '8px', textDecoration: 'underline', fontWeight: 700, color: '#ffffff' }}>
+                            {announcement.link_text || 'Try Tool →'}
+                          </span>
+                        )}
+                      </span>
                     </div>
                   </div>
 

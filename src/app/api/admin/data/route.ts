@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
 
     // 2. Update Announcement section independently
     if (action === 'update_announcement') {
-      const { is_active, text_bn, text_en, type } = payload;
+      const { is_active, text_bn, text_en, type, link_url, link_text } = payload;
       await sql`
         UPDATE section_announcement
         SET
@@ -158,6 +158,8 @@ export async function POST(req: NextRequest) {
           text_bn = ${text_bn},
           text_en = ${text_en},
           type = ${type || 'info'},
+          link_url = ${link_url ?? ''},
+          link_text = ${link_text ?? ''},
           updated_at = CURRENT_TIMESTAMP
         WHERE id = 1;
       `;

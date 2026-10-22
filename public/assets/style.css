@@ -322,6 +322,20 @@ button, input, select, textarea { font: inherit; color: inherit; }
   letter-spacing: 0.01em;
   font-size: 13.5px;
 }
+.announcement-link {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  color: #ffffff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 700;
+  transition: opacity 0.15s ease;
+  white-space: nowrap;
+}
+.announcement-link:hover {
+  opacity: 0.85;
+}
 .announcement-close {
   position: absolute;
   right: 0;
@@ -3861,16 +3875,16 @@ body.dark .lang button.on {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
   }
 
-  /* Announcement Banner: Update on top centered, text on bottom row centered */
+  /* Announcement Banner: Mobile-only wrapping (<=768px), top pill + close, bottom wrapped text */
   .announcement-banner {
-    padding: 6px 8px !important;
+    padding: 8px 12px !important;
   }
   .announcement-wrap {
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 2px !important;
-    padding-inline: 4px !important;
+    gap: 4px !important;
+    padding-inline: 0 !important;
     text-align: center !important;
     width: 100% !important;
     position: relative !important;
@@ -3883,20 +3897,40 @@ body.dark .lang button.on {
     line-height: 1.4 !important;
   }
   .announcement-text {
-    font-size: clamp(8.5px, 2.7vw, 13px) !important;
-    white-space: nowrap !important;
+    font-size: clamp(11px, 3.2vw, 13px) !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
     text-align: center !important;
     width: 100% !important;
-    line-height: 1.3 !important;
+    max-width: 100% !important;
+    line-height: 1.48 !important;
     margin-top: 2px !important;
+    padding: 2px 28px !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+  .announcement-text span {
+    display: inline !important;
+    white-space: normal !important;
+  }
+  .announcement-link {
+    display: inline !important;
+    margin-left: 6px !important;
+    white-space: nowrap !important;
+    color: #ffffff !important;
+    text-decoration: underline !important;
+    text-underline-offset: 2px !important;
+    font-weight: 700 !important;
   }
   .announcement-close {
     position: absolute !important;
-    right: 0 !important;
+    right: 4px !important;
     top: 0 !important;
     transform: none !important;
-    padding: 2px 6px !important;
-    font-size: 14px !important;
+    padding: 2px 8px !important;
+    font-size: 16px !important;
     line-height: 1 !important;
   }
 
@@ -5290,6 +5324,126 @@ html.dark .policy-section-card:hover {
     transform: translateY(0);
   }
 }
+
+/* ============ Terms & Policies (Clean Editorial Document Layout) ============ */
+.policy-doc-page {
+  padding: 44px 16px 96px;
+  min-height: 75vh;
+  background: var(--paper);
+}
+.policy-doc-container {
+  max-width: 760px;
+  margin: 0 auto;
+  width: 100%;
+}
+.policy-doc-header {
+  margin-bottom: 38px;
+}
+.policy-doc-title {
+  font-size: clamp(30px, 4.8vw, 44px);
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.18;
+  letter-spacing: -0.025em;
+  margin: 0 0 16px;
+  text-align: left;
+}
+.policy-doc-divider {
+  width: 100%;
+  height: 1px;
+  background: var(--line);
+  margin: 0 0 14px;
+}
+.policy-doc-meta {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink-3);
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+.policy-doc-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+.policy-doc-section {
+  scroll-margin-top: 88px;
+}
+.policy-doc-heading {
+  font-size: clamp(21px, 3.2vw, 26px);
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  margin: 0 0 18px;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+.policy-doc-body {
+  color: var(--ink-2);
+  font-size: 16px;
+  line-height: 1.78;
+  letter-spacing: 0.005em;
+}
+.policy-doc-subhead {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 26px 0 12px;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+.policy-doc-para {
+  margin: 0 0 16px;
+  color: var(--ink-2);
+}
+.policy-doc-para:last-child {
+  margin-bottom: 0;
+}
+.policy-doc-list {
+  margin: 12px 0 20px 24px;
+  padding: 0;
+  list-style-type: disc;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.policy-doc-list li {
+  color: var(--ink-2);
+  line-height: 1.72;
+  padding-left: 4px;
+}
+.policy-doc-link {
+  color: var(--paddy-d);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 600;
+  transition: opacity 0.15s ease;
+}
+.policy-doc-link:hover {
+  opacity: 0.82;
+}
+
+@media (max-width: 768px) {
+  .policy-doc-page {
+    padding: 24px 16px 64px;
+  }
+  .policy-doc-header {
+    margin-bottom: 28px;
+  }
+  .policy-doc-flow {
+    gap: 32px;
+  }
+  .policy-doc-body {
+    font-size: 15px;
+    line-height: 1.72;
+  }
+  .policy-doc-list {
+    margin-left: 18px;
+    gap: 8px;
+  }
+}
+
 
 
 
