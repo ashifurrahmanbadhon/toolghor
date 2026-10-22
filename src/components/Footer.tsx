@@ -48,13 +48,6 @@ export default function Footer({ customSettings }: FooterProps) {
 
   const isFooterActive = liveFooter ? liveFooter.is_active : true;
   const isWhatsappActive = liveFooter ? (liveFooter.whatsapp_active !== false) : true;
-  const isFacebookActive = liveFooter ? (liveFooter.facebook_active !== false) : true;
-  const isLinkedinActive = liveFooter ? (liveFooter.linkedin_active !== false) : true;
-  const isGithubActive = liveFooter ? (liveFooter.github_active !== false) : true;
-
-  const fbUrl = liveFooter?.facebook_url || siteConfig.creator?.facebook;
-  const linkedinUrl = liveFooter?.linkedin_url || siteConfig.creator?.linkedin;
-  const githubUrl = liveFooter?.github_url || siteConfig.creator?.github;
 
   const waNumber = String(
     liveFooter?.whatsapp_number || siteConfig.social?.whatsapp?.number || '8801700000000'
@@ -67,33 +60,55 @@ export default function Footer({ customSettings }: FooterProps) {
 
   const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(text || '')}`;
 
-  const defaultReserved = lang === 'bn' ? 'সর্বস্বত্ব সংরক্ষিত।' : 'All rights reserved.';
-  const customCopyright = lang === 'bn' ? liveFooter?.copyright_text_bn : liveFooter?.copyright_text_en;
-  // If custom text in DB is empty or the old default sentence, use 'All rights reserved.' as shown in the screenshot
   const copyrightText =
-    customCopyright && !customCopyright.includes('আপনার ফাইল') && !customCopyright.includes('Your files and data')
-      ? customCopyright
-      : defaultReserved;
+    lang === 'bn'
+      ? liveFooter?.copyright_text_bn || 'আপনার ফাইল ও তথ্য সরাসরি আপনার ব্রাউজারেই প্রসেস করা হয়।'
+      : liveFooter?.copyright_text_en || 'Your files and data are processed in your browser.';
 
   if (!isFooterActive) return null;
 
   return (
     <>
       <footer className="foot">
-        <div className="wrap foot-wrap">
-          <div className="foot-copy">
-            © 2026 {siteConfig.name}. {copyrightText}
+        {/* Desktop Footer (Visible on Desktop >=769px, space-between layout identical to before) */}
+        <div className="wrap foot-row foot-desktop-only">
+          <div className="foot-left">
+            © 2026 <span>{siteConfig.name}</span>. {copyrightText}
           </div>
           <div className="foot-links">
             <Link href="/privacy" className="foot-link">
+              {lang === 'bn' ? 'গোপনীয়তা নীতি' : 'Privacy Policy'}
+            </Link>
+            <span className="foot-sep" aria-hidden="true">·</span>
+            <Link href="/terms" className="foot-link">
+              {lang === 'bn' ? 'ব্যবহারের শর্তাবলী' : 'Terms of Service'}
+            </Link>
+            <span className="foot-sep" aria-hidden="true">·</span>
+            <Link
+              href="/admin"
+              className="foot-link foot-admin"
+              title={lang === 'bn' ? 'অ্যাডমিন কনসোল' : 'Admin Console'}
+            >
+              🛡️ {lang === 'bn' ? 'অ্যাডমিন' : 'Admin'}
+            </Link>
+          </div>
+        </div>
+
+        {/* Mobile Footer (Visible on Mobile <=768px, matching user screenshot) */}
+        <div className="wrap foot-wrap foot-mobile-only">
+          <div className="foot-copy">
+            © 2026 {siteConfig.name}. {lang === 'bn' ? 'সর্বস্বত্ব সংরক্ষিত।' : 'All rights reserved.'}
+          </div>
+          <div className="foot-links-mobile">
+            <Link href="/privacy" className="foot-link-mobile">
               {lang === 'bn' ? 'গোপনীয়তা' : 'Privacy'}
             </Link>
-            <Link href="/terms" className="foot-link">
+            <Link href="/terms" className="foot-link-mobile">
               {lang === 'bn' ? 'শর্তাবলী' : 'Terms'}
             </Link>
             <Link
               href="/admin"
-              className="foot-link foot-admin"
+              className="foot-link-mobile foot-admin-mobile"
               title={lang === 'bn' ? 'অ্যাডমিন কনসোল' : 'Admin Console'}
             >
               // {lang === 'bn' ? 'অ্যাডমিন' : 'ADMIN'}
@@ -102,7 +117,7 @@ export default function Footer({ customSettings }: FooterProps) {
         </div>
       </footer>
 
-      {/* Floating WhatsApp Action Button (Active / Inactive controllable from Admin) */}
+      {/* Floating WhatsApp Action Button */}
       {isWhatsappActive && (
         <a
           className="fab"
