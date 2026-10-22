@@ -52,7 +52,7 @@ export default function HomeClient({ initialData }: HomeClientProps) {
   // Notice Banner dismiss state
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
-  // Ensure that returning to Home from any tool starts at the very top (0, 0)
+  // Ensure that returning to Home from any tool starts at the very top (0, 0), unless a category hash is present
   useEffect(() => {
     if (typeof window !== 'undefined') {
       if (!window.location.hash) {
@@ -63,6 +63,17 @@ export default function HomeClient({ initialData }: HomeClientProps) {
           }
         }, 30);
         return () => clearTimeout(timer);
+      } else {
+        const match = window.location.hash.match(/^#cat-([a-z0-9_-]+)$/i);
+        if (match) {
+          const catId = match[1];
+          setExpandedCats((prev) => ({ ...prev, [catId]: true }));
+          setActiveChip(catId);
+          setTimeout(() => {
+            const el = document.getElementById(`cat-${catId}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 150);
+        }
       }
     }
   }, []);
@@ -344,13 +355,33 @@ export default function HomeClient({ initialData }: HomeClientProps) {
     }
 
     if (catId === 'all') {
-      toggleAll();
-    } else {
-      // Expand only the selected category with stable scroll position
+      // "all e click korle sob expand korbe": unconditionally expand all categories
       const next: Record<string, boolean> = {};
-      allCategoryIds.forEach((id) => (next[id] = id === catId));
+      allCategoryIds.forEach((id) => (next[id] = true));
       setExpandedCats(next);
+      setActiveChip('all');
+      if (typeof window !== 'undefined' && window.history) {
+        window.history.replaceState(null, '', '#all');
+      }
+    } else {
+      // "onno caterogy te click korle user k sei catagory te niye jabe & expand kore dibe sei category ta":
+      // Expand target category and smoothly scroll the user to that category section on both desktop & mobile
+      setExpandedCats((prev) => ({
+        ...prev,
+        [catId]: true,
+      }));
       setActiveChip(catId);
+      if (typeof window !== 'undefined' && window.history) {
+        window.history.replaceState(null, '', `#cat-${catId}`);
+      }
+
+      // Smooth scroll to target category
+      setTimeout(() => {
+        const el = document.getElementById(`cat-${catId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 40);
     }
   };
 
@@ -539,7 +570,7 @@ export default function HomeClient({ initialData }: HomeClientProps) {
             {/* Category Chips (Only active categories) */}
             <nav className="chips" aria-label="Categories">
               <a
-                className={`chip chip-all ${activeChip === 'all' || isAllExpanded ? 'on' : ''}`}
+                className={`chip chip-all ${activeChip === 'all' ? 'on' : ''}`}
                 href="#all"
                 data-cat="all"
                 onClick={(e) => handleChipClick('all', e)}
