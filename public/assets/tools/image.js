@@ -415,6 +415,7 @@
         dropWrap.style.display = 'none';
         workspace.style.display = 'grid';
         renderCardsSkeleton();
+        applyMpCalculation();
         triggerReprocess();
       }
     });
@@ -477,14 +478,154 @@
     var widthInput = UI.el('input', { type: 'number', class: 'ci-input', min: '1', placeholder: tr('Auto', "Auto") });
     var heightInput = UI.el('input', { type: 'number', class: 'ci-input', min: '1', placeholder: tr('Auto', "Auto") });
     var ratioCheck = UI.el('input', { type: 'checkbox', checked: true });
-    widthInput.addEventListener('input', triggerReprocess);
-    heightInput.addEventListener('input', triggerReprocess);
+
+    // Target Megapixels (MP)
+    var mpInput = UI.el('input', {
+      type: 'number',
+      class: 'ci-input',
+      min: '0.1',
+      step: 'any',
+      placeholder: tr('যেমন: 12', "e.g. 12"),
+      style: { minWidth: '90px', flex: '1' }
+    });
+
+    var mpChipsWrap = UI.el('div', { class: 'ci-pills', style: { gap: '6px' } });
+    var mpPresets = [2, 5, 12, 24];
+    var mpChipBtns = {};
+    mpPresets.forEach(function (preset) {
+      var chip = UI.el('button', {
+        type: 'button',
+        class: 'ci-pill',
+        style: { padding: '5px 11px', fontSize: '12px' }
+      }, preset + ' MP');
+      chip.addEventListener('click', function () {
+        mpInput.value = preset;
+        applyMpCalculation();
+        triggerReprocess();
+      });
+      mpChipBtns[preset] = chip;
+      mpChipsWrap.appendChild(chip);
+    });
+
+    var mpLiveReadout = UI.el('div', {
+      class: 'ci-help-text',
+      style: {
+        color: 'var(--paddy, #10b981)',
+        fontWeight: '600',
+        display: 'none',
+        marginTop: '2px'
+      }
+    });
+
+    var mpHelpText = UI.el('div', { class: 'ci-help-text' },
+      tr("অনুপাত ঠিক রেখে ছবির মোট পিক্সেল সেট করে। নিচের প্রস্থ/উচ্চতা অটো বসে যাবে।",
+         "Sets the photo's total pixels, keeping the aspect ratio. Width/height below fill in automatically.")
+    );
+
+    var mpFieldWrap = UI.el('div', { class: 'ci-field-wrap', style: { marginBottom: '12px' } },
+      UI.el('small', { style: { fontWeight: '600', color: 'var(--ink)' } }, tr('টার্গেট মেগাপিক্সেল (MP)', "Target Megapixels (MP)")),
+      UI.el('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' } },
+        mpInput,
+        mpChipsWrap
+      ),
+      mpHelpText,
+      mpLiveReadout
+    );
+
+    function getMpVal() {
+      var raw = parseFloat(mpInput.value);
+      if (isNaN(raw) || raw <= 0) return 0;
+      return raw;
+    }
+
+    function applyMpCalculation() {
+      var mpVal = getMpVal();
+      mpPresets.forEach(function (preset) {
+        if (mpChipBtns[preset]) {
+          mpChipBtns[preset].classList.toggle('active', mpVal === preset);
+        }
+      });
+
+      if (mpVal <= 0) {
+        mpLiveReadout.style.display = 'none';
+        if (!mpInput.value.trim()) {
+          widthInput.value = '';
+          heightInput.value = '';
+        }
+        return;
+      }
+
+      if (items.length > 0) {
+        var first = items[0];
+        if (first.img) {
+          doCalc(first.img.naturalWidth, first.img.naturalHeight);
+        } else if (first.file) {
+          UI.readImage(first.file).then(function (img) {
+            first.img = img;
+            doCalc(img.naturalWidth, img.naturalHeight);
+          });
+        }
+      } else {
+        mpLiveReadout.style.display = 'none';
+      }
+
+      function doCalc(ow, oh) {
+        if (!ow || !oh) return;
+        var scale = Math.sqrt((mpVal * 1000000) / (ow * oh));
+        var newW = Math.max(1, Math.round(ow * scale));
+        var newH = Math.max(1, Math.round(oh * scale));
+        var clamped = false;
+        if (newW > 4608) {
+          newH = Math.max(1, Math.round(newH * 4608 / newW));
+          newW = 4608;
+          clamped = true;
+        }
+        if (newH > 6144) {
+          newW = Math.max(1, Math.round(newW * 6144 / newH));
+          newH = 6144;
+          clamped = true;
+        }
+        widthInput.value = newW;
+        heightInput.value = newH;
+        mpLiveReadout.style.display = 'block';
+        mpLiveReadout.textContent = '→ ' + newW + ' × ' + newH + ' px' + (clamped ? tr(' (সীমার মধ্যে সীমাবদ্ধ)', ' (clamped to max limits)') : '');
+      }
+    }
+
+    mpInput.addEventListener('input', function () {
+      applyMpCalculation();
+      triggerReprocess();
+    });
+
+    widthInput.addEventListener('input', function () {
+      if (mpInput.value) {
+        mpInput.value = '';
+        mpLiveReadout.style.display = 'none';
+        mpPresets.forEach(function (preset) {
+          if (mpChipBtns[preset]) mpChipBtns[preset].classList.remove('active');
+        });
+      }
+      triggerReprocess();
+    });
+
+    heightInput.addEventListener('input', function () {
+      if (mpInput.value) {
+        mpInput.value = '';
+        mpLiveReadout.style.display = 'none';
+        mpPresets.forEach(function (preset) {
+          if (mpChipBtns[preset]) mpChipBtns[preset].classList.remove('active');
+        });
+      }
+      triggerReprocess();
+    });
+
     ratioCheck.addEventListener('change', triggerReprocess);
 
     var resizeSection = UI.el('div', { class: 'ci-section' });
     var resizeLabel = UI.el('div', { class: 'ci-label' });
     resizeLabel.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg> <span>' + tr('কাস্টম সাইজ পরিবর্তন', "Custom Resize") + '</span>';
     resizeSection.appendChild(resizeLabel);
+    resizeSection.appendChild(mpFieldWrap);
     resizeSection.appendChild(UI.el('div', { class: 'ci-resize-row' },
       UI.el('div', { class: 'ci-field-wrap' },
         UI.el('small', {}, tr('প্রস্থ (px)', "Width (px)")),
@@ -505,6 +646,13 @@
         if (it.img && it.img._url) URL.revokeObjectURL(it.img._url);
       });
       items = [];
+      mpInput.value = '';
+      mpLiveReadout.style.display = 'none';
+      widthInput.value = '';
+      heightInput.value = '';
+      mpPresets.forEach(function (preset) {
+        if (mpChipBtns[preset]) mpChipBtns[preset].classList.remove('active');
+      });
       workspace.style.display = 'none';
       dropWrap.style.display = 'block';
     });
@@ -587,8 +735,11 @@
           countBadge.textContent = items.length + ' ' + tr('টি ফাইল', 'Files');
           zipBtn.style.display = items.length > 1 ? 'inline-flex' : 'none';
           if (!items.length) {
+            mpLiveReadout.style.display = 'none';
             workspace.style.display = 'none';
             dropWrap.style.display = 'block';
+          } else {
+            applyMpCalculation();
           }
         });
 
@@ -744,17 +895,11 @@
       var tVal = UI.parseNum(targetInput.value);
       var unit = targetUnit.value || 'MB';
       var targetBytes = (tVal > 0) ? (unit === 'MB' ? tVal * 1024 * 1024 : tVal * 1024) : 0;
+      var mpVal = getMpVal();
+      var hasMp = (mpVal > 0);
       var cW = UI.parseNum(widthInput.value) || 0;
       var cH = UI.parseNum(heightInput.value) || 0;
       var mRatio = ratioCheck.checked;
-
-      var opt = {
-        format: currentFormat,
-        targetBytes: targetBytes,
-        customW: cW,
-        customH: cH,
-        maintainRatio: mRatio
-      };
 
       for (var i = 0; i < items.length; i++) {
         if (runId !== activeRunId) return;
@@ -767,6 +912,43 @@
         }
 
         try {
+          if (!item.img) {
+            item.img = await UI.readImage(item.file);
+          }
+          var ow = item.img.naturalWidth, oh = item.img.naturalHeight;
+          var itemW = cW, itemH = cH;
+
+          if (hasMp && ow > 0 && oh > 0) {
+            var scale = Math.sqrt((mpVal * 1000000) / (ow * oh));
+            itemW = Math.max(1, Math.round(ow * scale));
+            itemH = Math.max(1, Math.round(oh * scale));
+            var clamped = false;
+            if (itemW > 4608) {
+              itemH = Math.max(1, Math.round(itemH * 4608 / itemW));
+              itemW = 4608;
+              clamped = true;
+            }
+            if (itemH > 6144) {
+              itemW = Math.max(1, Math.round(itemW * 6144 / itemH));
+              itemH = 6144;
+              clamped = true;
+            }
+            if (i === 0) {
+              widthInput.value = itemW;
+              heightInput.value = itemH;
+              mpLiveReadout.style.display = 'block';
+              mpLiveReadout.textContent = '→ ' + itemW + ' × ' + itemH + ' px' + (clamped ? tr(' (সীমার মধ্যে সীমাবদ্ধ)', ' (clamped to max limits)') : '');
+            }
+          }
+
+          var opt = {
+            format: currentFormat,
+            targetBytes: targetBytes,
+            customW: itemW,
+            customH: itemH,
+            maintainRatio: hasMp ? true : mRatio
+          };
+
           var res = await convertSingleFile(item, opt);
           if (runId !== activeRunId) return;
           if (item.res && item.res.url) {
@@ -779,9 +961,11 @@
             item.cardEl.title.textContent = res.name;
             item.cardEl.title.title = res.name;
             item.cardEl.oldSize.textContent = 'Old: ' + UI.fmtSize(res.oldSize);
-            item.cardEl.oldDims.textContent = res.oldW + 'x' + res.oldH;
+            var oldMpStr = (res.oldW && res.oldH) ? ' (' + (Math.round((res.oldW * res.oldH) / 100000) / 10) + ' MP)' : '';
+            var newMpStr = (res.newW && res.newH) ? ' (' + (Math.round((res.newW * res.newH) / 100000) / 10) + ' MP)' : '';
+            item.cardEl.oldDims.textContent = res.oldW + 'x' + res.oldH + oldMpStr;
             item.cardEl.newSize.textContent = 'New: ' + UI.fmtSize(res.newSize);
-            item.cardEl.newDims.textContent = res.newW + 'x' + res.newH;
+            item.cardEl.newDims.textContent = res.newW + 'x' + res.newH + newMpStr;
             item.cardEl.badge.className = 'ci-badge-success';
             item.cardEl.badge.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
             item.cardEl.dlBtn.disabled = false;
