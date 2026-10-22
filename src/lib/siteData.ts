@@ -16,7 +16,7 @@ export async function getPublicSiteData() {
       sql`SELECT is_active, tagline_bn, tagline_en, search_placeholder_bn, search_placeholder_en FROM section_hero WHERE id = 1 LIMIT 1`,
       sql`SELECT is_active, text_bn, text_en, type, link_url, link_text, duration_days, expires_at FROM section_announcement WHERE id = 1 LIMIT 1`.catch(() => sql`SELECT is_active, text_bn, text_en, type FROM section_announcement WHERE id = 1 LIMIT 1`),
       sql`SELECT slug, is_active, title_bn, title_en, desc_bn, desc_en, symbol FROM section_categories ORDER BY display_order ASC`,
-      sql`SELECT slug, category_slug, is_active, title_bn, title_en, desc_bn, desc_en, badge FROM section_tools ORDER BY display_order ASC`,
+      sql`SELECT slug, category_slug, is_active, title_bn, title_en, desc_bn, desc_en, badge, updated_at FROM section_tools ORDER BY display_order ASC`,
       sql`SELECT * FROM section_footer_social WHERE id = 1 LIMIT 1`,
       sql`SELECT * FROM section_creator_about WHERE id = 1 LIMIT 1`,
       sql`SELECT is_active, gemini_active, openai_active, convertapi_active, removebg_active, ilovepdf_active, ilovepdf_public_key FROM section_api_keys WHERE id = 1 LIMIT 1`,
