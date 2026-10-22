@@ -13,7 +13,8 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function TermsPage() {
-  const initialPolicies = await getAllPolicySections();
+  const allPolicies = await getAllPolicySections();
+  const { privacy: _omitted, ...initialPolicies } = allPolicies;
 
   return <TermsClient initialPolicies={initialPolicies} />;
 }

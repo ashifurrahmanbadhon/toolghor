@@ -30,7 +30,8 @@ export default function TermsClient({ initialPolicies }: TermsClientProps) {
         .then((res) => res.json())
         .then((data) => {
           if (data && data.success && data.policies) {
-            setPolicies(data.policies);
+            const { privacy: _omitted, ...termsPolicies } = data.policies;
+            setPolicies(termsPolicies);
           }
         })
         .catch(() => {});
