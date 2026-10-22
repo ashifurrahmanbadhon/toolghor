@@ -489,14 +489,14 @@
       style: { minWidth: '90px', flex: '1' }
     });
 
-    var mpChipsWrap = UI.el('div', { class: 'ci-pills', style: { gap: '6px' } });
-    var mpPresets = [2, 5, 12, 24];
+    var mpChipsWrap = UI.el('div', { class: 'ci-pills', style: { gap: '6px', flexWrap: 'wrap' } });
+    var mpPresets = [2, 5, 12, 24, 48];
     var mpChipBtns = {};
     mpPresets.forEach(function (preset) {
       var chip = UI.el('button', {
         type: 'button',
         class: 'ci-pill',
-        style: { padding: '5px 11px', fontSize: '12px' }
+        style: { padding: '4px 10px', fontSize: '12px' }
       }, preset + ' MP');
       chip.addEventListener('click', function () {
         mpInput.value = preset;
@@ -535,14 +535,42 @@
     function getMpVal() {
       var raw = parseFloat(mpInput.value);
       if (isNaN(raw) || raw <= 0) return 0;
-      return raw;
+      return Math.min(48, raw);
+    }
+
+    function computeMpDimensions(ow, oh, mpVal) {
+      if (!ow || !oh || mpVal <= 0) return null;
+      var m = Math.min(48, mpVal);
+      var scale = Math.sqrt((m * 1000000) / (ow * oh));
+      var newW = Math.max(1, Math.round(ow * scale));
+      var newH = Math.max(1, Math.round(oh * scale));
+
+      // Clamp so output never exceeds 48,000,000 total pixels
+      if (newW * newH > 48000000) {
+        var pScale = Math.sqrt(48000000 / (newW * newH));
+        newW = Math.max(1, Math.round(newW * pScale));
+        newH = Math.max(1, Math.round(newH * pScale));
+      }
+
+      // Clamp so neither side exceeds 12,000 px
+      if (newW > 12000) {
+        newH = Math.max(1, Math.round(newH * 12000 / newW));
+        newW = 12000;
+      }
+      if (newH > 12000) {
+        newW = Math.max(1, Math.round(newW * 12000 / newH));
+        newH = 12000;
+      }
+
+      return { w: newW, h: newH };
     }
 
     function applyMpCalculation() {
       var mpVal = getMpVal();
+      var inputVal = parseFloat(mpInput.value);
       mpPresets.forEach(function (preset) {
         if (mpChipBtns[preset]) {
-          mpChipBtns[preset].classList.toggle('active', mpVal === preset);
+          mpChipBtns[preset].classList.toggle('active', inputVal === preset);
         }
       });
 
@@ -563,32 +591,19 @@
           UI.readImage(first.file).then(function (img) {
             first.img = img;
             doCalc(img.naturalWidth, img.naturalHeight);
-          });
+          }).catch(function () {});
         }
       } else {
         mpLiveReadout.style.display = 'none';
       }
 
       function doCalc(ow, oh) {
-        if (!ow || !oh) return;
-        var scale = Math.sqrt((mpVal * 1000000) / (ow * oh));
-        var newW = Math.max(1, Math.round(ow * scale));
-        var newH = Math.max(1, Math.round(oh * scale));
-        var clamped = false;
-        if (newW > 4608) {
-          newH = Math.max(1, Math.round(newH * 4608 / newW));
-          newW = 4608;
-          clamped = true;
-        }
-        if (newH > 6144) {
-          newW = Math.max(1, Math.round(newW * 6144 / newH));
-          newH = 6144;
-          clamped = true;
-        }
-        widthInput.value = newW;
-        heightInput.value = newH;
+        var dims = computeMpDimensions(ow, oh, mpVal);
+        if (!dims) return;
+        widthInput.value = dims.w;
+        heightInput.value = dims.h;
         mpLiveReadout.style.display = 'block';
-        mpLiveReadout.textContent = '→ ' + newW + ' × ' + newH + ' px' + (clamped ? tr(' (সীমার মধ্যে সীমাবদ্ধ)', ' (clamped to max limits)') : '');
+        mpLiveReadout.textContent = '→ ' + dims.w + ' × ' + dims.h + ' px';
       }
     }
 
@@ -821,55 +836,68 @@
         finalH = h;
 
         var c = drawToCanvas(img, w, h, (ext === 'png' || ext === 'webp') ? null : '#fff');
+        try {
+          if (ext === 'jpg' || ext === 'jpeg') {
+            // Fast encoding pass
+            var qVal = (targetBytes >= item.file.size) ? 0.96 : Math.max(0.1, Math.min(0.9, targetBytes / item.file.size));
+            var rawBlob = await UI.toBlob(c, mime, qVal);
 
-        if (ext === 'jpg' || ext === 'jpeg') {
-          // Fast encoding pass
-          var qVal = (targetBytes >= item.file.size) ? 0.96 : Math.max(0.1, Math.min(0.9, targetBytes / item.file.size));
-          var rawBlob = await UI.toBlob(c, mime, qVal);
-
-          if (rawBlob.size < targetBytes) {
-            var buf = await rawBlob.arrayBuffer();
-            var padded = padJpegExact(new Uint8Array(buf), targetBytes);
-            finalBlob = new Blob([padded], { type: mime });
-          } else if (rawBlob.size > targetBytes) {
-            var qLower = Math.max(0.05, qVal * (targetBytes / rawBlob.size) * 0.95);
-            var b2 = await UI.toBlob(c, mime, qLower);
-            if (b2.size < targetBytes) {
-              var buf2 = await b2.arrayBuffer();
-              var padded2 = padJpegExact(new Uint8Array(buf2), targetBytes);
-              finalBlob = new Blob([padded2], { type: mime });
+            if (rawBlob.size < targetBytes) {
+              var buf = await rawBlob.arrayBuffer();
+              var padded = padJpegExact(new Uint8Array(buf), targetBytes);
+              finalBlob = new Blob([padded], { type: mime });
+            } else if (rawBlob.size > targetBytes) {
+              var qLower = Math.max(0.05, qVal * (targetBytes / rawBlob.size) * 0.95);
+              var b2 = await UI.toBlob(c, mime, qLower);
+              if (b2.size < targetBytes) {
+                var buf2 = await b2.arrayBuffer();
+                var padded2 = padJpegExact(new Uint8Array(buf2), targetBytes);
+                finalBlob = new Blob([padded2], { type: mime });
+              } else {
+                finalBlob = b2;
+              }
             } else {
-              finalBlob = b2;
+              finalBlob = rawBlob;
+            }
+          } else if (ext === 'webp') {
+            var qVal = (targetBytes >= item.file.size) ? 0.95 : Math.max(0.1, Math.min(0.9, targetBytes / item.file.size));
+            var rawBlob = await UI.toBlob(c, mime, qVal);
+            if (rawBlob.size < targetBytes) {
+              var buf = await rawBlob.arrayBuffer();
+              var padded = padGenericExact(new Uint8Array(buf), targetBytes);
+              finalBlob = new Blob([padded], { type: mime });
+            } else {
+              finalBlob = rawBlob;
             }
           } else {
-            finalBlob = rawBlob;
+            // PNG
+            var rawBlob = await UI.toBlob(c, mime, 1);
+            if (rawBlob.size < targetBytes) {
+              var buf = await rawBlob.arrayBuffer();
+              var padded = padGenericExact(new Uint8Array(buf), targetBytes);
+              finalBlob = new Blob([padded], { type: mime });
+            } else {
+              finalBlob = rawBlob;
+            }
           }
-        } else if (ext === 'webp') {
-          var qVal = (targetBytes >= item.file.size) ? 0.95 : Math.max(0.1, Math.min(0.9, targetBytes / item.file.size));
-          var rawBlob = await UI.toBlob(c, mime, qVal);
-          if (rawBlob.size < targetBytes) {
-            var buf = await rawBlob.arrayBuffer();
-            var padded = padGenericExact(new Uint8Array(buf), targetBytes);
-            finalBlob = new Blob([padded], { type: mime });
-          } else {
-            finalBlob = rawBlob;
-          }
-        } else {
-          // PNG
-          var rawBlob = await UI.toBlob(c, mime, 1);
-          if (rawBlob.size < targetBytes) {
-            var buf = await rawBlob.arrayBuffer();
-            var padded = padGenericExact(new Uint8Array(buf), targetBytes);
-            finalBlob = new Blob([padded], { type: mime });
-          } else {
-            finalBlob = rawBlob;
+        } finally {
+          if (c) {
+            c.width = 1;
+            c.height = 1;
           }
         }
       } else {
         // Optimal auto-compression
         var qVal = (ext === 'png') ? 1 : (ext === 'webp') ? 0.90 : 0.92;
         var c = drawToCanvas(img, w, h, (ext === 'png' || ext === 'webp') ? null : '#fff');
-        finalBlob = await UI.toBlob(c, mime, qVal);
+        try {
+          finalBlob = await UI.toBlob(c, mime, qVal);
+        } finally {
+          if (c) {
+            c.width = 1;
+            c.height = 1;
+          }
+        }
         finalW = w;
         finalH = h;
       }
@@ -919,25 +947,16 @@
           var itemW = cW, itemH = cH;
 
           if (hasMp && ow > 0 && oh > 0) {
-            var scale = Math.sqrt((mpVal * 1000000) / (ow * oh));
-            itemW = Math.max(1, Math.round(ow * scale));
-            itemH = Math.max(1, Math.round(oh * scale));
-            var clamped = false;
-            if (itemW > 4608) {
-              itemH = Math.max(1, Math.round(itemH * 4608 / itemW));
-              itemW = 4608;
-              clamped = true;
-            }
-            if (itemH > 6144) {
-              itemW = Math.max(1, Math.round(itemW * 6144 / itemH));
-              itemH = 6144;
-              clamped = true;
-            }
-            if (i === 0) {
-              widthInput.value = itemW;
-              heightInput.value = itemH;
-              mpLiveReadout.style.display = 'block';
-              mpLiveReadout.textContent = '→ ' + itemW + ' × ' + itemH + ' px' + (clamped ? tr(' (সীমার মধ্যে সীমাবদ্ধ)', ' (clamped to max limits)') : '');
+            var dims = computeMpDimensions(ow, oh, mpVal);
+            if (dims) {
+              itemW = dims.w;
+              itemH = dims.h;
+              if (i === 0) {
+                widthInput.value = itemW;
+                heightInput.value = itemH;
+                mpLiveReadout.style.display = 'block';
+                mpLiveReadout.textContent = '→ ' + itemW + ' × ' + itemH + ' px';
+              }
             }
           }
 
@@ -971,10 +990,13 @@
             item.cardEl.dlBtn.disabled = false;
           }
         } catch (err) {
+          console.error(err);
           if (item.cardEl) {
+            item.cardEl.badge.className = 'ci-badge-err';
+            item.cardEl.badge.textContent = '⚠️';
+            item.cardEl.dlBtn.disabled = true;
             item.cardEl.newSize.textContent = tr('ব্যর্থ', 'Failed');
-            item.cardEl.badge.className = 'ci-badge-busy';
-            item.cardEl.badge.innerHTML = '❌';
+            item.cardEl.newDims.textContent = tr('মেমোরি সীমা বা ত্রুটি', 'Memory limit or error');
           }
         }
       }
