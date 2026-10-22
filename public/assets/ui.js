@@ -580,45 +580,45 @@
   UI.readImage = function (file) {
     return new Promise(function (res, rej) {
       if (!file) return rej(new Error(tr('কোনো ফাইল নির্বাচন করা হয়নি', "No file selected")));
-      var reader = new FileReader();
-      reader.onload = function (e) {
-        var dataUrl = e.target.result;
+      var blobUrl = '';
+      try {
+        blobUrl = URL.createObjectURL(file);
+      } catch (err) {}
+
+      if (blobUrl) {
         var img = new Image();
         img.onload = function () {
-          img._url = dataUrl;
+          img._url = blobUrl;
           res(img);
         };
         img.onerror = function () {
-          try {
-            var blobUrl = URL.createObjectURL(file);
-            var bImg = new Image();
-            bImg.onload = function () { bImg._url = blobUrl; res(bImg); };
-            bImg.onerror = function () {
-              URL.revokeObjectURL(blobUrl);
-              rej(new Error(tr('ছবিটি খোলা যায়নি: ', "Could not open the image: ") + (file.name || '')));
-            };
-            bImg.src = blobUrl;
-          } catch (err) {
-            rej(new Error(tr('ছবিটি খোলা যায়নি', "Could not open image")));
-          }
+          try { URL.revokeObjectURL(blobUrl); } catch (e) {}
+          fallbackReader();
         };
-        img.src = dataUrl;
-      };
-      reader.onerror = function () {
-        try {
-          var blobUrl = URL.createObjectURL(file);
-          var bImg = new Image();
-          bImg.onload = function () { bImg._url = blobUrl; res(bImg); };
-          bImg.onerror = function () {
-            URL.revokeObjectURL(blobUrl);
+        img.src = blobUrl;
+        return;
+      }
+      fallbackReader();
+
+      function fallbackReader() {
+        var reader = new FileReader();
+        reader.onload = function (e) {
+          var dataUrl = e.target.result;
+          var img = new Image();
+          img.onload = function () {
+            img._url = dataUrl;
+            res(img);
+          };
+          img.onerror = function () {
             rej(new Error(tr('ছবিটি খোলা যায়নি: ', "Could not open the image: ") + (file.name || '')));
           };
-          bImg.src = blobUrl;
-        } catch (err) {
+          img.src = dataUrl;
+        };
+        reader.onerror = function () {
           rej(new Error(tr('ছবিটি পড়া সম্ভব হয়নি', "Could not read image file")));
-        }
-      };
-      reader.readAsDataURL(file);
+        };
+        reader.readAsDataURL(file);
+      }
     });
   };
   UI.toBlob = function (canvas, type, q) {

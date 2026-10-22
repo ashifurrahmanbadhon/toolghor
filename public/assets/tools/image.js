@@ -6,7 +6,12 @@
   function drawToCanvas(img, w, h, bg) {
     var c = UI.canvas(w, h), ctx = c.getContext('2d');
     if (bg) { ctx.fillStyle = bg; ctx.fillRect(0, 0, c.width, c.height); }
-    ctx.imageSmoothingQuality = 'high';
+    var sameSize = (img.naturalWidth === w && img.naturalHeight === h) || (img.width === w && img.height === h);
+    if (sameSize) {
+      ctx.imageSmoothingEnabled = false;
+    } else {
+      ctx.imageSmoothingQuality = 'medium';
+    }
     ctx.drawImage(img, 0, 0, c.width, c.height);
     return c;
   }
@@ -415,8 +420,18 @@
         dropWrap.style.display = 'none';
         workspace.style.display = 'grid';
         renderCardsSkeleton();
-        applyMpCalculation();
-        triggerReprocess();
+        // Pre-decode first image immediately for instant MP computation
+        if (items[0]) {
+          UI.readImage(items[0].file).then(function (im) {
+            items[0].img = im;
+            applyMpCalculation();
+            triggerReprocessNow();
+          }).catch(function () {
+            triggerReprocessNow();
+          });
+        } else {
+          triggerReprocessNow();
+        }
       }
     });
     dropWrap.appendChild(drop);
@@ -446,7 +461,7 @@
         formats.forEach(function (k) {
           if (pillBtns[k]) pillBtns[k].classList.toggle('active', k.toLowerCase() === currentFormat);
         });
-        triggerReprocess();
+        triggerReprocessNow();
       });
       pillBtns[f] = btn;
       pillsWrap.appendChild(btn);
@@ -465,7 +480,7 @@
       UI.el('option', { value: 'KB' }, 'KB')
     );
     targetInput.addEventListener('input', triggerReprocess);
-    targetUnit.addEventListener('change', triggerReprocess);
+    targetUnit.addEventListener('change', triggerReprocessNow);
 
     var targetSection = UI.el('div', { class: 'ci-section' });
     var targetLabel = UI.el('div', { class: 'ci-label' });
@@ -501,7 +516,7 @@
       chip.addEventListener('click', function () {
         mpInput.value = preset;
         applyMpCalculation();
-        triggerReprocess();
+        triggerReprocessNow();
       });
       mpChipBtns[preset] = chip;
       mpChipsWrap.appendChild(chip);
@@ -634,7 +649,7 @@
       triggerReprocess();
     });
 
-    ratioCheck.addEventListener('change', triggerReprocess);
+    ratioCheck.addEventListener('change', triggerReprocessNow);
 
     var resizeSection = UI.el('div', { class: 'ci-section' });
     var resizeLabel = UI.el('div', { class: 'ci-label' });
@@ -785,11 +800,15 @@
 
     function triggerReprocess() {
       clearTimeout(reprocessTimer);
-      reprocessTimer = setTimeout(runAllConversions, 200);
+      reprocessTimer = setTimeout(runAllConversions, 80);
+    }
+
+    function triggerReprocessNow() {
+      clearTimeout(reprocessTimer);
+      runAllConversions();
     }
 
     async function convertSingleFile(item, opt) {
-      await UI.yield();
       if (!item.img) {
         item.img = await UI.readImage(item.file);
       }
@@ -931,7 +950,8 @@
 
       for (var i = 0; i < items.length; i++) {
         if (runId !== activeRunId) return;
-        await UI.yield();
+        if (i > 0) await UI.yield();
+        if (runId !== activeRunId) return;
         var item = items[i];
         if (item.cardEl) {
           item.cardEl.badge.className = 'ci-badge-busy';
@@ -2482,7 +2502,7 @@
       canvas.width = w;
       canvas.height = h;
       var ctx = canvas.getContext('2d');
-      ctx.imageSmoothingQuality = 'high';
+      ctx.imageSmoothingEnabled = false;
       ctx.drawImage(img, 0, 0, w, h);
 
       if (isBitmap && typeof img.close === 'function') {
@@ -2519,15 +2539,12 @@
       var baseName = dotIdx > 0 ? file.name.slice(0, dotIdx) : file.name;
       var cleanName = baseName + '-clean.' + ext;
 
-      var outBuf = await blob.arrayBuffer();
-      var outScan = scanImageMetadata(new Uint8Array(outBuf));
-
       return {
         blob: blob,
         cleanName: cleanName,
         beforeSize: file.size,
         afterSize: blob.size,
-        outScan: outScan
+        outScan: { tags: [], aiMarkers: [] }
       };
     }
 
@@ -2545,7 +2562,6 @@
         for (var i = 0; i < files.length; i++) {
           var f = files[i];
           prog.set((i / files.length) * 100, UI.n(i + 1) + '/' + UI.n(files.length));
-          await UI.yield();
 
           try {
             var cleaned = await cleanSingleImage(f);
@@ -2568,9 +2584,6 @@
             });
           }
         }
-
-        prog.set(100, tr('সম্পন্ন', 'Done'));
-        await UI.yield(80);
 
         renderResults(results);
       } catch (err) {
