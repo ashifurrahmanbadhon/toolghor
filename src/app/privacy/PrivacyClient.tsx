@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { ShieldCheck, Calendar, ChevronRight, ArrowRight } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PolicyMarkdown from '@/components/PolicyMarkdown';
@@ -47,50 +48,57 @@ export default function PrivacyClient({ initialPolicy }: PrivacyClientProps) {
   const isBn = lang === 'bn';
   const pageTitle = isBn ? policy.title_bn : policy.title_en;
   const pageBody = isBn ? policy.body_bn : policy.body_en;
-  const lastUpdatedText = isBn ? 'সর্বশেষ হালনাগাদ: ২২ অক্টোবর ২০২৬' : 'Last Updated: 22 October 2026';
+  const pageSubtitle = isBn
+    ? 'ToolGhor ব্যবহারের সবকিছু এক জায়গায় — পরিষ্কার, সৎ ও হালনাগাদ।'
+    : 'Everything about using ToolGhor, in one place — clear, honest, and up to date.';
+  const lastUpdatedDate = isBn ? '২২ অক্টোবর ২০২৬' : '22 October 2026';
+  const lastUpdatedText = isBn
+    ? `সর্বশেষ হালনাগাদ: ${lastUpdatedDate}`
+    : `Last Updated: ${lastUpdatedDate}`;
 
   return (
     <>
       <Header />
       <main className="policy-page-wrapper">
-        <div className="wrap">
-          {/* Header & Breadcrumb */}
-          <div className="policy-header" style={{ maxWidth: '860px', margin: '0 auto 32px' }}>
+        {/* Modern Aurora Hero Header */}
+        <section className="policy-hero-section">
+          <div className="policy-hero-glow" aria-hidden="true" />
+          <div className="wrap policy-hero-wrap" style={{ maxWidth: '860px' }}>
             <div className="policy-crumb">
               <Link href="/">
                 {isBn ? 'হোম' : 'Home'}
               </Link>
-              <span aria-hidden="true">/</span>
+              <ChevronRight size={14} className="policy-crumb-sep" aria-hidden="true" />
               <span>{pageTitle}</span>
             </div>
 
             <h1 className="policy-main-title">{pageTitle}</h1>
+            <p className="policy-hero-subtitle">{pageSubtitle}</p>
 
             <div className="policy-badge-row">
               <span className="policy-updated-badge">
-                📅 {lastUpdatedText}
+                <Calendar size={14} aria-hidden="true" />
+                <span>{lastUpdatedText}</span>
               </span>
-              <Link
-                href="/terms"
-                style={{
-                  fontSize: '13px',
-                  color: 'var(--paddy-d)',
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                📜 {isBn ? 'সম্পূর্ণ শর্তাবলী ও সকল নীতি দেখুন →' : 'View All Terms & Policies →'}
+              <Link href="/terms" className="policy-hero-link-chip">
+                <span>{isBn ? 'সম্পূর্ণ শর্তাবলী ও সকল নীতি দেখুন' : 'View All Terms & Policies'}</span>
+                <ArrowRight size={14} aria-hidden="true" />
               </Link>
             </div>
           </div>
+        </section>
 
-          {/* Privacy Card */}
+        {/* Privacy Card */}
+        <div className="wrap">
           <div className="policy-single-card">
             <article className="policy-section-card">
               <header className="policy-section-header">
-                <h2 className="policy-section-title">{pageTitle}</h2>
+                <div className="policy-title-group">
+                  <div className="policy-icon-box" aria-hidden="true">
+                    <ShieldCheck size={20} />
+                  </div>
+                  <h2 className="policy-section-title">{pageTitle}</h2>
+                </div>
                 <span className="policy-section-badge">ToolGhor Legal</span>
               </header>
               <div className="policy-section-body">

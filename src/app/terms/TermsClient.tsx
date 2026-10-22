@@ -2,6 +2,19 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import {
+  FileText,
+  ShieldCheck,
+  Cookie,
+  AlertTriangle,
+  Scale,
+  Globe,
+  CheckCircle2,
+  RefreshCw,
+  Mail,
+  Calendar,
+  ChevronRight,
+} from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PolicyMarkdown from '@/components/PolicyMarkdown';
@@ -11,6 +24,18 @@ import { PolicySection, POLICY_SECTIONS_LIST } from '@/data/policiesDefaults';
 interface TermsClientProps {
   initialPolicies: Record<string, PolicySection>;
 }
+
+const SECTION_ICONS: Record<string, React.ElementType> = {
+  terms: FileText,
+  privacy: ShieldCheck,
+  cookies: Cookie,
+  disclaimer: AlertTriangle,
+  ip: Scale,
+  third_party: Globe,
+  acceptable_use: CheckCircle2,
+  updates: RefreshCw,
+  contact: Mail,
+};
 
 export default function TermsClient({ initialPolicies }: TermsClientProps) {
   const { lang } = useApp();
@@ -50,7 +75,7 @@ export default function TermsClient({ initialPolicies }: TermsClientProps) {
   // Scrollspy: update active section as user scrolls
   useEffect(() => {
     const handleScroll = () => {
-      const scrollPos = window.scrollY + 130;
+      const scrollPos = window.scrollY + 140;
       let current = 'terms';
 
       for (const item of POLICY_SECTIONS_LIST) {
@@ -74,7 +99,7 @@ export default function TermsClient({ initialPolicies }: TermsClientProps) {
     e.preventDefault();
     const el = document.getElementById(id);
     if (el) {
-      const headerOffset = 80;
+      const headerOffset = 85;
       const elementPosition = el.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
 
@@ -83,6 +108,9 @@ export default function TermsClient({ initialPolicies }: TermsClientProps) {
         behavior: 'smooth',
       });
       setActiveSection(id);
+      if (history.pushState) {
+        history.pushState(null, '', `#${id}`);
+      }
       if (detailsRef.current) {
         detailsRef.current.open = false;
         setMobileTocOpen(false);
@@ -92,34 +120,70 @@ export default function TermsClient({ initialPolicies }: TermsClientProps) {
 
   const isBn = lang === 'bn';
   const pageTitle = isBn ? 'ব্যবহারের শর্তাবলী ও নীতিসমূহ' : 'Terms & Policies';
-  const lastUpdatedText = isBn ? 'সর্বশেষ হালনাগাদ: ২২ অক্টোবর ২০২৬' : 'Last Updated: 22 October 2026';
+  const pageSubtitle = isBn
+    ? 'ToolGhor ব্যবহারের সবকিছু এক জায়গায় — পরিষ্কার, সৎ ও হালনাগাদ।'
+    : 'Everything about using ToolGhor, in one place — clear, honest, and up to date.';
+  const lastUpdatedDate = isBn ? '২২ অক্টোবর ২০২৬' : '22 October 2026';
+  const lastUpdatedText = isBn
+    ? `সর্বশেষ হালনাগাদ: ${lastUpdatedDate}`
+    : `Last Updated: ${lastUpdatedDate}`;
   const tocHeading = isBn ? 'সূচিপত্র' : 'Table of Contents';
 
   return (
     <>
       <Header />
       <main className="policy-page-wrapper">
-        <div className="wrap">
-          {/* Header & Breadcrumb */}
-          <div className="policy-header">
+        {/* Modern Aurora Hero Header */}
+        <section className="policy-hero-section">
+          <div className="policy-hero-glow" aria-hidden="true" />
+          <div className="wrap policy-hero-wrap">
             <div className="policy-crumb">
               <Link href="/">
                 {isBn ? 'হোম' : 'Home'}
               </Link>
-              <span aria-hidden="true">/</span>
+              <ChevronRight size={14} className="policy-crumb-sep" aria-hidden="true" />
               <span>{pageTitle}</span>
             </div>
 
             <h1 className="policy-main-title">{pageTitle}</h1>
+            <p className="policy-hero-subtitle">{pageSubtitle}</p>
 
             <div className="policy-badge-row">
               <span className="policy-updated-badge">
-                📅 {lastUpdatedText}
+                <Calendar size={14} aria-hidden="true" />
+                <span>{lastUpdatedText}</span>
               </span>
             </div>
           </div>
+        </section>
 
-          {/* Mobile Collapsible TOC */}
+        <div className="wrap">
+          {/* Mobile Sticky Horizontal TOC Bar */}
+          <div className="policy-mobile-pills-bar" aria-label="Table of Contents">
+            <div className="policy-mobile-pills-scroll">
+              {POLICY_SECTIONS_LIST.map((item) => {
+                const sec = policies[item.id];
+                if (!sec) return null;
+                const title = isBn ? sec.title_bn : sec.title_en;
+                const isActive = activeSection === item.id;
+                const Icon = SECTION_ICONS[item.id] || FileText;
+                return (
+                  <a
+                    key={item.id}
+                    href={`#${item.id}`}
+                    onClick={(e) => handleTocClick(e, item.id)}
+                    className={`policy-mobile-pill ${isActive ? 'active' : ''}`}
+                    aria-current={isActive ? 'true' : undefined}
+                  >
+                    <Icon size={13} aria-hidden="true" />
+                    <span>{title}</span>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Mobile Collapsible TOC Dropdown (Optional secondary view) */}
           <details
             ref={detailsRef}
             className="policy-toc-mobile"
@@ -127,7 +191,10 @@ export default function TermsClient({ initialPolicies }: TermsClientProps) {
             onToggle={(e) => setMobileTocOpen((e.target as HTMLDetailsElement).open)}
           >
             <summary className="policy-toc-mobile-summary">
-              <span>📖 {tocHeading}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FileText size={16} />
+                <span>{tocHeading}</span>
+              </span>
               <span style={{ fontSize: '12px', color: 'var(--ink-3)' }}>
                 {mobileTocOpen ? '▲' : '▼'}
               </span>
@@ -138,6 +205,7 @@ export default function TermsClient({ initialPolicies }: TermsClientProps) {
                 if (!sec) return null;
                 const title = isBn ? sec.title_bn : sec.title_en;
                 const isActive = activeSection === item.id;
+                const Icon = SECTION_ICONS[item.id] || FileText;
                 return (
                   <a
                     key={item.id}
@@ -146,7 +214,8 @@ export default function TermsClient({ initialPolicies }: TermsClientProps) {
                     className={`policy-toc-link ${isActive ? 'active' : ''}`}
                     aria-current={isActive ? 'true' : undefined}
                   >
-                    {title}
+                    <Icon size={14} aria-hidden="true" />
+                    <span>{title}</span>
                   </a>
                 );
               })}
@@ -164,6 +233,7 @@ export default function TermsClient({ initialPolicies }: TermsClientProps) {
                   if (!sec) return null;
                   const title = isBn ? sec.title_bn : sec.title_en;
                   const isActive = activeSection === item.id;
+                  const Icon = SECTION_ICONS[item.id] || FileText;
                   return (
                     <a
                       key={item.id}
@@ -172,7 +242,8 @@ export default function TermsClient({ initialPolicies }: TermsClientProps) {
                       className={`policy-toc-link ${isActive ? 'active' : ''}`}
                       aria-current={isActive ? 'true' : undefined}
                     >
-                      {title}
+                      <Icon size={15} aria-hidden="true" />
+                      <span>{title}</span>
                     </a>
                   );
                 })}
@@ -186,22 +257,45 @@ export default function TermsClient({ initialPolicies }: TermsClientProps) {
                 if (!sec) return null;
                 const title = isBn ? sec.title_bn : sec.title_en;
                 const body = isBn ? sec.body_bn : sec.body_en;
+                const Icon = SECTION_ICONS[item.id] || FileText;
+                const isContact = item.id === 'contact';
 
                 return (
                   <section
                     key={item.id}
                     id={item.id}
-                    className="policy-section-card"
+                    className={`policy-section-card ${isContact ? 'policy-contact-card' : ''}`}
                     tabIndex={-1}
                   >
                     <header className="policy-section-header">
-                      <h2 className="policy-section-title">{title}</h2>
+                      <div className="policy-title-group">
+                        <div className="policy-icon-box" aria-hidden="true">
+                          <Icon size={19} />
+                        </div>
+                        <h2 className="policy-section-title">{title}</h2>
+                      </div>
                       <span className="policy-section-badge">
-                        Section {index + 1}
+                        {isContact
+                          ? isBn
+                            ? 'সরাসরি যোগাযোগ'
+                            : 'Direct Contact'
+                          : `Section ${index + 1}`}
                       </span>
                     </header>
                     <div className="policy-section-body">
                       <PolicyMarkdown content={body} />
+                      {isContact && (
+                        <div className="policy-contact-cta">
+                          <a
+                            href="mailto:ashifur.badhon@gmail.com"
+                            className="policy-mailto-btn"
+                            id="policy-contact-email-btn"
+                          >
+                            <Mail size={16} aria-hidden="true" />
+                            <span>ashifur.badhon@gmail.com</span>
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </section>
                 );
