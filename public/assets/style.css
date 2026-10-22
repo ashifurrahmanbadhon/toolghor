@@ -5176,3 +5176,219 @@ table.tbl {
     transition: none !important;
   }
 }
+
+/* Helper for mobile-only button label (hidden on desktop) */
+.tbl-btn-lbl-m {
+  display: none;
+}
+
+/* ==========================================================================
+   MOBILE LAYOUT REPAIR FOR ALL TOOL PAGES (<=640px)
+   ========================================================================== */
+@media (max-width: 640px) {
+  /* 1. Mobile button label helper */
+  .tbl-btn-lbl-m {
+    display: inline !important;
+    margin-left: 6px !important;
+  }
+
+  /* 2. Resolve width fight: table never forces min-width or horizontal scroll */
+  .tbl-wrap,
+  .table-responsive,
+  .snapyt-table-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: visible !important;
+    margin: 12px 0 !important;
+  }
+
+  .tbl,
+  table.tbl {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    border: none !important;
+  }
+
+  /* 3. Hide table header row on mobile */
+  .tbl thead {
+    display: none !important;
+  }
+
+  /* 4. Tbody and rows become stacked cards */
+  .tbl tbody {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .tbl tbody tr {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    background: color-mix(in srgb, var(--paper) 92%, var(--mist)) !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 14px !important;
+    padding: 14px !important;
+  }
+
+  /* 5. Cells become full-width lines */
+  .tbl td,
+  .tbl tbody th {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 2px 0 !important;
+    border: none !important;
+    text-align: left !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+  }
+
+  /* Thumbnails in card */
+  .tbl td .thumb,
+  .tbl td img.thumb {
+    width: 56px !important;
+    height: 56px !important;
+    object-fit: cover !important;
+    border-radius: 8px !important;
+    display: block !important;
+    margin-bottom: 4px !important;
+  }
+
+  /* 6. Data-label pseudo elements */
+  .tbl td[data-label]:not([data-label=""])::before {
+    content: attr(data-label) ": ";
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--ink-3);
+    margin-right: 6px;
+    display: inline;
+  }
+
+  /* 7. File name truncation (never snap mid-word, show ellipsis) */
+  .tbl-filename,
+  .selected-file-name,
+  .ci-card-filename,
+  .tbl td[style*="overflowWrap"],
+  .tbl td[style*="overflow-wrap"],
+  .tbl td.tbl-filename {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 100% !important;
+    display: block !important;
+    font-weight: 600 !important;
+  }
+
+  /* 8. Buttons can NEVER crush: 100% width, min 44px, no vertical stacking */
+  .tbl td .btn,
+  .tbl td button,
+  .tbl td a.btn,
+  .tbl-cell-action .btn,
+  .tool-page .result .btn,
+  .tool-page .row > .btn,
+  .tool-actions .btn,
+  .rbg-bottom-actions .btn,
+  .result-actions .btn {
+    width: 100% !important;
+    min-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    text-align: center !important;
+    border-radius: 10px !important;
+    box-sizing: border-box !important;
+    font-size: 14px !important;
+    margin-top: 4px !important;
+  }
+
+  /* Protect button text labels from any inherited word-break */
+  .tbl td .btn *,
+  .tbl td button *,
+  .tbl td a.btn *,
+  .tbl-cell-action .btn * {
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+  }
+
+  /* 9. Status badges: wrap as normal sentences */
+  .tbl td .pill,
+  .tbl td span.pill,
+  .tbl td .lbl,
+  .tbl td small.lbl,
+  .tbl-cell-status .pill {
+    display: inline-block !important;
+    max-width: 100% !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    line-height: 1.4 !important;
+  }
+
+  /* 10. General tool page controls sweep */
+  .tool-page .row,
+  .tool-container .row,
+  #tool-root .row,
+  .stack > .row,
+  .rbg-bottom-actions {
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+
+  .tool-page .row > *,
+  .tool-container .row > * {
+    max-width: 100% !important;
+  }
+
+  /* Preset chip rows & segments wrap */
+  .seg,
+  .chips,
+  .chip-row,
+  .preset-row,
+  .rbg-swatches {
+    flex-wrap: wrap !important;
+    max-width: 100% !important;
+  }
+
+  /* Preview images, canvases, comparison sliders never overflow */
+  .tool-page img,
+  .tool-page canvas,
+  .tool-container img,
+  .tool-container canvas,
+  #tool-root img,
+  #tool-root canvas,
+  .pv img,
+  .pv canvas,
+  .img-compare,
+  .preview-box,
+  .rbg-preview-wrap,
+  .rbg-preview-wrap canvas {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Workspace containment: clip overflow to prevent horizontal page scrolling without breaking sticky elements */
+  main.tool-page,
+  .tool-page,
+  .tool-container,
+  #tool-root,
+  .tool-workspace,
+  .panel {
+    max-width: 100vw !important;
+    overflow-x: clip !important;
+    box-sizing: border-box !important;
+  }
+}
+

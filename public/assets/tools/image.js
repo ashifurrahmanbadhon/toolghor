@@ -144,12 +144,13 @@
     var tbody = UI.el('tbody');
     rows.forEach(function (r) {
       if (typeof UI.formatDownloadName === 'function') r.name = UI.formatDownloadName(r.name);
+      var dlBtn = UI.btn(UI.el('span', { class: 'tbl-btn-lbl-m' }, tr('ডাউনলোড', "Download")), function () { UI.download(r.blob, r.name); }, { cls: 'sm', icon: 'download', iconSize: 16 });
       tbody.appendChild(UI.el('tr', {},
-        UI.el('td', {}, UI.el('img', { class: 'thumb', src: r.url, alt: '' })),
-        UI.el('td', { style: { overflowWrap: 'anywhere' } }, r.name),
-        UI.el('td', {}, UI.fmtSize(r.before)),
-        UI.el('td', {}, UI.fmtSize(r.blob.size) + (r.note ? ' ' : ''), r.note ? UI.el('small', { class: 'lbl' }, r.note) : null),
-        UI.el('td', {}, UI.btn('', function () { UI.download(r.blob, r.name); }, { cls: 'sm', icon: 'download', iconSize: 16 }))));
+        UI.el('td', { class: 'tbl-cell-thumb' }, UI.el('img', { class: 'thumb', src: r.url, alt: '' })),
+        UI.el('td', { class: 'tbl-filename', style: { overflowWrap: 'anywhere' } }, r.name),
+        UI.el('td', { 'data-label': tr('আগে', "Before") }, UI.fmtSize(r.before)),
+        UI.el('td', { 'data-label': tr('পরে', "After") }, UI.fmtSize(r.blob.size) + (r.note ? ' ' : ''), r.note ? UI.el('small', { class: 'lbl' }, r.note) : null),
+        UI.el('td', { class: 'tbl-cell-action' }, dlBtn)));
     });
     var wrap = UI.el('div', { class: 'stack' },
       UI.el('div', { class: 'tbl-wrap' }, UI.el('table', { class: 'tbl' },
@@ -2645,12 +2646,12 @@
           }, tr('✅ সম্পূর্ণ ক্লিন — কোনো AI লেবেল বা মেটাডেটা নেই', '✅ Clean — no AI label or metadata markers'));
 
           tbody.appendChild(UI.el('tr', {},
-            UI.el('td', {}, UI.el('img', { class: 'thumb', src: r.url, alt: '' })),
-            UI.el('td', { style: { overflowWrap: 'anywhere', fontWeight: '600' } }, r.name),
-            UI.el('td', {}, UI.fmtSize(r.beforeSize)),
-            UI.el('td', {}, UI.fmtSize(r.afterSize)),
-            UI.el('td', {}, cleanBadge),
-            UI.el('td', { style: { textAlign: 'right' } }, UI.btn(tr('ডাউনলোড', 'Download'), function () {
+            UI.el('td', { class: 'tbl-cell-thumb' }, UI.el('img', { class: 'thumb', src: r.url, alt: '' })),
+            UI.el('td', { class: 'tbl-filename', style: { overflowWrap: 'anywhere', fontWeight: '600' } }, r.name),
+            UI.el('td', { 'data-label': tr('আগে', 'Before') }, UI.fmtSize(r.beforeSize)),
+            UI.el('td', { 'data-label': tr('পরে', 'After') }, UI.fmtSize(r.afterSize)),
+            UI.el('td', { 'data-label': tr('স্ট্যাটাস', 'Status') }, cleanBadge),
+            UI.el('td', { class: 'tbl-cell-action', style: { textAlign: 'right' } }, UI.btn(tr('ডাউনলোড', 'Download'), function () {
               UI.download(r.blob, r.name);
             }, { cls: 'sm', icon: 'download', iconSize: 16 }))
           ));
@@ -2669,11 +2670,11 @@
           }, r.error);
 
           tbody.appendChild(UI.el('tr', {},
-            UI.el('td', {}, '⚠️'),
-            UI.el('td', { style: { overflowWrap: 'anywhere' } }, r.name),
-            UI.el('td', {}, UI.fmtSize(r.file.size)),
-            UI.el('td', {}, '-'),
-            UI.el('td', { colSpan: 2 }, errBadge)
+            UI.el('td', { class: 'tbl-cell-thumb' }, '⚠️'),
+            UI.el('td', { class: 'tbl-filename', style: { overflowWrap: 'anywhere' } }, r.name),
+            UI.el('td', { 'data-label': tr('আগে', 'Before') }, UI.fmtSize(r.file.size)),
+            UI.el('td', { 'data-label': tr('পরে', 'After') }, '-'),
+            UI.el('td', { class: 'tbl-cell-status', colSpan: 2, 'data-label': tr('স্ট্যাটাস', 'Status') }, errBadge)
           ));
         }
       });
