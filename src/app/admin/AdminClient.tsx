@@ -34,7 +34,13 @@ import {
   Phone,
   KeyRound,
   Zap,
+  FileText,
 } from 'lucide-react';
+import {
+  DEFAULT_POLICY_SECTIONS,
+  POLICY_SECTIONS_LIST,
+  PolicySection,
+} from '@/data/policiesDefaults';
 
 interface HeroSection {
   is_active: boolean;
@@ -129,6 +135,7 @@ type MenuTab =
   | 'footer'
   | 'creator'
   | 'apis'
+  | 'policies'
   | 'analytics'
   | 'profile';
 
@@ -256,6 +263,9 @@ export default function AdminConsole() {
   });
 
   const [analytics, setAnalytics] = useState<Record<string, number>>({});
+  const [policies, setPolicies] = useState<Record<string, PolicySection>>(DEFAULT_POLICY_SECTIONS);
+  const [savingPolicies, setSavingPolicies] = useState<Record<string, boolean>>({});
+  const [policySaveStatus, setPolicySaveStatus] = useState<Record<string, 'saved' | 'error' | null>>({});
 
   // Tool Filters & Search
   const [toolSearch, setToolSearch] = useState('');
@@ -390,6 +400,7 @@ export default function AdminConsole() {
             setApiKeys(rawApi);
           }
         }
+        if (data.policies) setPolicies(data.policies);
         if (data.analytics) setAnalytics(data.analytics);
       } else {
         setDbConnected(false);
@@ -819,6 +830,44 @@ export default function AdminConsole() {
     });
     setApiKeys(safePayload);
     await postApi('update_api_keys', safePayload, 'API Credentials saved!');
+  };
+
+  // 8. Policy Sections Updates (Per-section table isolation)
+  const savePolicySection = async (sectionKey: string) => {
+    const sec = policies[sectionKey];
+    if (!sec) return;
+    setSavingPolicies((prev) => ({ ...prev, [sectionKey]: true }));
+    try {
+      const ok = await postApi(
+        'update_policy_section',
+        {
+          section: sectionKey,
+          title_en: sec.title_en,
+          title_bn: sec.title_bn,
+          body_en: sec.body_en,
+          body_bn: sec.body_bn,
+        },
+        `Policy section "${sec.title_en}" saved successfully!`
+      );
+      if (ok) {
+        setPolicySaveStatus((prev) => ({ ...prev, [sectionKey]: 'saved' }));
+        setTimeout(() => {
+          setPolicySaveStatus((prev) => ({ ...prev, [sectionKey]: null }));
+        }, 3500);
+      } else {
+        setPolicySaveStatus((prev) => ({ ...prev, [sectionKey]: 'error' }));
+        setTimeout(() => {
+          setPolicySaveStatus((prev) => ({ ...prev, [sectionKey]: null }));
+        }, 3500);
+      }
+    } catch {
+      setPolicySaveStatus((prev) => ({ ...prev, [sectionKey]: 'error' }));
+      setTimeout(() => {
+        setPolicySaveStatus((prev) => ({ ...prev, [sectionKey]: null }));
+      }, 3500);
+    } finally {
+      setSavingPolicies((prev) => ({ ...prev, [sectionKey]: false }));
+    }
   };
 
   // Tool Filter Logic
@@ -1585,6 +1634,7 @@ export default function AdminConsole() {
                 { id: 'categories', label: 'Categories Manager', icon: Layers, badge: categories.length },
                 { id: 'tools', label: 'Tools Manager', icon: Wrench, badge: tools.length },
                 { id: 'footer', label: 'Footer & WhatsApp', icon: MessageSquare },
+                { id: 'policies', label: 'Terms & Policies', icon: FileText, badge: '9' },
                 { id: 'creator', label: 'Creator Profile', icon: User },
                 { id: 'apis', label: 'API Integrations', icon: Key },
                 { id: 'analytics', label: 'Usage Analytics', icon: BarChart3 },
@@ -1680,6 +1730,7 @@ export default function AdminConsole() {
               { id: 'categories', label: `Categories (${categories.length})` },
               { id: 'tools', label: `Tools (${tools.length})` },
               { id: 'footer', label: 'Footer & WhatsApp' },
+              { id: 'policies', label: 'Policies (9)' },
               { id: 'creator', label: 'Creator' },
               { id: 'apis', label: 'APIs' },
               { id: 'analytics', label: 'Analytics' },
@@ -3726,6 +3777,328 @@ export default function AdminConsole() {
                     <Check size={16} /> Save All API Credentials
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: TERMS & POLICIES (9 ISOLATED SECTIONS) */}
+          {activeTab === 'policies' && (
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '24px',
+                  flexWrap: 'wrap',
+                  gap: '14px',
+                }}
+              >
+                <div>
+                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc' }}>
+                    Terms & Policies Manager
+                  </h1>
+                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>
+                    Every policy section lives in its OWN separate database table. Each section is edited and saved independently without affecting other sections.
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <Link
+                    href="/terms"
+                    target="_blank"
+                    style={{
+                      background: 'rgba(56, 189, 248, 0.12)',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                      color: '#38bdf8',
+                      padding: '8px 14px',
+                      borderRadius: '10px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <ExternalLink size={14} /> View /terms
+                  </Link>
+                  <Link
+                    href="/privacy"
+                    target="_blank"
+                    style={{
+                      background: 'rgba(16, 185, 129, 0.12)',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      color: '#10b981',
+                      padding: '8px 14px',
+                      borderRadius: '10px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <ExternalLink size={14} /> View /privacy
+                  </Link>
+                </div>
+              </div>
+
+              {/* 9 Separate Editor Cards */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {POLICY_SECTIONS_LIST.map((item, index) => {
+                  const sec = policies[item.id] || DEFAULT_POLICY_SECTIONS[item.id];
+                  const isSaving = Boolean(savingPolicies[item.id]);
+                  const status = policySaveStatus[item.id];
+
+                  return (
+                    <div
+                      key={item.id}
+                      id={`editor-${item.id}`}
+                      style={{
+                        background: '#111827',
+                        border: '1px solid #1f2937',
+                        borderRadius: '16px',
+                        padding: '24px',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                      }}
+                    >
+                      {/* Card Header */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: '12px',
+                          marginBottom: '20px',
+                          paddingBottom: '14px',
+                          borderBottom: '1px solid #1f2937',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span
+                            style={{
+                              background: '#1e293b',
+                              color: '#38bdf8',
+                              padding: '4px 10px',
+                              borderRadius: '8px',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                            }}
+                          >
+                            Section {index + 1}
+                          </span>
+                          <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: '#f8fafc' }}>
+                            {sec.title_en} ({sec.title_bn})
+                          </h2>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span
+                            style={{
+                              fontSize: '11.5px',
+                              fontFamily: 'monospace',
+                              background: '#0f172a',
+                              border: '1px solid #334155',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              color: '#94a3b8',
+                            }}
+                          >
+                            Table: {item.table_name}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Card Form */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                        {/* Titles Row */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#e2e8f0', marginBottom: '6px' }}>
+                              Title (English)
+                            </label>
+                            <input
+                              type="text"
+                              value={sec.title_en}
+                              onChange={(e) =>
+                                setPolicies((prev) => ({
+                                  ...prev,
+                                  [item.id]: { ...prev[item.id], title_en: e.target.value },
+                                }))
+                              }
+                              style={{
+                                width: '100%',
+                                background: '#0f172a',
+                                border: '1px solid #334155',
+                                borderRadius: '10px',
+                                color: '#f8fafc',
+                                padding: '10px 14px',
+                                fontSize: '14px',
+                              }}
+                            />
+                          </div>
+
+                          <div>
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#e2e8f0', marginBottom: '6px' }}>
+                              Title (বাংলা)
+                            </label>
+                            <input
+                              type="text"
+                              value={sec.title_bn}
+                              onChange={(e) =>
+                                setPolicies((prev) => ({
+                                  ...prev,
+                                  [item.id]: { ...prev[item.id], title_bn: e.target.value },
+                                }))
+                              }
+                              style={{
+                                width: '100%',
+                                background: '#0f172a',
+                                border: '1px solid #334155',
+                                borderRadius: '10px',
+                                color: '#f8fafc',
+                                padding: '10px 14px',
+                                fontSize: '14px',
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Bodies Row (Raw Markdown) */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                              <label style={{ fontSize: '13px', fontWeight: 600, color: '#e2e8f0' }}>
+                                Body (English — Markdown)
+                              </label>
+                              <span style={{ fontSize: '11px', color: '#64748b' }}>Supports ## subheads & - bullets</span>
+                            </div>
+                            <textarea
+                              rows={10}
+                              value={sec.body_en}
+                              onChange={(e) =>
+                                setPolicies((prev) => ({
+                                  ...prev,
+                                  [item.id]: { ...prev[item.id], body_en: e.target.value },
+                                }))
+                              }
+                              style={{
+                                width: '100%',
+                                background: '#0f172a',
+                                border: '1px solid #334155',
+                                borderRadius: '10px',
+                                color: '#f8fafc',
+                                padding: '12px 14px',
+                                fontSize: '13.5px',
+                                fontFamily: 'monospace',
+                                lineHeight: 1.6,
+                                resize: 'vertical',
+                              }}
+                            />
+                          </div>
+
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                              <label style={{ fontSize: '13px', fontWeight: 600, color: '#e2e8f0' }}>
+                                Body (বাংলা — Markdown)
+                              </label>
+                              <span style={{ fontSize: '11px', color: '#64748b' }}>Supports ## subheads & - bullets</span>
+                            </div>
+                            <textarea
+                              rows={10}
+                              value={sec.body_bn}
+                              onChange={(e) =>
+                                setPolicies((prev) => ({
+                                  ...prev,
+                                  [item.id]: { ...prev[item.id], body_bn: e.target.value },
+                                }))
+                              }
+                              style={{
+                                width: '100%',
+                                background: '#0f172a',
+                                border: '1px solid #334155',
+                                borderRadius: '10px',
+                                color: '#f8fafc',
+                                padding: '12px 14px',
+                                fontSize: '13.5px',
+                                fontFamily: 'monospace',
+                                lineHeight: 1.6,
+                                resize: 'vertical',
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Card Action Footer: Dedicated Save Button */}
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                            gap: '12px',
+                            marginTop: '8px',
+                            paddingTop: '16px',
+                            borderTop: '1px solid #1f2937',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '12px', color: '#64748b' }}>
+                              Isolated saving: writes only to <code>{item.table_name}</code>
+                            </span>
+                            {status === 'saved' && (
+                              <span style={{ fontSize: '12px', color: '#34d399', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                                <Check size={14} /> Saved successfully!
+                              </span>
+                            )}
+                            {status === 'error' && (
+                              <span style={{ fontSize: '12px', color: '#f87171', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                                ✕ Error saving section
+                              </span>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled={isSaving}
+                            onClick={() => savePolicySection(item.id)}
+                            style={{
+                              background: '#10b981',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '10px',
+                              padding: '10px 20px',
+                              fontSize: '13.5px',
+                              fontWeight: 700,
+                              cursor: isSaving ? 'not-allowed' : 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              opacity: isSaving ? 0.7 : 1,
+                              transition: 'all 0.15s ease',
+                              boxShadow: '0 4px 12px rgba(16,185,129,0.25)',
+                            }}
+                          >
+                            {isSaving ? (
+                              <>
+                                <RefreshCw size={15} className="spin" />
+                                Saving Section {index + 1}...
+                              </>
+                            ) : (
+                              <>
+                                <Check size={15} />
+                                Save Section {index + 1} ({sec.title_en})
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

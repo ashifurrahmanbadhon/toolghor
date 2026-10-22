@@ -233,11 +233,6 @@ export default function Header() {
             </span>
             <span>{lang === 'bn' ? 'টুলের অনুরোধ' : 'Request a Tool'}</span>
           </button>
-
-          {/* Admin link */}
-          <Link href="/admin" className="pill" title="Admin Console">
-            <span>🛡️ {lang === 'bn' ? 'অ্যাডমিন' : 'Admin'}</span>
-          </Link>
         </div>
       </div>
     </header>

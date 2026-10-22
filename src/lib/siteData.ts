@@ -39,6 +39,12 @@ export async function getPublicSiteData() {
         }
       : null;
 
+    let policySections = null;
+    try {
+      const { getAllPolicySections } = await import('@/lib/policiesData');
+      policySections = await getAllPolicySections();
+    } catch {}
+
     const data = {
       success: true,
       hero: heroRows[0] || null,
@@ -49,6 +55,7 @@ export async function getPublicSiteData() {
       creatorAbout: creatorRows[0] || null,
       apiKeys: safeApiKeys,
       uiSettings: uiSettingsRows[0] || null,
+      policies: policySections,
     };
 
     cachedSiteData = data;

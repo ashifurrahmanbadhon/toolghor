@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, initDatabase } from '@/lib/db';
 import { clearSiteDataCache } from '@/lib/siteData';
+import { getAllPolicySections, clearPoliciesCache } from '@/lib/policiesData';
 import { revalidatePath } from 'next/cache';
 import { verifyAdminRequest, isAuthSecretDerived } from '@/lib/adminAuth';
 
@@ -54,6 +55,8 @@ export async function GET(req: NextRequest) {
       analyticsMap[r.slug] = Number(r.count || 0);
     });
 
+    const policySections = await getAllPolicySections();
+
     return NextResponse.json({
       success: true,
       dbConnected: true,
@@ -67,6 +70,7 @@ export async function GET(req: NextRequest) {
         creatorAbout: creatorRows[0] || null,
         apiKeys: apiKeysRows[0] || null,
       },
+      policies: policySections,
       analytics: analyticsMap,
     });
   } catch (error: any) {
@@ -98,13 +102,19 @@ export async function POST(req: NextRequest) {
 
     function notifyLiveUpdate(message: string, extra: any = {}) {
       clearSiteDataCache();
+      clearPoliciesCache();
       try {
         revalidatePath('/', 'page');
         revalidatePath('/', 'layout');
+        revalidatePath('/terms', 'page');
+        revalidatePath('/terms', 'layout');
+        revalidatePath('/privacy', 'page');
+        revalidatePath('/privacy', 'layout');
         revalidatePath('/tools/[slug]', 'page');
         revalidatePath('/tools/[slug]', 'layout');
         revalidatePath('/admin', 'page');
         revalidatePath('/api/public/data');
+        revalidatePath('/api/policies');
       } catch (e) {}
       return NextResponse.json(
         { success: true, message, ...extra },
@@ -391,6 +401,42 @@ export async function POST(req: NextRequest) {
         WHERE id = 1;
       `;
       return notifyLiveUpdate('UI Settings updated successfully');
+    }
+
+    // 9. Update Policy Section independently (Per-section table isolation)
+    if (action === 'update_policy_section' || (typeof action === 'string' && action.startsWith('update_policy_'))) {
+      const sectionKey = payload?.section || (action === 'update_policy_section' ? payload?.id : action.replace('update_policy_', ''));
+      const validTables: Record<string, string> = {
+        terms: 'section_policy_terms',
+        privacy: 'section_policy_privacy',
+        cookies: 'section_policy_cookies',
+        disclaimer: 'section_policy_disclaimer',
+        ip: 'section_policy_ip',
+        third_party: 'section_policy_third_party',
+        acceptable_use: 'section_policy_acceptable_use',
+        updates: 'section_policy_updates',
+        contact: 'section_policy_contact',
+      };
+
+      const tableName = validTables[sectionKey];
+      if (!tableName) {
+        return NextResponse.json({ success: false, error: `Invalid policy section: ${sectionKey}` }, { status: 400 });
+      }
+
+      const { title_en, title_bn, body_en, body_bn } = payload;
+
+      await sql.query(`
+        INSERT INTO ${tableName} (id, title_en, title_bn, body_en, body_bn)
+        VALUES (1, $1, $2, $3, $4)
+        ON CONFLICT (id) DO UPDATE SET
+          title_en = EXCLUDED.title_en,
+          title_bn = EXCLUDED.title_bn,
+          body_en = EXCLUDED.body_en,
+          body_bn = EXCLUDED.body_bn,
+          updated_at = CURRENT_TIMESTAMP;
+      `, [title_en ?? '', title_bn ?? '', body_en ?? '', body_bn ?? '']);
+
+      return notifyLiveUpdate(`Policy section "${sectionKey}" updated successfully`, { section: sectionKey });
     }
 
     return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 });

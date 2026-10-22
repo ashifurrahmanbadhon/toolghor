@@ -382,6 +382,32 @@ export async function initDatabase() {
     ON CONFLICT (slug) DO NOTHING;
   `;
 
+  // 13. Policy Sections (Each policy lives in its own separate table)
+  const policyTables = [
+    'section_policy_terms',
+    'section_policy_privacy',
+    'section_policy_cookies',
+    'section_policy_disclaimer',
+    'section_policy_ip',
+    'section_policy_third_party',
+    'section_policy_acceptable_use',
+    'section_policy_updates',
+    'section_policy_contact',
+  ];
+
+  for (const tbl of policyTables) {
+    await sql.query(`
+      CREATE TABLE IF NOT EXISTS ${tbl} (
+        id INT PRIMARY KEY DEFAULT 1,
+        title_en TEXT NOT NULL,
+        title_bn TEXT NOT NULL,
+        body_en TEXT NOT NULL,
+        body_bn TEXT NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+  }
+
   isInitialized = true;
   return { success: true };
 }

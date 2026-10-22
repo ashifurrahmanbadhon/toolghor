@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { siteConfig } from '@/data/config';
 
@@ -76,8 +77,27 @@ export default function Footer({ customSettings }: FooterProps) {
   return (
     <>
       <footer className="foot">
-        <div className="wrap">
-          © 2026 <span>{siteConfig.name}</span>. {copyrightText}
+        <div className="wrap foot-row">
+          <div className="foot-left">
+            © 2026 <span>{siteConfig.name}</span>. {copyrightText}
+          </div>
+          <div className="foot-links">
+            <Link href="/privacy" className="foot-link">
+              {lang === 'bn' ? 'গোপনীয়তা নীতি' : 'Privacy Policy'}
+            </Link>
+            <span className="foot-sep" aria-hidden="true">·</span>
+            <Link href="/terms" className="foot-link">
+              {lang === 'bn' ? 'ব্যবহারের শর্তাবলী' : 'Terms of Service'}
+            </Link>
+            <span className="foot-sep" aria-hidden="true">·</span>
+            <Link
+              href="/admin"
+              className="foot-link foot-admin"
+              title={lang === 'bn' ? 'অ্যাডমিন কনসোল' : 'Admin Console'}
+            >
+              🛡️ {lang === 'bn' ? 'অ্যাডমিন' : 'Admin'}
+            </Link>
+          </div>
         </div>
       </footer>
 
