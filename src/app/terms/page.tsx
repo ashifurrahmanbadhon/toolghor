@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   title: 'Terms & Policies — ToolGhor',
   description:
     'Comprehensive Terms & Conditions, Acceptable Use, Disclaimer, Cookie Policy, and intellectual property terms for ToolGhor — Bangladesh’s trusted web tools platform.',
-  keywords: ['Terms of Service', 'ToolGhor terms', 'Privacy Policy', 'Bangladesh legal web tools'],
+  keywords: ['Terms of Service', 'ToolGhor terms', 'Bangladesh legal web tools'],
 };
 
 export const dynamic = 'force-dynamic';

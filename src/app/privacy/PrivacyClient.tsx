@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PolicyMarkdown from '@/components/PolicyMarkdown';
 import { useApp } from '@/context/AppContext';
-import { PolicySection, POLICY_SECTIONS_LIST, DEFAULT_POLICY_SECTIONS } from '@/data/policiesDefaults';
+import { PolicySection, extractSubheadings } from '@/data/policiesDefaults';
 
 interface PrivacyClientProps {
   initialPolicy: PolicySection;
@@ -54,7 +53,7 @@ export default function PrivacyClient({ initialPolicy }: PrivacyClientProps) {
   const isBn = lang === 'bn';
   const pageTitle = isBn ? policy.title_bn : policy.title_en;
   const pageBody = isBn ? policy.body_bn : policy.body_en;
-  const sidebarTitle = isBn ? 'শর্তাবলী ও নীতিমালা' : 'Terms & Policies';
+  const sidebarTitle = isBn ? 'গোপনীয়তা নীতি' : 'Privacy Policy';
   const lastUpdatedDate = isBn ? '২২ অক্টোবর ২০২৬' : '22 October 2026';
   const lastUpdatedText = isBn
     ? `সর্বশেষ হালনাগাদ: ${lastUpdatedDate}`
@@ -65,6 +64,56 @@ export default function PrivacyClient({ initialPolicy }: PrivacyClientProps) {
     ? 'ToolGhor-এ আপনার তথ্যের গোপনীয়তা রক্ষা করা আমাদের প্রধান অগ্রাধিকার। আমাদের কোনো টুল আপনার ফাইল কোনো রিমোট সার্ভারে জমা করে না — সব প্রসেসিং সরাসরি আপনার ডিভাইসে ঘটে।'
     : 'Your privacy is paramount at ToolGhor. We do not store your files on external servers — all processing happens directly in your browser on your own device.';
 
+  // Extract only the Privacy Policy's own sub-sections
+  const subheadings = useMemo(() => extractSubheadings(pageBody), [pageBody]);
+  const [activeSection, setActiveSection] = useState<string>(subheadings[0]?.id || '');
+
+  // Keep active section valid when language or subheadings change
+  useEffect(() => {
+    if (subheadings.length > 0 && (!activeSection || !subheadings.some((s) => s.id === activeSection))) {
+      setActiveSection(subheadings[0].id);
+    }
+  }, [subheadings, activeSection]);
+
+  // IntersectionObserver Scrollspy for sticky sidebar & mobile chip row
+  useEffect(() => {
+    if (subheadings.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.find((e) => e.isIntersecting);
+        if (visible && visible.target.id) {
+          setActiveSection(visible.target.id);
+        }
+      },
+      {
+        rootMargin: '-80px 0px -55% 0px',
+        threshold: [0, 0.2],
+      }
+    );
+
+    subheadings.forEach((item) => {
+      const el = document.getElementById(item.id);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [subheadings]);
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    const el = document.getElementById(id);
+    if (el) {
+      const yOffset = -90;
+      const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+      setActiveSection(id);
+      if (window.history && window.history.pushState) {
+        window.history.pushState(null, '', `#${id}`);
+      }
+    }
+  };
+
   return (
     <>
       <Header />
@@ -72,32 +121,23 @@ export default function PrivacyClient({ initialPolicy }: PrivacyClientProps) {
         <div className="policy-docs-container">
           {/* Mobile Horizontal Scrollable Chip Bar */}
           <nav
-            aria-label="Terms and Policies quick navigation"
+            aria-label="Privacy Policy quick navigation"
             className="policy-docs-mobile-nav"
           >
             <div className="policy-docs-mobile-chips">
-              {POLICY_SECTIONS_LIST.map((item, index) => {
-                const def = DEFAULT_POLICY_SECTIONS[item.id];
-                const title = isBn ? def?.title_bn || item.id : def?.title_en || item.id;
+              {subheadings.map((item, index) => {
                 const num = toBengaliNumber(index + 1, isBn);
-                const isCurrent = item.id === 'privacy';
+                const isActive = activeSection === item.id;
 
-                return isCurrent ? (
+                return (
                   <a
                     key={item.id}
-                    href="#privacy"
-                    className="policy-docs-mobile-chip active"
+                    href={`#${item.id}`}
+                    onClick={(e) => handleNavClick(e, item.id)}
+                    className={`policy-docs-mobile-chip ${isActive ? 'active' : ''}`}
                   >
-                    <span>{num}</span> {title}
+                    <span>{num}</span> {item.title}
                   </a>
-                ) : (
-                  <Link
-                    key={item.id}
-                    href={`/terms#${item.id}`}
-                    className="policy-docs-mobile-chip"
-                  >
-                    <span>{num}</span> {title}
-                  </Link>
                 );
               })}
             </div>
@@ -110,31 +150,21 @@ export default function PrivacyClient({ initialPolicy }: PrivacyClientProps) {
                 <div className="policy-docs-sidebar-header">
                   <span className="policy-docs-sidebar-title">{sidebarTitle}</span>
                 </div>
-                <nav aria-label="Documentation sections" className="policy-docs-nav">
-                  {POLICY_SECTIONS_LIST.map((item, index) => {
-                    const def = DEFAULT_POLICY_SECTIONS[item.id];
-                    const title = isBn ? def?.title_bn || item.id : def?.title_en || item.id;
+                <nav aria-label="Privacy Policy sub-sections" className="policy-docs-nav">
+                  {subheadings.map((item, index) => {
                     const num = toBengaliNumber(index + 1, isBn);
-                    const isCurrent = item.id === 'privacy';
+                    const isActive = activeSection === item.id;
 
-                    return isCurrent ? (
+                    return (
                       <a
                         key={item.id}
-                        href="#privacy"
-                        className="policy-docs-nav-link active"
+                        href={`#${item.id}`}
+                        onClick={(e) => handleNavClick(e, item.id)}
+                        className={`policy-docs-nav-link ${isActive ? 'active' : ''}`}
                       >
                         <span className="policy-docs-nav-num">{num}</span>
-                        <span className="policy-docs-nav-text">{title}</span>
+                        <span className="policy-docs-nav-text">{item.title}</span>
                       </a>
-                    ) : (
-                      <Link
-                        key={item.id}
-                        href={`/terms#${item.id}`}
-                        className="policy-docs-nav-link"
-                      >
-                        <span className="policy-docs-nav-num">{num}</span>
-                        <span className="policy-docs-nav-text">{title}</span>
-                      </Link>
                     );
                   })}
                 </nav>

@@ -20,6 +20,100 @@ export const POLICY_SECTIONS_LIST: Omit<PolicySection, 'title_en' | 'title_bn' |
   { id: 'contact', table_name: 'section_policy_contact' },
 ];
 
+export const TERMS_SECTIONS_LIST: Omit<PolicySection, 'title_en' | 'title_bn' | 'body_en' | 'body_bn'>[] = [
+  { id: 'terms', table_name: 'section_policy_terms' },
+  { id: 'cookies', table_name: 'section_policy_cookies' },
+  { id: 'disclaimer', table_name: 'section_policy_disclaimer' },
+  { id: 'ip', table_name: 'section_policy_ip' },
+  { id: 'third_party', table_name: 'section_policy_third_party' },
+  { id: 'acceptable_use', table_name: 'section_policy_acceptable_use' },
+  { id: 'updates', table_name: 'section_policy_updates' },
+  { id: 'contact', table_name: 'section_policy_contact' },
+];
+
+export interface PolicySubheading {
+  id: string;
+  title: string;
+}
+
+export const KNOWN_SUBHEAD_MAP: Record<string, string> = {
+  // Privacy subheadings
+  'your files stay on your device': 'your-files-stay-on-your-device',
+  'আপনার ফাইল আপনার ডিভাইসেই থাকে': 'your-files-stay-on-your-device',
+  'tools that use external processing': 'tools-external-processing',
+  'যেসব টুল বাইরের সেবা ব্যবহার করে': 'tools-external-processing',
+  'information we collect': 'information-we-collect',
+  'আমরা যা সংগ্রহ করি': 'information-we-collect',
+  'local storage': 'local-storage',
+  'লোকাল স্টোরেজ': 'local-storage',
+  'how we protect information': 'how-we-protect-information',
+  'তথ্য সুরক্ষা': 'how-we-protect-information',
+  'no sale of personal information': 'no-sale-of-personal-information',
+  'ব্যক্তিগত তথ্য বিক্রি নয়': 'no-sale-of-personal-information',
+  'your choices': 'your-choices',
+  'আপনার পছন্দ': 'your-choices',
+  // Terms & other subheadings
+  'the service': 'the-service',
+  'সেবাটি': 'the-service',
+  'acceptable use': 'acceptable-use',
+  'গ্রহণযোগ্য ব্যবহার': 'acceptable-use',
+  'changes to the service': 'changes-to-service',
+  'সেবার পরিবর্তন': 'changes-to-service',
+  'your responsibility': 'your-responsibility',
+  'আপনার দায়িত্ব': 'your-responsibility',
+  'general': 'general',
+  'সাধারণ': 'general',
+  'what we store': 'what-we-store',
+  'আমরা যা সংরক্ষণ করি': 'what-we-store',
+  'what we do not do': 'what-we-do-not-do',
+  'যা আমরা করি না': 'what-we-do-not-do',
+  'managing cookies and storage': 'managing-cookies-storage',
+  'কুকি ও স্টোরেজ ব্যবস্থাপনা': 'managing-cookies-storage',
+  'our content': 'our-content',
+  'আমাদের কনটেন্ট': 'our-content',
+  'your content': 'your-content',
+  'আপনার কনটেন্ট': 'your-content',
+  'third-party rights': 'third-party-rights',
+  'তৃতীয় পক্ষের অধিকার': 'third-party-rights',
+  'reporting infringement': 'reporting-infringement',
+  'লঙ্ঘনের অভিযোগ': 'reporting-infringement',
+};
+
+export const KNOWN_SUBHEADS_SET = new Set(Object.keys(KNOWN_SUBHEAD_MAP));
+
+export function getHeadingSlug(text: string, fallbackIndex: number): string {
+  const normalized = text.toLowerCase().trim();
+  if (KNOWN_SUBHEAD_MAP[normalized]) {
+    return KNOWN_SUBHEAD_MAP[normalized];
+  }
+  const ascii = normalized.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  if (ascii) return ascii;
+  return `sub-${fallbackIndex}`;
+}
+
+export function extractSubheadings(content: string): PolicySubheading[] {
+  if (!content) return [];
+  const lines = content.replace(/\r\n/g, '\n').split('\n');
+  const results: PolicySubheading[] = [];
+  let count = 0;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const lower = trimmed.toLowerCase();
+    if (trimmed.startsWith('## ') || trimmed.startsWith('### ') || KNOWN_SUBHEADS_SET.has(lower)) {
+      const headingText = trimmed.replace(/^#+\s*/, '');
+      count++;
+      results.push({
+        id: getHeadingSlug(headingText, count),
+        title: headingText,
+      });
+    }
+  }
+  return results;
+}
+
+
 export const DEFAULT_POLICY_SECTIONS: Record<string, PolicySection> = {
   terms: {
     id: 'terms',

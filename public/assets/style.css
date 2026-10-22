@@ -5106,6 +5106,7 @@ table.tbl {
   margin: 24px 0 10px;
   line-height: 1.4;
   letter-spacing: -0.01em;
+  scroll-margin-top: 100px;
 }
 .policy-doc-para {
   margin: 0 0 16px;

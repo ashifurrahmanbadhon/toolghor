@@ -5,7 +5,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PolicyMarkdown from '@/components/PolicyMarkdown';
 import { useApp } from '@/context/AppContext';
-import { PolicySection, POLICY_SECTIONS_LIST, DEFAULT_POLICY_SECTIONS } from '@/data/policiesDefaults';
+import { PolicySection, TERMS_SECTIONS_LIST, DEFAULT_POLICY_SECTIONS } from '@/data/policiesDefaults';
 
 interface TermsClientProps {
   initialPolicies: Record<string, PolicySection>;
@@ -67,7 +67,7 @@ export default function TermsClient({ initialPolicies }: TermsClientProps) {
       }
     );
 
-    POLICY_SECTIONS_LIST.forEach((item) => {
+    TERMS_SECTIONS_LIST.forEach((item) => {
       const el = document.getElementById(item.id);
       if (el) observer.observe(el);
     });
@@ -113,7 +113,7 @@ export default function TermsClient({ initialPolicies }: TermsClientProps) {
             className="policy-docs-mobile-nav"
           >
             <div className="policy-docs-mobile-chips">
-              {POLICY_SECTIONS_LIST.map((item, index) => {
+              {TERMS_SECTIONS_LIST.map((item, index) => {
                 const sec = policies[item.id];
                 const def = DEFAULT_POLICY_SECTIONS[item.id];
                 const title = isBn ? sec?.title_bn || def?.title_bn || item.id : sec?.title_en || def?.title_en || item.id;
@@ -142,7 +142,7 @@ export default function TermsClient({ initialPolicies }: TermsClientProps) {
                   <span className="policy-docs-sidebar-title">{sidebarTitle}</span>
                 </div>
                 <nav aria-label="Documentation sections" className="policy-docs-nav">
-                  {POLICY_SECTIONS_LIST.map((item, index) => {
+                  {TERMS_SECTIONS_LIST.map((item, index) => {
                     const sec = policies[item.id];
                     const def = DEFAULT_POLICY_SECTIONS[item.id];
                     const title = isBn ? sec?.title_bn || def?.title_bn || item.id : sec?.title_en || def?.title_en || item.id;
@@ -181,7 +181,7 @@ export default function TermsClient({ initialPolicies }: TermsClientProps) {
 
               {/* Sections Flow */}
               <div className="policy-docs-sections">
-                {POLICY_SECTIONS_LIST.map((item, index) => {
+                {TERMS_SECTIONS_LIST.map((item, index) => {
                   const sec = policies[item.id];
                   if (!sec) return null;
                   const title = isBn ? sec.title_bn : sec.title_en;

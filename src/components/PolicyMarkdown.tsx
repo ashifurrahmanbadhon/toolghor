@@ -2,50 +2,11 @@
 
 import React from 'react';
 
+import { getHeadingSlug, KNOWN_SUBHEADS_SET } from '@/data/policiesDefaults';
+
 interface PolicyMarkdownProps {
   content: string;
 }
-
-const KNOWN_SUBHEADS = new Set([
-  'The Service',
-  'সেবাটি',
-  'Acceptable Use',
-  'গ্রহণযোগ্য ব্যবহার',
-  'Changes to the Service',
-  'সেবার পরিবর্তন',
-  'Your Responsibility',
-  'আপনার দায়িত্ব',
-  'General',
-  'সাধারণ',
-  'Your Files Stay on Your Device',
-  'আপনার ফাইল আপনার ডিভাইসেই থাকে',
-  'Tools That Use External Processing',
-  'যেসব টুল বাইরের সেবা ব্যবহার করে',
-  'Information We Collect',
-  'আমরা যা সংগ্রহ করি',
-  'Local Storage',
-  'লোকাল স্টোরেজ',
-  'How We Protect Information',
-  'তথ্য সুরক্ষা',
-  'No Sale of Personal Information',
-  'ব্যক্তিগত তথ্য বিক্রি নয়',
-  'Your Choices',
-  'আপনার পছন্দ',
-  'What We Store',
-  'আমরা যা সংরক্ষণ করি',
-  'What We Do Not Do',
-  'যা আমরা করি না',
-  'Managing Cookies and Storage',
-  'কুকি ও স্টোরেজ ব্যবস্থাপনা',
-  'Our Content',
-  'আমাদের কনটেন্ট',
-  'Your Content',
-  'আপনার কনটেন্ট',
-  'Third-Party Rights',
-  'তৃতীয় পক্ষের অধিকার',
-  'Reporting Infringement',
-  'লঙ্ঘনের অভিযোগ',
-]);
 
 export default function PolicyMarkdown({ content }: PolicyMarkdownProps) {
   if (!content) return null;
@@ -55,6 +16,7 @@ export default function PolicyMarkdown({ content }: PolicyMarkdownProps) {
 
   const elements: React.ReactNode[] = [];
   let currentList: string[] = [];
+  let headingCount = 0;
 
   const flushList = (keyPrefix: number) => {
     if (currentList.length > 0) {
@@ -105,12 +67,16 @@ export default function PolicyMarkdown({ content }: PolicyMarkdownProps) {
       return;
     }
 
+    const lower = trimmed.toLowerCase();
+
     // Markdown subheads (## or ### or recognized section subhead)
-    if (trimmed.startsWith('## ') || trimmed.startsWith('### ') || KNOWN_SUBHEADS.has(trimmed)) {
+    if (trimmed.startsWith('## ') || trimmed.startsWith('### ') || KNOWN_SUBHEADS_SET.has(lower)) {
       flushList(index);
       const headingText = trimmed.replace(/^#+\s*/, '');
+      headingCount++;
+      const headingId = getHeadingSlug(headingText, headingCount);
       elements.push(
-        <h3 key={`h3-${index}`} className="policy-doc-subhead">
+        <h3 key={`h3-${index}`} id={headingId} className="policy-doc-subhead">
           {headingText}
         </h3>
       );
