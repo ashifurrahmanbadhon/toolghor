@@ -32,7 +32,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
-  const title = `${tool.en} (${tool.bn}) | ${siteConfig.name}`;
+  const title = slug === 'remove-ai-label'
+    ? 'Remove AI Label & Metadata from Photos — Free, No Upload | ToolGhor'
+    : `${tool.en} (${tool.bn}) | ${siteConfig.name}`;
   const description = `${tool.descEn}. ${tool.desc} - Free, fast, and 100% private in-browser tool.`;
 
   return {
