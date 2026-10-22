@@ -17,6 +17,8 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizePackageImports: ['lucide-react'],
+    // @ts-ignore
+    agentUpgrade: 'security',
   },
   async headers() {
     return [
