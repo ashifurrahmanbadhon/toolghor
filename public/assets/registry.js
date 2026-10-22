@@ -101,6 +101,13 @@ var REGISTRY = {
       steps: ['একটি ছবি বেছে নিন।', 'স্বচ্ছতা বা রঙের ব্যাকগ্রাউন্ড নির্বাচন করুন।', 'প্রয়োজনে সেনসিটিভিটি বা ইরেজার ব্রাশ দিয়ে নিখুঁত করুন।', '"ডাউনলোড করুন" চাপুন।']
     },
     {
+      slug: 'remove-ai-label', bn: 'AI লেবেল রিমুভার', en: 'Remove AI Label', icon: 'shield-check', cats: ['images'], group: 'image', needs: [],
+      desc: 'ছবি থেকে AI লেবেল ও মেটাডেটা (C2PA, EXIF, XMP) মুছে ফেলুন — ফ্রি, ব্রাউজারেই, কোনো আপলোড ছাড়াই।',
+      keywords: 'remove ai label metadata cleaner c2pa exif xmp cleaner ai photo detector instagram ai label tiktok etsy ai info মুছে ফেলুন এআই মেটাডেটা',
+      intro: 'সোশ্যাল মিডিয়া (Instagram, TikTok, Facebook ইত্যাদি) ছবির গোপন মেটাডেটা পড়ে "Made with AI" বা AI Info লেবেল দেখায়। এই টুল দিয়ে ছবির C2PA, EXIF, XMP, IPTC ও টেক্সট চাঙ্ক ১০০% আপনার ব্রাউজারেই নিরাপদভাবে মুছে ফেলুন।',
+      steps: ['এক বা একাধিক ছবি (JPG, PNG, WebP) বেছে নিন।', 'মেটাডেটা চেকারে C2PA, EXIF, XMP স্ট্যাটাস দেখুন।', '"মেটাডেটা মুছুন" বাটন চাপুন এবং ক্লিন করা ছবি ডাউনলোড করুন।']
+    },
+    {
       slug: 'currency-converter', bn: 'লাইভ কারেন্সি কনভার্টার', en: 'Live Currency Converter', icon: 'coins', cats: ['calculators'], group: 'calc', needs: [],
       desc: 'ডলার, রিয়াল, ইউরো, পাউন্ডসহ সব দেশের টাকার প্রতিদিনের লাইভ রেট',
       keywords: 'currency converter taka dollar rate live currency rate live exchange rate bdt to usd usd to bdt riyal dirham euro pound মুদ্রা বিনিময় টাকা ডলার রিয়াল রেট প্রবাসীদের রেট হুন্ডি বাদ ব্যাংক রেট',

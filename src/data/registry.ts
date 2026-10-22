@@ -294,6 +294,22 @@ export const TOOLS: ToolItem[] = [
     steps: ['একটি ছবি বেছে নিন।', 'স্বচ্ছতা বা রঙের ব্যাকগ্রাউন্ড নির্বাচন করুন।', 'প্রয়োজনে সেনসিটিভিটি বা ইরেজার ব্রাশ দিয়ে নিখুঁত করুন।', '"ডাউনলোড করুন" চাপুন।'],
     stepsEn: ['Choose an image.', 'Select transparent or a background color.', 'Fine-tune sensitivity or touch up with the eraser brush.', 'Download your cutout image.']
   },
+  {
+    slug: 'remove-ai-label',
+    bn: 'AI লেবেল রিমুভার',
+    en: 'Remove AI Label',
+    icon: 'ShieldCheck',
+    cats: ['images'],
+    group: 'image',
+    badge: 'New',
+    desc: 'ছবি থেকে AI লেবেল ও মেটাডেটা (C2PA, EXIF, XMP) মুছে ফেলুন — ফ্রি, ব্রাউজারেই, কোনো আপলোড ছাড়াই।',
+    descEn: 'Remove AI labels & metadata (C2PA, EXIF, XMP) from photos — free, in your browser, no upload.',
+    keywords: 'remove ai label metadata cleaner c2pa exif xmp cleaner ai photo detector instagram ai label tiktok etsy ai info মুছে ফেলুন এআই মেটাডেটা',
+    intro: 'সোশ্যাল মিডিয়া (Instagram, TikTok, Facebook ইত্যাদি) ছবির গোপন মেটাডেটা পড়ে "Made with AI" বা AI Info লেবেল দেখায়। এই টুল দিয়ে ছবির C2PA, EXIF, XMP, IPTC ও টেক্সট চাঙ্ক ১০০% আপনার ব্রাউজারেই নিরাপদভাবে মুছে ফেলুন।',
+    introEn: 'Platforms (Instagram, TikTok, Facebook, Etsy...) read hidden markers inside a photo and show an "AI Info / Made with AI" label. This tool strips C2PA credentials, XMP, EXIF, IPTC and text chunks 100% in your browser.',
+    steps: ['এক বা একাধিক ছবি (JPG, PNG, WebP) বেছে নিন।', 'মেটাডেটা চেকারে C2PA, EXIF, XMP স্ট্যাটাস দেখুন।', '"মেটাডেটা মুছুন" বাটন চাপুন এবং ক্লিন করা ছবি ডাউনলোড করুন।'],
+    stepsEn: ['Choose one or more photos (JPG, PNG, WebP).', 'Review detected C2PA, EXIF, and XMP markers.', 'Click "Clean Metadata" and download your clean photos.']
+  },
 
   // --- Calculators ---
   {

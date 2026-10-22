@@ -80,6 +80,15 @@ interface ToolRow {
   display_order: number;
 }
 
+interface RemoveAiLabelToolSection {
+  name_en: string;
+  name_bn: string;
+  description_en: string;
+  description_bn: string;
+  icon?: string;
+  enabled: boolean;
+}
+
 interface FooterSocialSection {
   is_active: boolean;
   copyright_text_bn: string;
@@ -267,6 +276,17 @@ export default function AdminConsole() {
   const [savingPolicies, setSavingPolicies] = useState<Record<string, boolean>>({});
   const [policySaveStatus, setPolicySaveStatus] = useState<Record<string, 'saved' | 'error' | null>>({});
 
+  // Remove AI Label Tool (Isolated Table: section_tool_remove_ai_label)
+  const [removeAiLabel, setRemoveAiLabel] = useState<RemoveAiLabelToolSection>({
+    name_en: 'Remove AI Label',
+    name_bn: 'AI লেবেল রিমুভার',
+    description_en: 'Remove AI labels & metadata (C2PA, EXIF, XMP) from photos — free, in your browser, no upload.',
+    description_bn: 'ছবি থেকে AI লেবেল ও মেটাডেটা (C2PA, EXIF, XMP) মুছে ফেলুন — ফ্রি, ব্রাউজারেই, কোনো আপলোড ছাড়াই।',
+    icon: 'ShieldCheck',
+    enabled: true,
+  });
+  const [savingRemoveAiLabel, setSavingRemoveAiLabel] = useState(false);
+
   // Tool Filters & Search
   const [toolSearch, setToolSearch] = useState('');
   const [toolCatFilter, setToolCatFilter] = useState('all');
@@ -398,6 +418,16 @@ export default function AdminConsole() {
             const rawApi = { ...data.sections.apiKeys };
             if (rawApi.gemini_key === '277226@Asif') rawApi.gemini_key = '';
             setApiKeys(rawApi);
+          }
+          if (data.sections.removeAiLabel) {
+            setRemoveAiLabel({
+              name_en: data.sections.removeAiLabel.name_en || 'Remove AI Label',
+              name_bn: data.sections.removeAiLabel.name_bn || 'AI লেবেল রিমুভার',
+              description_en: data.sections.removeAiLabel.description_en || 'Remove AI labels & metadata (C2PA, EXIF, XMP) from photos — free, in your browser, no upload.',
+              description_bn: data.sections.removeAiLabel.description_bn || 'ছবি থেকে AI লেবেল ও মেটাডেটা (C2PA, EXIF, XMP) মুছে ফেলুন — ফ্রি, ব্রাউজারেই, কোনো আপলোড ছাড়াই।',
+              icon: data.sections.removeAiLabel.icon || 'ShieldCheck',
+              enabled: data.sections.removeAiLabel.enabled !== false,
+            });
           }
         }
         if (data.policies) setPolicies(data.policies);
@@ -803,6 +833,14 @@ export default function AdminConsole() {
     }
   };
 
+  // 4b. Remove AI Label Tool Section Updates (Isolated Table: section_tool_remove_ai_label)
+  const saveRemoveAiLabel = async (updatedData: RemoveAiLabelToolSection) => {
+    setSavingRemoveAiLabel(true);
+    setRemoveAiLabel(updatedData);
+    await postApi('update_remove_ai_label', updatedData, 'Remove AI Label tool info updated successfully!');
+    setSavingRemoveAiLabel(false);
+  };
+
   // 5. Footer & Social Updates
   const saveFooterSocial = async (updated: FooterSocialSection) => {
     setFooterSocial(updated);
@@ -886,7 +924,8 @@ export default function AdminConsole() {
     return matchesCat && matchesSearch && matchesStatus;
   });
 
-  const activeToolsCount = (tools || []).filter((t) => t.is_active).length;
+  const activeToolsCount = (tools || []).filter((t) => t.is_active).length + (removeAiLabel.enabled ? 1 : 0);
+  const totalToolsCount = (tools || []).length + (removeAiLabel.enabled !== false ? 1 : 0);
   const activeCategoriesCount = (categories || []).filter((c) => c.is_active).length;
 
   // SSR Hydration Guard
@@ -1775,7 +1814,7 @@ export default function AdminConsole() {
                   <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, #38bdf8, #60a5fa)' }} />
                   <span style={{ fontSize: '12.5px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Tools</span>
                   <div style={{ fontSize: '36px', fontWeight: 900, color: '#38bdf8', margin: '6px 0 2px', letterSpacing: '-0.02em' }}>
-                    {activeToolsCount} <span style={{ fontSize: '18px', color: '#64748b', fontWeight: 600 }}>/ {tools.length}</span>
+                    {activeToolsCount} <span style={{ fontSize: '18px', color: '#64748b', fontWeight: 600 }}>/ {totalToolsCount}</span>
                   </div>
                   <span style={{ fontSize: '12px', color: '#64748b' }}>Enabled across {categories.length} categories</span>
                 </div>
@@ -2487,7 +2526,7 @@ export default function AdminConsole() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <div>
                   <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc' }}>
-                    Tools Manager ({tools.length})
+                    Tools Manager ({totalToolsCount})
                   </h1>
                   <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>
                     Control live status, edit titles & descriptions, add new tools, or remove tools from the platform.
@@ -2527,6 +2566,183 @@ export default function AdminConsole() {
                 >
                   <Plus size={16} /> Add New Tool
                 </button>
+              </div>
+
+              {/* DEDICATED ISOLATED CARD: Remove AI Label — Tool Info */}
+              <div
+                style={{
+                  background: '#111827',
+                  border: '1px solid rgba(16,185,129,0.3)',
+                  borderRadius: '16px',
+                  padding: '24px',
+                  marginBottom: '28px',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <Shield size={18} style={{ color: '#10b981' }} />
+                      <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#f8fafc' }}>
+                        Remove AI Label — Tool Info
+                      </h2>
+                      <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: '#064e3b', color: '#6ee7b7', border: '1px solid #047857' }}>
+                        Isolated Table: section_tool_remove_ai_label
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
+                      Dedicated metadata cleaner tool editor. Changes saved here write strictly to its own table without touching other tools.
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '13.5px', fontWeight: 600, color: removeAiLabel.enabled ? '#10b981' : '#64748b' }}>
+                      {removeAiLabel.enabled ? 'Tool Enabled' : 'Tool Disabled'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => saveRemoveAiLabel({ ...removeAiLabel, enabled: !removeAiLabel.enabled })}
+                      style={{
+                        width: '52px',
+                        height: '28px',
+                        borderRadius: '999px',
+                        background: removeAiLabel.enabled ? '#10b981' : '#334155',
+                        border: 'none',
+                        position: 'relative',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '22px',
+                          height: '22px',
+                          borderRadius: '50%',
+                          background: '#ffffff',
+                          position: 'absolute',
+                          top: '3px',
+                          left: removeAiLabel.enabled ? '27px' : '3px',
+                          transition: 'left 0.2s',
+                        }}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    saveRemoveAiLabel(removeAiLabel);
+                  }}
+                  style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+                >
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
+                        Tool Name (English)
+                      </label>
+                      <input
+                        type="text"
+                        value={removeAiLabel.name_en}
+                        onChange={(e) => setRemoveAiLabel({ ...removeAiLabel, name_en: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          borderRadius: '10px',
+                          background: '#0b0f19',
+                          border: '1px solid #334155',
+                          color: '#f8fafc',
+                          fontSize: '13.5px',
+                        }}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
+                        Tool Name (Bengali)
+                      </label>
+                      <input
+                        type="text"
+                        value={removeAiLabel.name_bn}
+                        onChange={(e) => setRemoveAiLabel({ ...removeAiLabel, name_bn: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          borderRadius: '10px',
+                          background: '#0b0f19',
+                          border: '1px solid #334155',
+                          color: '#f8fafc',
+                          fontSize: '13.5px',
+                        }}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
+                      Short Description (English)
+                    </label>
+                    <input
+                      type="text"
+                      value={removeAiLabel.description_en}
+                      onChange={(e) => setRemoveAiLabel({ ...removeAiLabel, description_en: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '10px',
+                        background: '#0b0f19',
+                        border: '1px solid #334155',
+                        color: '#f8fafc',
+                        fontSize: '13.5px',
+                      }}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
+                      Short Description (Bengali)
+                    </label>
+                    <input
+                      type="text"
+                      value={removeAiLabel.description_bn}
+                      onChange={(e) => setRemoveAiLabel({ ...removeAiLabel, description_bn: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '10px',
+                        background: '#0b0f19',
+                        border: '1px solid #334155',
+                        color: '#f8fafc',
+                        fontSize: '13.5px',
+                      }}
+                      required
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '6px' }}>
+                    <button
+                      type="submit"
+                      disabled={savingRemoveAiLabel}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '10px 22px',
+                        borderRadius: '10px',
+                        background: '#10b981',
+                        color: '#ffffff',
+                        fontWeight: 700,
+                        fontSize: '14px',
+                        border: 'none',
+                        cursor: savingRemoveAiLabel ? 'not-allowed' : 'pointer',
+                        opacity: savingRemoveAiLabel ? 0.7 : 1,
+                      }}
+                    >
+                      <Check size={16} /> {savingRemoveAiLabel ? 'Saving...' : 'Save Remove AI Label Info'}
+                    </button>
+                  </div>
+                </form>
               </div>
 
               {/* Filters Bar */}

@@ -408,6 +408,34 @@ export async function initDatabase() {
     `);
   }
 
+  // 14. Section: Remove AI Label Tool (Dedicated Separate Table)
+  await sql`
+    CREATE TABLE IF NOT EXISTS section_tool_remove_ai_label (
+      id INT PRIMARY KEY DEFAULT 1,
+      name_en TEXT NOT NULL,
+      name_bn TEXT NOT NULL,
+      description_en TEXT NOT NULL,
+      description_bn TEXT NOT NULL,
+      icon VARCHAR(50) NOT NULL DEFAULT 'ShieldCheck',
+      enabled BOOLEAN NOT NULL DEFAULT true,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+
+  await sql`
+    INSERT INTO section_tool_remove_ai_label (id, name_en, name_bn, description_en, description_bn, icon, enabled)
+    VALUES (
+      1,
+      'Remove AI Label',
+      'AI লেবেল রিমুভার',
+      'Remove AI labels & metadata (C2PA, EXIF, XMP) from photos — free, in your browser, no upload.',
+      'ছবি থেকে AI লেবেল ও মেটাডেটা (C2PA, EXIF, XMP) মুছে ফেলুন — ফ্রি, ব্রাউজারেই, কোনো আপলোড ছাড়াই।',
+      'ShieldCheck',
+      true
+    )
+    ON CONFLICT (id) DO NOTHING;
+  `;
+
   isInitialized = true;
   return { success: true };
 }

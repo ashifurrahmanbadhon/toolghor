@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
         sql`SELECT * FROM section_creator_about WHERE id = 1 LIMIT 1`,
         sql`SELECT * FROM section_api_keys WHERE id = 1 LIMIT 1`,
         sql`SELECT slug, count, last_used FROM tool_analytics`,
+        sql`SELECT * FROM section_tool_remove_ai_label WHERE id = 1 LIMIT 1`,
       ]);
     } catch {
       await initDatabase();
@@ -45,10 +46,11 @@ export async function GET(req: NextRequest) {
         sql`SELECT * FROM section_creator_about WHERE id = 1 LIMIT 1`,
         sql`SELECT * FROM section_api_keys WHERE id = 1 LIMIT 1`,
         sql`SELECT slug, count, last_used FROM tool_analytics`,
+        sql`SELECT * FROM section_tool_remove_ai_label WHERE id = 1 LIMIT 1`,
       ]);
     }
 
-    const [heroRows, announcementRows, categoryRows, toolRows, footerRows, creatorRows, apiKeysRows, analyticsRows] = rows;
+    const [heroRows, announcementRows, categoryRows, toolRows, footerRows, creatorRows, apiKeysRows, analyticsRows, removeAiLabelRows] = rows;
 
     const analyticsMap: Record<string, number> = {};
     analyticsRows.forEach((r: any) => {
@@ -69,6 +71,7 @@ export async function GET(req: NextRequest) {
         footerSocial: footerRows[0] || null,
         creatorAbout: creatorRows[0] || null,
         apiKeys: apiKeysRows[0] || null,
+        removeAiLabel: removeAiLabelRows?.[0] || null,
       },
       policies: policySections,
       analytics: analyticsMap,
@@ -437,6 +440,32 @@ export async function POST(req: NextRequest) {
       `, [title_en ?? '', title_bn ?? '', body_en ?? '', body_bn ?? '']);
 
       return notifyLiveUpdate(`Policy section "${sectionKey}" updated successfully`, { section: sectionKey });
+    }
+
+    // 10. Update Remove AI Label Tool independently (Dedicated table isolation)
+    if (action === 'update_remove_ai_label') {
+      const { name_en, name_bn, description_en, description_bn, icon, enabled } = payload;
+      await sql`
+        INSERT INTO section_tool_remove_ai_label (id, name_en, name_bn, description_en, description_bn, icon, enabled)
+        VALUES (
+          1,
+          ${name_en ?? 'Remove AI Label'},
+          ${name_bn ?? 'AI লেবেল রিমুভার'},
+          ${description_en ?? 'Remove AI labels & metadata (C2PA, EXIF, XMP) from photos — free, in your browser, no upload.'},
+          ${description_bn ?? 'ছবি থেকে AI লেবেল ও মেটাডেটা (C2PA, EXIF, XMP) মুছে ফেলুন — ফ্রি, ব্রাউজারেই, কোনো আপলোড ছাড়াই।'},
+          ${icon ?? 'ShieldCheck'},
+          ${enabled !== undefined ? enabled : true}
+        )
+        ON CONFLICT (id) DO UPDATE SET
+          name_en = EXCLUDED.name_en,
+          name_bn = EXCLUDED.name_bn,
+          description_en = EXCLUDED.description_en,
+          description_bn = EXCLUDED.description_bn,
+          icon = EXCLUDED.icon,
+          enabled = EXCLUDED.enabled,
+          updated_at = CURRENT_TIMESTAMP;
+      `;
+      return notifyLiveUpdate('Remove AI Label tool info updated successfully');
     }
 
     return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 });

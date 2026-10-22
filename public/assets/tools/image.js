@@ -2075,4 +2075,562 @@
     container.appendChild(bgAiBox.el);
     root.appendChild(container);
   };
+
+  /* ---------------- Remove AI Label (Metadata Cleaner) ---------------- */
+  T['remove-ai-label'] = function (root) {
+    var files = [];
+    var scans = [];
+    var out = UI.el('div', { class: 'stack' });
+    var listBox = UI.el('div', { class: 'stack' });
+    var go = UI.btn(tr('মেটাডেটা ও AI লেবেল মুছুন', "Clean Metadata & Remove AI Labels"), run, {
+      icon: 'shield-check',
+      disabled: true,
+      cls: 'btn-primary'
+    });
+
+    var honestyNote = UI.el('div', {
+      class: 'ai-honesty-note',
+      style: {
+        marginTop: '28px',
+        padding: '16px 20px',
+        borderRadius: '12px',
+        background: 'color-mix(in srgb, var(--paddy) 8%, var(--paper))',
+        border: '1px solid color-mix(in srgb, var(--paddy) 28%, var(--line))',
+        fontSize: '13.5px',
+        color: 'var(--ink-2)',
+        lineHeight: '1.6',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '12px'
+      }
+    },
+      UI.el('span', { style: { fontSize: '20px', lineHeight: '1', flexShrink: '0' } }, '🛡️'),
+      UI.el('div', {},
+        UI.el('strong', { style: { display: 'block', color: 'var(--ink)', marginBottom: '4px' } },
+          tr('১০০% ব্রাউজারে নিরাপদ ও প্রাইভেট', '100% In-Browser & Private')
+        ),
+        tr(
+          'সম্পূর্ণ আপনার ব্রাউজারেই চলে — ছবি আপনার ডিভাইস ছাড়ে না। মেটাডেটা মুছলে ছবির চেহারা বদলায় না, তবে প্ল্যাটফর্ম অন্য উপায়েও AI কনটেন্ট শনাক্ত করতে পারে।',
+          'Runs 100% in your browser — your photos never leave your device. Removing metadata does not change the photo itself, and platforms may still detect AI content in other ways.'
+        )
+      )
+    );
+
+    function scanImageMetadata(u8) {
+      var res = {
+        c2pa: false,
+        xmp: false,
+        exif: false,
+        iptc: false,
+        pngText: false,
+        aiMarkers: [],
+        tags: []
+      };
+      if (!u8 || u8.length < 4) return res;
+
+      // JPEG
+      if (u8[0] === 0xFF && u8[1] === 0xD8) {
+        var offset = 2, len = u8.length;
+        while (offset < len - 4) {
+          if (u8[offset] !== 0xFF) { offset++; continue; }
+          var marker = u8[offset + 1];
+          if (marker === 0xD9 || marker === 0xDA) break;
+          var segLen = (u8[offset + 2] << 8) | u8[offset + 3];
+          if (segLen < 2 || offset + 2 + segLen > len) break;
+          var segData = u8.subarray(offset + 4, offset + 2 + segLen);
+
+          if (marker === 0xE1) {
+            var str = '';
+            try { str = new TextDecoder('utf-8', { fatal: false }).decode(segData); } catch (e) {}
+            if (str.indexOf('Exif') === 0 || (segData[0] === 0x45 && segData[1] === 0x78 && segData[2] === 0x69 && segData[3] === 0x66)) {
+              res.exif = true;
+              if (res.tags.indexOf('EXIF') === -1) res.tags.push('EXIF');
+            }
+            if (str.indexOf('http://ns.adobe.com/xap/1.0/') >= 0 || str.indexOf('W5M0MpCehiHzreSzNTczkc9d') >= 0) {
+              res.xmp = true;
+              if (res.tags.indexOf('XMP') === -1) res.tags.push('XMP');
+              checkAiStrings(str, res);
+            }
+          } else if (marker === 0xEB) {
+            var str11 = '';
+            try { str11 = new TextDecoder('ascii', { fatal: false }).decode(segData.subarray(0, 32)); } catch (e) {}
+            if (str11.indexOf('JP') >= 0 || str11.indexOf('caBX') >= 0 || str11.indexOf('JUMB') >= 0) {
+              res.c2pa = true;
+              if (res.tags.indexOf('C2PA') === -1) res.tags.push('C2PA');
+            }
+          } else if (marker === 0xED) {
+            var str13 = '';
+            try { str13 = new TextDecoder('ascii', { fatal: false }).decode(segData.subarray(0, 24)); } catch (e) {}
+            if (str13.indexOf('Photoshop') >= 0 || str13.indexOf('8BIM') >= 0) {
+              res.iptc = true;
+              if (res.tags.indexOf('IPTC') === -1) res.tags.push('IPTC');
+            }
+          }
+          offset += 2 + segLen;
+        }
+
+        var headLen = Math.min(len, 65536);
+        var headStr = '';
+        try { headStr = new TextDecoder('ascii', { fatal: false }).decode(u8.subarray(0, headLen)); } catch (e) {}
+        if (!res.c2pa && (headStr.indexOf('c2pa') >= 0 || headStr.indexOf('caBX') >= 0 || headStr.indexOf('contentCredentials') >= 0 || headStr.indexOf('jumb') >= 0)) {
+          res.c2pa = true;
+          if (res.tags.indexOf('C2PA') === -1) res.tags.push('C2PA');
+        }
+      }
+      // PNG
+      else if (u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4E && u8[3] === 0x47) {
+        var offset = 8, len = u8.length;
+        while (offset < len - 8) {
+          var chunkLen = (u8[offset] << 24) | (u8[offset + 1] << 16) | (u8[offset + 2] << 8) | u8[offset + 3];
+          var chunkType = String.fromCharCode(u8[offset + 4], u8[offset + 5], u8[offset + 6], u8[offset + 7]);
+          if (offset + 12 + chunkLen > len) break;
+          var chunkData = u8.subarray(offset + 8, offset + 8 + chunkLen);
+
+          if (chunkType === 'eXIf') {
+            res.exif = true;
+            if (res.tags.indexOf('EXIF') === -1) res.tags.push('EXIF');
+          } else if (chunkType === 'caBX') {
+            res.c2pa = true;
+            if (res.tags.indexOf('C2PA') === -1) res.tags.push('C2PA');
+          } else if (chunkType === 'tEXt' || chunkType === 'zTXt' || chunkType === 'iTXt') {
+            res.pngText = true;
+            var txt = '';
+            try { txt = new TextDecoder('utf-8', { fatal: false }).decode(chunkData); } catch (e) {}
+            if (txt.indexOf('XML:com.adobe.xmp') >= 0 || txt.indexOf('http://ns.adobe.com/xap/1.0/') >= 0) {
+              res.xmp = true;
+              if (res.tags.indexOf('XMP') === -1) res.tags.push('XMP');
+            } else {
+              if (res.tags.indexOf('Text (' + chunkType + ')') === -1) res.tags.push('Text (' + chunkType + ')');
+            }
+            checkAiStrings(txt, res);
+          }
+          offset += 12 + chunkLen;
+          if (chunkType === 'IEND') break;
+        }
+      }
+      // WebP
+      else if (u8[0] === 0x52 && u8[1] === 0x49 && u8[2] === 0x46 && u8[3] === 0x46 &&
+               u8[8] === 0x57 && u8[9] === 0x45 && u8[10] === 0x42 && u8[11] === 0x50) {
+        var offset = 12, len = u8.length;
+        while (offset < len - 8) {
+          var fourCC = String.fromCharCode(u8[offset], u8[offset + 1], u8[offset + 2], u8[offset + 3]);
+          var chunkSize = u8[offset + 4] | (u8[offset + 5] << 8) | (u8[offset + 6] << 16) | (u8[offset + 7] << 24);
+          var chunkData = u8.subarray(offset + 8, offset + 8 + chunkSize);
+
+          if (fourCC === 'EXIF') {
+            res.exif = true;
+            if (res.tags.indexOf('EXIF') === -1) res.tags.push('EXIF');
+          } else if (fourCC === 'XMP ') {
+            res.xmp = true;
+            if (res.tags.indexOf('XMP') === -1) res.tags.push('XMP');
+            var str = '';
+            try { str = new TextDecoder('utf-8', { fatal: false }).decode(chunkData); } catch (e) {}
+            checkAiStrings(str, res);
+          } else if (fourCC === 'C2PA' || fourCC === 'caBX') {
+            res.c2pa = true;
+            if (res.tags.indexOf('C2PA') === -1) res.tags.push('C2PA');
+          }
+          offset += 8 + chunkSize + (chunkSize % 2);
+        }
+      }
+      return res;
+    }
+
+    function checkAiStrings(str, res) {
+      var tests = [
+        { p: /trainedAlgorithmicMedia/i, l: 'AI (trainedAlgorithmicMedia)' },
+        { p: /DigitalSourceType/i, l: 'AI (DigitalSourceType)' },
+        { p: /compositeWithTrainedAlgorithmicMedia/i, l: 'AI Composite' },
+        { p: /photoshop:Credit/i, l: 'photoshop:Credit' },
+        { p: /dc:creator/i, l: 'dc:creator' },
+        { p: /Midjourney/i, l: 'Midjourney' },
+        { p: /DALL[-·]?E/i, l: 'DALL-E' },
+        { p: /Stable Diffusion/i, l: 'Stable Diffusion' },
+        { p: /Adobe Firefly/i, l: 'Adobe Firefly' },
+        { p: /Bing Image Creator/i, l: 'Bing Image Creator' },
+        { p: /c2pa/i, l: 'C2PA marker' },
+        { p: /parameters/i, l: 'Prompt/Parameters' }
+      ];
+      for (var i = 0; i < tests.length; i++) {
+        if (tests[i].p.test(str)) {
+          if (res.aiMarkers.indexOf(tests[i].l) === -1) res.aiMarkers.push(tests[i].l);
+        }
+      }
+    }
+
+    async function cleanSingleImage(file) {
+      var img = null;
+      var isBitmap = false;
+      try {
+        if (typeof createImageBitmap === 'function') {
+          img = await createImageBitmap(file);
+          isBitmap = true;
+        } else {
+          img = await UI.readImage(file);
+        }
+      } catch (e) {
+        throw new Error(tr('এই ফাইলটি প্রসেস করার জন্য আপনার ব্রাউজারের মেমোরি যথেষ্ট নয়', 'This file is too large for your browser to process'));
+      }
+
+      var w = img.width || img.naturalWidth;
+      var h = img.height || img.naturalHeight;
+      if (!w || !h) {
+        if (isBitmap && typeof img.close === 'function') img.close();
+        throw new Error(tr('ছবির সাইজ পড়া সম্ভব হয়নি', 'Unable to read image dimensions'));
+      }
+
+      var canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, w, h);
+
+      if (isBitmap && typeof img.close === 'function') {
+        img.close();
+      } else if (img && img._url) {
+        URL.revokeObjectURL(img._url);
+      }
+
+      var outMime = 'image/jpeg';
+      var ext = 'jpg';
+      var nameLow = file.name.toLowerCase();
+      if (file.type === 'image/png' || nameLow.endsWith('.png')) {
+        outMime = 'image/png';
+        ext = 'png';
+      } else if (file.type === 'image/webp' || nameLow.endsWith('.webp')) {
+        outMime = 'image/webp';
+        ext = 'webp';
+      }
+
+      var quality = (outMime === 'image/jpeg' || outMime === 'image/webp') ? 0.92 : undefined;
+
+      var blob = await new Promise(function (resolve, reject) {
+        canvas.toBlob(function (b) {
+          if (b) resolve(b);
+          else reject(new Error('Canvas encoding failed'));
+        }, outMime, quality);
+      });
+
+      canvas.width = 1;
+      canvas.height = 1;
+      ctx.clearRect(0, 0, 1, 1);
+
+      var dotIdx = file.name.lastIndexOf('.');
+      var baseName = dotIdx > 0 ? file.name.slice(0, dotIdx) : file.name;
+      var cleanName = baseName + '-clean.' + ext;
+
+      var outBuf = await blob.arrayBuffer();
+      var outScan = scanImageMetadata(new Uint8Array(outBuf));
+
+      return {
+        blob: blob,
+        cleanName: cleanName,
+        beforeSize: file.size,
+        afterSize: blob.size,
+        outScan: outScan
+      };
+    }
+
+    async function renderPreScanList() {
+      UI.clear(listBox);
+      scans = [];
+
+      var headerBar = UI.el('div', {
+        style: {
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '10px',
+          padding: '8px 4px'
+        }
+      },
+        UI.el('div', { style: { fontWeight: '700', fontSize: '15px', color: 'var(--ink)' } },
+          '📸 ' + UI.n(files.length) + tr(' টি ছবি নির্বাচন করা হয়েছে', ' photos selected')
+        ),
+        go
+      );
+
+      var tableWrap = UI.el('div', { class: 'tbl-wrap' });
+      var table = UI.el('table', { class: 'tbl' });
+      var tbody = UI.el('tbody');
+      table.appendChild(UI.el('thead', {}, UI.el('tr', {},
+        UI.el('th', { style: { width: '52px' } }, ''),
+        UI.el('th', {}, tr('ফাইল', 'File')),
+        UI.el('th', {}, tr('সাইজ', 'Size')),
+        UI.el('th', {}, tr('শনাক্ত মেটাডেটা / AI লেবেল', 'Detected Metadata / AI Labels'))
+      )));
+      table.appendChild(tbody);
+      tableWrap.appendChild(table);
+
+      listBox.appendChild(headerBar);
+      listBox.appendChild(tableWrap);
+
+      for (var i = 0; i < files.length; i++) {
+        var f = files[i];
+        var thumbUrl = URL.createObjectURL(f);
+        var u8 = null;
+        try {
+          var buf = await f.arrayBuffer();
+          u8 = new Uint8Array(buf);
+        } catch (e) {}
+
+        var scan = u8 ? scanImageMetadata(u8) : { tags: [], aiMarkers: [] };
+        scans.push({ file: f, thumbUrl: thumbUrl, scan: scan });
+
+        var chipGroup = UI.el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' } });
+        var allFound = scan.tags.concat(scan.aiMarkers);
+
+        if (allFound.length > 0) {
+          allFound.forEach(function (tag) {
+            chipGroup.appendChild(UI.el('span', {
+              class: 'pill',
+              style: {
+                padding: '3px 9px',
+                fontSize: '11.5px',
+                fontWeight: '600',
+                background: 'rgba(239, 68, 68, 0.14)',
+                color: '#f87171',
+                borderColor: 'rgba(239, 68, 68, 0.35)',
+                borderRadius: '6px'
+              }
+            }, tag + ' ✓ ' + tr('শনাক্ত', 'found')));
+          });
+        } else {
+          chipGroup.appendChild(UI.el('span', {
+            class: 'pill',
+            style: {
+              padding: '3px 9px',
+              fontSize: '11.5px',
+              fontWeight: '600',
+              background: 'rgba(16, 185, 129, 0.14)',
+              color: '#34d399',
+              borderColor: 'rgba(16, 185, 129, 0.35)',
+              borderRadius: '6px'
+            }
+          }, tr('কোনো AI বা মেটাডেটা পাওয়া যায়নি — ইতোমধ্যে ক্লিন', 'No AI/metadata markers found — already clean')));
+        }
+
+        tbody.appendChild(UI.el('tr', {},
+          UI.el('td', {}, UI.el('img', { class: 'thumb', src: thumbUrl, alt: '' })),
+          UI.el('td', { style: { overflowWrap: 'anywhere', fontWeight: '500' } }, f.name),
+          UI.el('td', {}, UI.fmtSize(f.size)),
+          UI.el('td', {}, chipGroup)
+        ));
+      }
+
+      go.disabled = !files.length;
+    }
+
+    async function run() {
+      if (!files.length) return;
+      UI.clear(out);
+      var prog = UI.progress();
+      out.appendChild(prog);
+      go.disabled = true;
+
+      var dropInputs = drop.querySelectorAll('input');
+      dropInputs.forEach(function (inp) { inp.disabled = true; });
+
+      var results = [];
+      try {
+        for (var i = 0; i < files.length; i++) {
+          var f = files[i];
+          prog.set((i / files.length) * 100, UI.n(i + 1) + '/' + UI.n(files.length));
+          await UI.yield();
+
+          try {
+            var cleaned = await cleanSingleImage(f);
+            results.push({
+              file: f,
+              name: cleaned.cleanName,
+              blob: cleaned.blob,
+              url: URL.createObjectURL(cleaned.blob),
+              beforeSize: cleaned.beforeSize,
+              afterSize: cleaned.afterSize,
+              outScan: cleaned.outScan,
+              status: 'success'
+            });
+          } catch (fileErr) {
+            results.push({
+              file: f,
+              name: f.name,
+              error: fileErr.message || tr('প্রসেসিং ব্যর্থ হয়েছে', 'Processing failed'),
+              status: 'error'
+            });
+          }
+        }
+
+        prog.set(100, tr('সম্পন্ন', 'Done'));
+        await UI.yield(80);
+
+        renderResults(results);
+      } catch (err) {
+        UI.clear(out);
+        out.appendChild(UI.notice('err', UI.err(err)));
+      } finally {
+        dropInputs.forEach(function (inp) { inp.disabled = false; });
+        go.disabled = !files.length;
+      }
+    }
+
+    function renderResults(results) {
+      UI.clear(out);
+      var successRows = results.filter(function (r) { return r.status === 'success'; });
+      var errorRows = results.filter(function (r) { return r.status === 'error'; });
+
+      var resWrap = UI.el('div', { class: 'result stack' });
+
+      if (successRows.length > 0) {
+        resWrap.appendChild(UI.notice('ok', tr(
+          '✓ প্রসেসিং সম্পন্ন হয়েছে — ' + UI.n(successRows.length) + 'টি ছবি থেকে সমস্ত AI লেবেল ও মেটাডেটা সফলভাবে মুছে ফেলা হয়েছে।',
+          '✓ Cleaning finished — successfully stripped AI labels and metadata from ' + UI.n(successRows.length) + ' photo(s).'
+        )));
+      }
+
+      if (errorRows.length > 0) {
+        resWrap.appendChild(UI.notice('err', tr(
+          UI.n(errorRows.length) + 'টি ফাইল প্রসেস করা সম্ভব হয়নি (ব্রাউজারের মেমোরি সীমার অতিরিক্ত)।',
+          UI.n(errorRows.length) + ' file(s) could not be processed (exceeded browser memory limit).'
+        )));
+      }
+
+      var tableWrap = UI.el('div', { class: 'tbl-wrap' });
+      var table = UI.el('table', { class: 'tbl' });
+      var tbody = UI.el('tbody');
+      table.appendChild(UI.el('thead', {}, UI.el('tr', {},
+        UI.el('th', { style: { width: '52px' } }, ''),
+        UI.el('th', {}, tr('ক্লিন ফাইল', 'Clean File')),
+        UI.el('th', {}, tr('আগে', 'Before')),
+        UI.el('th', {}, tr('পরে', 'After')),
+        UI.el('th', {}, tr('ভেরিফিকেশন স্ট্যাটাস', 'Verification Status')),
+        UI.el('th', { style: { textAlign: 'right' } }, '')
+      )));
+      table.appendChild(tbody);
+      tableWrap.appendChild(table);
+
+      results.forEach(function (r) {
+        if (r.status === 'success') {
+          var cleanBadge = UI.el('span', {
+            class: 'pill',
+            style: {
+              padding: '3px 10px',
+              fontSize: '12px',
+              fontWeight: '700',
+              background: 'rgba(16, 185, 129, 0.16)',
+              color: '#34d399',
+              borderColor: 'rgba(16, 185, 129, 0.4)',
+              borderRadius: '6px'
+            }
+          }, tr('✅ সম্পূর্ণ ক্লিন — কোনো AI লেবেল বা মেটাডেটা নেই', '✅ Clean — no AI label or metadata markers'));
+
+          tbody.appendChild(UI.el('tr', {},
+            UI.el('td', {}, UI.el('img', { class: 'thumb', src: r.url, alt: '' })),
+            UI.el('td', { style: { overflowWrap: 'anywhere', fontWeight: '600' } }, r.name),
+            UI.el('td', {}, UI.fmtSize(r.beforeSize)),
+            UI.el('td', {}, UI.fmtSize(r.afterSize)),
+            UI.el('td', {}, cleanBadge),
+            UI.el('td', { style: { textAlign: 'right' } }, UI.btn(tr('ডাউনলোড', 'Download'), function () {
+              UI.download(r.blob, r.name);
+            }, { cls: 'sm', icon: 'download', iconSize: 16 }))
+          ));
+        } else {
+          var errBadge = UI.el('span', {
+            class: 'pill',
+            style: {
+              padding: '3px 10px',
+              fontSize: '12px',
+              fontWeight: '600',
+              background: 'rgba(239, 68, 68, 0.16)',
+              color: '#f87171',
+              borderColor: 'rgba(239, 68, 68, 0.4)',
+              borderRadius: '6px'
+            }
+          }, r.error);
+
+          tbody.appendChild(UI.el('tr', {},
+            UI.el('td', {}, '⚠️'),
+            UI.el('td', { style: { overflowWrap: 'anywhere' } }, r.name),
+            UI.el('td', {}, UI.fmtSize(r.file.size)),
+            UI.el('td', {}, '-'),
+            UI.el('td', { colSpan: 2 }, errBadge)
+          ));
+        }
+      });
+
+      resWrap.appendChild(tableWrap);
+
+      var actionsBar = UI.el('div', {
+        style: {
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          marginTop: '16px'
+        }
+      });
+
+      if (successRows.length > 1) {
+        actionsBar.appendChild(UI.btn(tr('সবগুলো ডাউনলোড করুন (ZIP)', 'Download All as ZIP'), async function () {
+          if (typeof UI.zip === 'function') {
+            var zipBlob = await UI.zip(successRows.map(function (s) { return { name: s.name, blob: s.blob }; }));
+            UI.download(zipBlob, 'ToolGhor(clean-photos).zip');
+          } else {
+            for (var k = 0; k < successRows.length; k++) {
+              UI.download(successRows[k].blob, successRows[k].name);
+              await UI.yield(250);
+            }
+          }
+        }, { icon: 'file-archive', cls: 'btn-primary' }));
+      }
+
+      actionsBar.appendChild(UI.btn(tr('নতুন ছবি নির্বাচন করুন', 'Add More Photos'), function () {
+        files = [];
+        scans = [];
+        UI.clear(listBox);
+        UI.clear(out);
+        go.disabled = true;
+      }, { icon: 'refresh-cw' }));
+
+      resWrap.appendChild(actionsBar);
+      out.appendChild(resWrap);
+    }
+
+    var drop = UI.dropzone({
+      accept: 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp',
+      multiple: true,
+      onFiles: async function (fs) {
+        if (!fs || !fs.length) return;
+        var validImages = [];
+        var rejectedCount = 0;
+        for (var i = 0; i < fs.length; i++) {
+          var f = fs[i];
+          var nameLow = f.name.toLowerCase();
+          var isImg = f.type.indexOf('image/') === 0 ||
+            nameLow.endsWith('.jpg') || nameLow.endsWith('.jpeg') ||
+            nameLow.endsWith('.png') || nameLow.endsWith('.webp');
+          if (isImg) validImages.push(f);
+          else rejectedCount++;
+        }
+
+        if (rejectedCount > 0) {
+          UI.toast(tr('কিছু ফাইল ছবির ফরম্যাট (JPG, PNG, WebP) না হওয়ায় বাদ দেওয়া হয়েছে', 'Some files were rejected because they are not JPG, PNG, or WebP'), 'error');
+        }
+
+        if (!validImages.length) return;
+
+        if (validImages.length > 20) {
+          validImages = validImages.slice(0, 20);
+          UI.toast(tr('একসাথে সর্বোচ্চ ২০টি ফাইল প্রসেস করা যাবে', 'Maximum 20 files can be processed at once'), 'info');
+        }
+
+        files = validImages;
+        UI.clear(out);
+        await renderPreScanList();
+      }
+    });
+
+    root.appendChild(UI.el('div', { class: 'stack' }, drop, listBox, out, honestyNote));
+  };
 })();
