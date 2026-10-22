@@ -67,35 +67,36 @@ export default function Footer({ customSettings }: FooterProps) {
 
   const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(text || '')}`;
 
+  const defaultReserved = lang === 'bn' ? 'সর্বস্বত্ব সংরক্ষিত।' : 'All rights reserved.';
+  const customCopyright = lang === 'bn' ? liveFooter?.copyright_text_bn : liveFooter?.copyright_text_en;
+  // If custom text in DB is empty or the old default sentence, use 'All rights reserved.' as shown in the screenshot
   const copyrightText =
-    lang === 'bn'
-      ? liveFooter?.copyright_text_bn || 'আপনার ফাইল ও তথ্য সরাসরি আপনার ব্রাউজারেই প্রসেস করা হয়।'
-      : liveFooter?.copyright_text_en || 'Your files and data are processed in your browser.';
+    customCopyright && !customCopyright.includes('আপনার ফাইল') && !customCopyright.includes('Your files and data')
+      ? customCopyright
+      : defaultReserved;
 
   if (!isFooterActive) return null;
 
   return (
     <>
       <footer className="foot">
-        <div className="wrap foot-row">
-          <div className="foot-left">
-            © 2026 <span>{siteConfig.name}</span>. {copyrightText}
+        <div className="wrap foot-wrap">
+          <div className="foot-copy">
+            © 2026 {siteConfig.name}. {copyrightText}
           </div>
           <div className="foot-links">
             <Link href="/privacy" className="foot-link">
-              {lang === 'bn' ? 'গোপনীয়তা নীতি' : 'Privacy Policy'}
+              {lang === 'bn' ? 'গোপনীয়তা' : 'Privacy'}
             </Link>
-            <span className="foot-sep" aria-hidden="true">·</span>
             <Link href="/terms" className="foot-link">
-              {lang === 'bn' ? 'ব্যবহারের শর্তাবলী' : 'Terms of Service'}
+              {lang === 'bn' ? 'শর্তাবলী' : 'Terms'}
             </Link>
-            <span className="foot-sep" aria-hidden="true">·</span>
             <Link
               href="/admin"
               className="foot-link foot-admin"
               title={lang === 'bn' ? 'অ্যাডমিন কনসোল' : 'Admin Console'}
             >
-              🛡️ {lang === 'bn' ? 'অ্যাডমিন' : 'Admin'}
+              // {lang === 'bn' ? 'অ্যাডমিন' : 'ADMIN'}
             </Link>
           </div>
         </div>
