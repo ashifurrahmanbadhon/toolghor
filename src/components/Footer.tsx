@@ -70,8 +70,7 @@ export default function Footer({ customSettings }: FooterProps) {
   return (
     <>
       <footer className="foot">
-        {/* Desktop Footer (Visible on Desktop >=769px, space-between layout identical to before) */}
-        <div className="wrap foot-row foot-desktop-only">
+        <div className="wrap foot-row">
           <div className="foot-left">
             © 2026 <span>{siteConfig.name}</span>. {copyrightText}
           </div>
@@ -90,28 +89,6 @@ export default function Footer({ customSettings }: FooterProps) {
               title={lang === 'bn' ? 'অ্যাডমিন কনসোল' : 'Admin Console'}
             >
               🛡️ {lang === 'bn' ? 'অ্যাডমিন' : 'Admin'}
-            </Link>
-          </div>
-        </div>
-
-        {/* Mobile Footer (Visible on Mobile <=768px, matching user screenshot) */}
-        <div className="wrap foot-wrap foot-mobile-only">
-          <div className="foot-copy">
-            © 2026 {siteConfig.name}. {lang === 'bn' ? 'সর্বস্বত্ব সংরক্ষিত।' : 'All rights reserved.'}
-          </div>
-          <div className="foot-links-mobile">
-            <Link href="/privacy" className="foot-link-mobile">
-              {lang === 'bn' ? 'গোপনীয়তা' : 'Privacy'}
-            </Link>
-            <Link href="/terms" className="foot-link-mobile">
-              {lang === 'bn' ? 'শর্তাবলী' : 'Terms'}
-            </Link>
-            <Link
-              href="/admin"
-              className="foot-link-mobile foot-admin-mobile"
-              title={lang === 'bn' ? 'অ্যাডমিন কনসোল' : 'Admin Console'}
-            >
-              // {lang === 'bn' ? 'অ্যাডমিন' : 'ADMIN'}
             </Link>
           </div>
         </div>

@@ -154,7 +154,7 @@ export default function Header() {
         </Link>
 
         {/* Desktop Header Actions (Pill Row - Desktop Only) */}
-        <div className="top-actions" style={{ marginInlineStart: 'auto' }}>
+        <div className="top-actions hidden md:flex" style={{ marginInlineStart: 'auto' }}>
           {/* About Button */}
           <button
             type="button"
@@ -260,7 +260,7 @@ export default function Header() {
         </div>
 
         {/* Mobile Three-Dot (⋮) Menu Button on Right Side of Header (Mobile Only) */}
-        <div ref={menuRef} className="header-menu-wrap">
+        <div ref={menuRef} className="header-menu-wrap flex md:hidden">
           <button
             type="button"
             className={`btn-header-menu ${isMenuOpen ? 'open' : ''}`}
