@@ -274,6 +274,8 @@ export default function AdminConsole() {
   });
 
   const [analytics, setAnalytics] = useState<Record<string, number>>({});
+  const [lastUpdatedTime, setLastUpdatedTime] = useState<string>('');
+  const [hoveredBar, setHoveredBar] = useState<{ name: string; count: number } | null>(null);
   const [policies, setPolicies] = useState<Record<string, PolicySection>>(DEFAULT_POLICY_SECTIONS);
   const [savingPolicies, setSavingPolicies] = useState<Record<string, boolean>>({});
   const [policySaveStatus, setPolicySaveStatus] = useState<Record<string, 'saved' | 'error' | null>>({});
@@ -434,6 +436,23 @@ export default function AdminConsole() {
         }
         if (data.policies) setPolicies(data.policies);
         if (data.analytics) setAnalytics(data.analytics);
+
+        try {
+          const now = new Date();
+          const dStr = new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'Asia/Dhaka',
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true,
+          }).format(now);
+          setLastUpdatedTime(`${dStr} (Asia/Dhaka)`);
+        } catch {
+          setLastUpdatedTime(new Date().toLocaleTimeString());
+        }
       } else {
         setDbConnected(false);
       }
@@ -934,8 +953,9 @@ export default function AdminConsole() {
     return matchesCat && matchesSearch && matchesStatus;
   });
 
-  const activeToolsCount = (tools || []).filter((t) => t.is_active).length + (removeAiLabel.enabled ? 1 : 0);
-  const totalToolsCount = (tools || []).length + (removeAiLabel.enabled !== false ? 1 : 0);
+  const hasRemoveAiInTools = (tools || []).some((t) => t.slug === 'remove-ai-label');
+  const activeToolsCount = (tools || []).filter((t) => t.is_active).length + (!hasRemoveAiInTools && removeAiLabel.enabled ? 1 : 0);
+  const totalToolsCount = (tools || []).length + (!hasRemoveAiInTools ? 1 : 0);
   const activeCategoriesCount = (categories || []).filter((c) => c.is_active).length;
 
   // SSR Hydration Guard
@@ -1753,7 +1773,7 @@ export default function AdminConsole() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
               <span style={{ color: '#64748b' }}>Active Tools:</span>
-              <strong style={{ color: '#10b981' }}>{activeToolsCount} / {tools.length}</strong>
+              <strong style={{ color: '#10b981' }}>{activeToolsCount} / {totalToolsCount}</strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
               <span style={{ color: '#64748b' }}>Categories:</span>
@@ -1795,236 +1815,827 @@ export default function AdminConsole() {
               </button>
             ))}
           </div>
-          {/* TAB 1: OVERVIEW */}
-          {activeTab === 'overview' && (
-            <div>
-              <div style={{ marginBottom: '28px' }}>
-                <h1 style={{ fontSize: '26px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', letterSpacing: '-0.02em' }}>
-                  Platform Overview
-                </h1>
-                <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>
-                  Real-time synchronization status across isolated database tables, active platform tools, and visitors launch analytics.
-                </p>
-              </div>
+          {/* TAB 1: OVERVIEW (RESTYLED MODERN SAAS ANALYTICS DASHBOARD) */}
+          {activeTab === 'overview' && (() => {
+            const totalToolUses = Object.values(analytics).reduce((a, b) => a + Number(b || 0), 0);
+            const sortedTools = [...tools]
+              .map((t) => ({ ...t, count: Number(analytics[t.slug] || 0) }))
+              .sort((a, b) => b.count - a.count);
+            const topTool = sortedTools[0];
+            const topToolsList = sortedTools.slice(0, 5);
+            const chartTools = sortedTools.slice(0, 10);
+            const maxChartCount = Math.max(...chartTools.map((t) => t.count), 1);
+            const activeToolsLive = tools.filter((t) => t.is_active).length;
+            const activeCatsLive = categories.filter((c) => c.is_active).length;
 
-              {/* Stat Cards Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px', marginBottom: '32px' }}>
-                {/* Total Tool Launches */}
-                <div style={{ background: '#111827', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '16px', padding: '22px', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', position: 'relative', overflow: 'hidden' }}>
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, #10b981, #34d399)' }} />
-                  <span style={{ fontSize: '12.5px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Launches</span>
-                  <div style={{ fontSize: '36px', fontWeight: 900, color: '#10b981', margin: '6px 0 2px', letterSpacing: '-0.02em' }}>
-                    {Object.values(analytics).reduce((a, b) => a + Number(b || 0), 0).toLocaleString()}
+            return (
+              <div>
+                {/* 1 — Meta Row */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '26px',
+                    flexWrap: 'wrap',
+                    gap: '12px',
+                    paddingBottom: '16px',
+                    borderBottom: '1px solid #1f2937',
+                  }}
+                >
+                  <div>
+                    <h1
+                      style={{
+                        fontSize: '24px',
+                        fontWeight: 800,
+                        margin: '0 0 4px',
+                        color: '#f8fafc',
+                        letterSpacing: '-0.02em',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                      }}
+                    >
+                      <BarChart3 size={22} style={{ color: '#10b981' }} />
+                      <span>Platform Overview</span>
+                    </h1>
+                    <p style={{ fontSize: '13.5px', color: '#94a3b8', margin: 0 }}>
+                      Live usage analytics, platform tool health, and infrastructure status.
+                    </p>
                   </div>
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>Live usage hits recorded</span>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: '13px', color: '#64748b' }}>
+                      Last updated:{' '}
+                      <strong style={{ color: '#94a3b8', fontWeight: 600 }}>
+                        {lastUpdatedTime || 'Just now'}
+                      </strong>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={fetchAllSections}
+                      disabled={loadingData}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 14px',
+                        borderRadius: '10px',
+                        background: '#1f2937',
+                        border: '1px solid #374151',
+                        color: '#f8fafc',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: loadingData ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <RefreshCw size={14} className={loadingData ? 'animate-spin' : ''} />
+                      <span>{loadingData ? 'Refreshing...' : 'Refresh'}</span>
+                    </button>
+                  </div>
                 </div>
 
-                {/* Active Tools */}
-                <div style={{ background: '#111827', border: '1px solid rgba(56,189,248,0.25)', borderRadius: '16px', padding: '22px', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', position: 'relative', overflow: 'hidden' }}>
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, #38bdf8, #60a5fa)' }} />
-                  <span style={{ fontSize: '12.5px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Tools</span>
-                  <div style={{ fontSize: '36px', fontWeight: 900, color: '#38bdf8', margin: '6px 0 2px', letterSpacing: '-0.02em' }}>
-                    {activeToolsCount} <span style={{ fontSize: '18px', color: '#64748b', fontWeight: 600 }}>/ {totalToolsCount}</span>
-                  </div>
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>Enabled across {categories.length} categories</span>
-                </div>
-
-                {/* Active Categories */}
-                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '22px', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
-                  <span style={{ fontSize: '12.5px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Categories</span>
-                  <div style={{ fontSize: '36px', fontWeight: 900, color: '#a855f7', margin: '6px 0 2px', letterSpacing: '-0.02em' }}>
-                    {activeCategoriesCount} <span style={{ fontSize: '18px', color: '#64748b', fontWeight: 600 }}>/ {categories.length}</span>
-                  </div>
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>Homepage accordion groups</span>
-                </div>
-
-                {/* Active API Integrations */}
-                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '22px', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
-                  <span style={{ fontSize: '12.5px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cloud APIs</span>
-                  <div style={{ fontSize: '36px', fontWeight: 900, color: '#f59e0b', margin: '6px 0 2px', letterSpacing: '-0.02em' }}>
-                    {[apiKeys.gemini_active, apiKeys.convertapi_active, apiKeys.removebg_active, apiKeys.openai_active].filter(Boolean).length} <span style={{ fontSize: '18px', color: '#64748b', fontWeight: 600 }}>/ 4</span>
-                  </div>
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>Gemini, ConvertAPI, Remove.bg, OpenAI</span>
-                </div>
-
-                {/* Database Connection */}
-                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '22px', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
-                  <span style={{ fontSize: '12.5px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Postgres Engine</span>
-                  <div style={{ fontSize: '20px', fontWeight: 800, color: dbConnected ? '#10b981' : '#ef4444', margin: '12px 0 4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: dbConnected ? '#10b981' : '#ef4444' }} />
-                    {dbConnected ? 'Neon Cloud (Live)' : 'Disconnected'}
-                  </div>
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>Fast query latency (&lt;250ms)</span>
-                </div>
-
-                {/* Notice Banner Status */}
-                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '22px', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
-                  <span style={{ fontSize: '12.5px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Notice Banner</span>
-                  <div style={{ fontSize: '20px', fontWeight: 800, color: announcement.is_active ? '#f59e0b' : '#64748b', margin: '12px 0 4px' }}>
-                    {announcement.is_active ? '⚡ Live on Site' : '⚪ Disabled'}
-                  </div>
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>Top header announcement</span>
-                </div>
-              </div>
-
-              {/* Quick Actions Shortcuts */}
-              <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '24px', marginBottom: '28px' }}>
-                <h2 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 16px', color: '#f8fafc' }}>
-                  Management Navigation
-                </h2>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => setActiveTab('tools')}
+                {/* 2 — KPI Card Row (4 Cards) */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+                    gap: '16px',
+                    marginBottom: '28px',
+                  }}
+                >
+                  {/* Card 1: Total Tool Uses */}
+                  <div
                     style={{
-                      padding: '10px 18px',
-                      borderRadius: '10px',
-                      background: '#1f2937',
-                      color: '#f8fafc',
-                      border: '1px solid #374151',
-                      fontSize: '13.5px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
+                      background: '#111827',
+                      border: '1px solid #1f2937',
+                      borderRadius: '16px',
+                      padding: '22px',
+                      position: 'relative',
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      transition: 'background 0.2s',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
                     }}
                   >
-                    <Wrench size={16} /> Manage Tools ({tools.length})
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('categories')}
-                    style={{
-                      padding: '10px 18px',
-                      borderRadius: '10px',
-                      background: '#1f2937',
-                      color: '#f8fafc',
-                      border: '1px solid #374151',
-                      fontSize: '13.5px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                    }}
-                  >
-                    <Layers size={16} /> Manage Categories ({categories.length})
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('analytics')}
-                    style={{
-                      padding: '10px 18px',
-                      borderRadius: '10px',
-                      background: '#1f2937',
-                      color: '#f8fafc',
-                      border: '1px solid #374151',
-                      fontSize: '13.5px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                    }}
-                  >
-                    <BarChart3 size={16} /> Usage Analytics
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('announcement')}
-                    style={{
-                      padding: '10px 18px',
-                      borderRadius: '10px',
-                      background: '#1f2937',
-                      color: '#f8fafc',
-                      border: '1px solid #374151',
-                      fontSize: '13.5px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                    }}
-                  >
-                    <Bell size={16} /> Notice Banner
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('apis')}
-                    style={{
-                      padding: '10px 18px',
-                      borderRadius: '10px',
-                      background: '#1f2937',
-                      color: '#f8fafc',
-                      border: '1px solid #374151',
-                      fontSize: '13.5px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                    }}
-                  >
-                    <Key size={16} /> API Credentials
-                  </button>
-                </div>
-              </div>
-
-              {/* Top 5 Most Launched Tools Quick List */}
-              <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: '#f8fafc' }}>
-                    Top Tools by Popularity
-                  </h2>
-                  <button
-                    onClick={() => setActiveTab('analytics')}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#10b981',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                    }}
-                  >
-                    View All Analytics →
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {tools
-                    .map((t) => ({ ...t, count: Number(analytics[t.slug] || 0) }))
-                    .sort((a, b) => b.count - a.count)
-                    .slice(0, 5)
-                    .map((t, idx) => (
-                      <div
-                        key={t.slug}
+                    <div>
+                      <span
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '12px 16px',
-                          borderRadius: '10px',
-                          background: '#0b0f19',
-                          border: '1px solid #1f2937',
+                          fontSize: '12px',
+                          color: '#94a3b8',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.06em',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <span style={{ fontSize: '14px', fontWeight: 800, color: idx === 0 ? '#fbbf24' : idx === 1 ? '#94a3b8' : idx === 2 ? '#b45309' : '#64748b' }}>
-                            #{idx + 1}
-                          </span>
-                          <div>
-                            <span style={{ fontSize: '14px', fontWeight: 700, color: '#f8fafc' }}>{t.title_en}</span>
-                            <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '8px' }}>/{t.slug}</span>
-                          </div>
-                        </div>
-                        <span style={{ fontSize: '14px', fontWeight: 800, color: '#10b981' }}>
-                          {t.count.toLocaleString()} launches
+                        Total Tool Uses
+                      </span>
+                      <div
+                        style={{
+                          fontSize: '34px',
+                          fontWeight: 900,
+                          color: '#f8fafc',
+                          margin: '8px 0 4px',
+                          letterSpacing: '-0.02em',
+                        }}
+                      >
+                        {totalToolUses.toLocaleString()}
+                      </div>
+                      <span style={{ fontSize: '12px', color: '#64748b' }}>all time</span>
+                    </div>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        right: '18px',
+                        bottom: '18px',
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '10px',
+                        background: 'rgba(16, 185, 129, 0.12)',
+                        border: '1px solid rgba(16, 185, 129, 0.25)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#10b981',
+                      }}
+                    >
+                      <Zap size={18} />
+                    </div>
+                  </div>
+
+                  {/* Card 2: Most Used Tool */}
+                  <div
+                    style={{
+                      background: '#111827',
+                      border: '1px solid #1f2937',
+                      borderRadius: '16px',
+                      padding: '22px',
+                      position: 'relative',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
+                    }}
+                  >
+                    <div style={{ paddingRight: '40px' }}>
+                      <span
+                        style={{
+                          fontSize: '12px',
+                          color: '#94a3b8',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.06em',
+                        }}
+                      >
+                        Most Used Tool
+                      </span>
+                      <div
+                        title={topTool?.title_en || 'None yet'}
+                        style={{
+                          fontSize: '22px',
+                          fontWeight: 800,
+                          color: '#38bdf8',
+                          margin: '10px 0 4px',
+                          letterSpacing: '-0.01em',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {topTool ? topTool.title_en : 'None yet'}
+                      </div>
+                      <span style={{ fontSize: '12px', color: '#64748b' }}>
+                        {(topTool?.count || 0).toLocaleString()} uses
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        right: '18px',
+                        bottom: '18px',
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '10px',
+                        background: 'rgba(56, 189, 248, 0.12)',
+                        border: '1px solid rgba(56, 189, 248, 0.25)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#38bdf8',
+                      }}
+                    >
+                      <Sparkles size={18} />
+                    </div>
+                  </div>
+
+                  {/* Card 3: Active Tools */}
+                  <div
+                    style={{
+                      background: '#111827',
+                      border: '1px solid #1f2937',
+                      borderRadius: '16px',
+                      padding: '22px',
+                      position: 'relative',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
+                    }}
+                  >
+                    <div>
+                      <span
+                        style={{
+                          fontSize: '12px',
+                          color: '#94a3b8',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.06em',
+                        }}
+                      >
+                        Active Tools
+                      </span>
+                      <div
+                        style={{
+                          fontSize: '34px',
+                          fontWeight: 900,
+                          color: '#a855f7',
+                          margin: '8px 0 4px',
+                          letterSpacing: '-0.02em',
+                        }}
+                      >
+                        {activeToolsLive}
+                      </div>
+                      <span style={{ fontSize: '12px', color: '#64748b' }}>
+                        across {activeCatsLive} categories
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        right: '18px',
+                        bottom: '18px',
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '10px',
+                        background: 'rgba(168, 85, 247, 0.12)',
+                        border: '1px solid rgba(168, 85, 247, 0.25)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#a855f7',
+                      }}
+                    >
+                      <Wrench size={18} />
+                    </div>
+                  </div>
+
+                  {/* Card 4: Policy Sections */}
+                  <div
+                    style={{
+                      background: '#111827',
+                      border: '1px solid #1f2937',
+                      borderRadius: '16px',
+                      padding: '22px',
+                      position: 'relative',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
+                    }}
+                  >
+                    <div>
+                      <span
+                        style={{
+                          fontSize: '12px',
+                          color: '#94a3b8',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.06em',
+                        }}
+                      >
+                        Policy Sections
+                      </span>
+                      <div
+                        style={{
+                          fontSize: '34px',
+                          fontWeight: 900,
+                          color: '#10b981',
+                          margin: '8px 0 4px',
+                          letterSpacing: '-0.02em',
+                        }}
+                      >
+                        9
+                      </div>
+                      <span style={{ fontSize: '12px', color: '#64748b' }}>
+                        Terms &amp; Policies
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        right: '18px',
+                        bottom: '18px',
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '10px',
+                        background: 'rgba(16, 185, 129, 0.12)',
+                        border: '1px solid rgba(16, 185, 129, 0.25)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#10b981',
+                      }}
+                    >
+                      <FileText size={18} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3 — Chart Card "Usage by Tool" */}
+                <div
+                  style={{
+                    background: '#111827',
+                    border: '1px solid #1f2937',
+                    borderRadius: '18px',
+                    padding: '24px',
+                    marginBottom: '28px',
+                    boxShadow: '0 6px 24px rgba(0,0,0,0.25)',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '20px',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                    }}
+                  >
+                    <div>
+                      <h2 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 2px', color: '#f8fafc' }}>
+                        Usage by Tool
+                      </h2>
+                      <p style={{ fontSize: '12.5px', color: '#64748b', margin: 0 }}>
+                        Top {chartTools.length} tools ranked by lifetime launches
+                      </p>
+                    </div>
+
+                    {hoveredBar && (
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          background: '#0b0f19',
+                          border: '1px solid #334155',
+                          padding: '4px 12px',
+                          borderRadius: '8px',
+                          fontSize: '12.5px',
+                        }}
+                      >
+                        <span style={{ color: '#f8fafc', fontWeight: 600 }}>{hoveredBar.name}</span>
+                        <span style={{ color: '#10b981', fontWeight: 800 }}>
+                          {hoveredBar.count.toLocaleString()} uses
                         </span>
                       </div>
-                    ))}
+                    )}
+                  </div>
+
+                  {totalToolUses === 0 ? (
+                    <div
+                      style={{
+                        padding: '60px 20px',
+                        textAlign: 'center',
+                        color: '#64748b',
+                        fontSize: '14px',
+                      }}
+                    >
+                      No tool usage recorded yet
+                    </div>
+                  ) : (
+                    <div style={{ position: 'relative', width: '100%', overflowX: 'auto', paddingTop: '10px' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-end',
+                          justifyContent: 'space-between',
+                          gap: '12px',
+                          height: '220px',
+                          minWidth: '600px',
+                          borderBottom: '1px solid #334155',
+                          paddingBottom: '2px',
+                          position: 'relative',
+                        }}
+                      >
+                        {/* Soft horizontal grid lines */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            top: '25%',
+                            borderTop: '1px dashed rgba(51, 65, 85, 0.4)',
+                            pointerEvents: 'none',
+                          }}
+                        />
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            top: '50%',
+                            borderTop: '1px dashed rgba(51, 65, 85, 0.4)',
+                            pointerEvents: 'none',
+                          }}
+                        />
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            top: '75%',
+                            borderTop: '1px dashed rgba(51, 65, 85, 0.4)',
+                            pointerEvents: 'none',
+                          }}
+                        />
+
+                        {chartTools.map((t) => {
+                          const heightPct = Math.max((t.count / maxChartCount) * 100, 3);
+                          const isHovered = hoveredBar?.name === t.title_en;
+
+                          return (
+                            <div
+                              key={t.slug}
+                              onMouseEnter={() => setHoveredBar({ name: t.title_en, count: t.count })}
+                              onMouseLeave={() => setHoveredBar(null)}
+                              onTouchStart={() => setHoveredBar({ name: t.title_en, count: t.count })}
+                              style={{
+                                flex: 1,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                height: '100%',
+                                justifyContent: 'flex-end',
+                                cursor: 'pointer',
+                                position: 'relative',
+                              }}
+                            >
+                              {/* Animated Bar with emerald->cyan gradient */}
+                              <div
+                                style={{
+                                  width: '100%',
+                                  maxWidth: '38px',
+                                  height: `${heightPct}%`,
+                                  background: isHovered
+                                    ? 'linear-gradient(180deg, #38bdf8 0%, #10b981 100%)'
+                                    : 'linear-gradient(180deg, #10b981 0%, #06b6d4 100%)',
+                                  borderRadius: '6px 6px 0 0',
+                                  transition: 'height 0.4s ease, filter 0.15s ease',
+                                  filter: isHovered ? 'brightness(1.2)' : 'none',
+                                  boxShadow: isHovered
+                                    ? '0 0 16px rgba(16, 185, 129, 0.4)'
+                                    : '0 2px 8px rgba(0, 0, 0, 0.2)',
+                                }}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Tool Names Row */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: '12px',
+                          minWidth: '600px',
+                          marginTop: '8px',
+                        }}
+                      >
+                        {chartTools.map((t) => (
+                          <div
+                            key={t.slug}
+                            style={{
+                              flex: 1,
+                              textAlign: 'center',
+                              fontSize: '11px',
+                              color: hoveredBar?.name === t.title_en ? '#38bdf8' : '#94a3b8',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              maxWidth: '56px',
+                              fontWeight: 600,
+                            }}
+                            title={t.title_en}
+                          >
+                            {t.title_en.split(' ')[0]}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 4 — Bottom Row, Two Cards Side by Side (Stacked on Mobile) */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                    gap: '20px',
+                  }}
+                >
+                  {/* Left: Top Tools List with share bar */}
+                  <div
+                    style={{
+                      background: '#111827',
+                      border: '1px solid #1f2937',
+                      borderRadius: '18px',
+                      padding: '24px',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '18px',
+                      }}
+                    >
+                      <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: '#f8fafc' }}>
+                        Top Tools
+                      </h2>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('analytics')}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#10b981',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                        }}
+                      >
+                        View All →
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      {topToolsList.map((t, idx) => {
+                        const sharePct = totalToolUses > 0 ? (t.count / totalToolUses) * 100 : 0;
+                        return (
+                          <div
+                            key={t.slug}
+                            style={{
+                              background: '#0b0f19',
+                              border: '1px solid #1e293b',
+                              borderRadius: '12px',
+                              padding: '12px 14px',
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: '6px',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span
+                                  style={{
+                                    fontSize: '12px',
+                                    fontWeight: 800,
+                                    color: idx === 0 ? '#fbbf24' : idx === 1 ? '#94a3b8' : idx === 2 ? '#b45309' : '#64748b',
+                                  }}
+                                >
+                                  #{idx + 1}
+                                </span>
+                                <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#f8fafc' }}>
+                                  {t.title_en}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: '13px', fontWeight: 800, color: '#10b981' }}>
+                                {t.count.toLocaleString()}
+                              </span>
+                            </div>
+
+                            {/* Slim share bar */}
+                            <div
+                              style={{
+                                width: '100%',
+                                height: '4px',
+                                background: '#1e293b',
+                                borderRadius: '999px',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: `${sharePct}%`,
+                                  height: '100%',
+                                  background: 'linear-gradient(90deg, #10b981, #38bdf8)',
+                                  borderRadius: '999px',
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Right: Quick Status */}
+                  <div
+                    style={{
+                      background: '#111827',
+                      border: '1px solid #1f2937',
+                      borderRadius: '18px',
+                      padding: '24px',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <div>
+                      <h2 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 16px', color: '#f8fafc' }}>
+                        Quick Status
+                      </h2>
+
+                      {/* Notice Banner Status */}
+                      <div
+                        style={{
+                          background: '#0b0f19',
+                          border: '1px solid #1e293b',
+                          borderRadius: '12px',
+                          padding: '12px 14px',
+                          marginBottom: '14px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            marginBottom: '4px',
+                          }}
+                        >
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: '#cbd5e1' }}>
+                            Notice Banner
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: '999px',
+                              background: announcement.is_active ? 'rgba(16, 185, 129, 0.2)' : 'rgba(100, 116, 139, 0.2)',
+                              color: announcement.is_active ? '#34d399' : '#94a3b8',
+                              border: `1px solid ${announcement.is_active ? 'rgba(16, 185, 129, 0.4)' : '#334155'}`,
+                            }}
+                          >
+                            {announcement.is_active ? '✓ Active' : '— Inactive'}
+                          </span>
+                        </div>
+                        <p
+                          style={{
+                            fontSize: '12px',
+                            color: '#64748b',
+                            margin: 0,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                          title={announcement.text_en || announcement.text_bn}
+                        >
+                          {announcement.text_en || announcement.text_bn || 'No announcement set'}
+                        </p>
+                      </div>
+
+                      {/* API Keys Configuration Status (Flags Only — Never secret values) */}
+                      <div
+                        style={{
+                          background: '#0b0f19',
+                          border: '1px solid #1e293b',
+                          borderRadius: '12px',
+                          padding: '12px 14px',
+                          marginBottom: '20px',
+                        }}
+                      >
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#cbd5e1', marginBottom: '8px' }}>
+                          Cloud API Integrations
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ color: apiKeys.removebg_active && apiKeys.removebg_key ? '#10b981' : '#64748b', fontWeight: 700 }}>
+                              {apiKeys.removebg_active && apiKeys.removebg_key ? '✓' : '—'}
+                            </span>
+                            <span style={{ color: '#94a3b8' }}>remove.bg</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ color: apiKeys.convertapi_active && apiKeys.convertapi_token ? '#10b981' : '#64748b', fontWeight: 700 }}>
+                              {apiKeys.convertapi_active && apiKeys.convertapi_token ? '✓' : '—'}
+                            </span>
+                            <span style={{ color: '#94a3b8' }}>ConvertAPI</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ color: apiKeys.ilovepdf_active && (apiKeys.ilovepdf_public_key || apiKeys.ilovepdf_secret_key) ? '#10b981' : '#64748b', fontWeight: 700 }}>
+                              {apiKeys.ilovepdf_active && (apiKeys.ilovepdf_public_key || apiKeys.ilovepdf_secret_key) ? '✓' : '—'}
+                            </span>
+                            <span style={{ color: '#94a3b8' }}>iLovePDF</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ color: apiKeys.gemini_active && apiKeys.gemini_key ? '#10b981' : '#64748b', fontWeight: 700 }}>
+                              {apiKeys.gemini_active && apiKeys.gemini_key ? '✓' : '—'}
+                            </span>
+                            <span style={{ color: '#94a3b8' }}>Gemini / OpenAI</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick Link Buttons to Existing Editors */}
+                    <div>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                        Quick Editors
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('hero')}
+                          style={{
+                            padding: '7px 12px',
+                            borderRadius: '8px',
+                            background: '#1f2937',
+                            border: '1px solid #374151',
+                            color: '#e2e8f0',
+                            fontSize: '12.5px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Content
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('tools')}
+                          style={{
+                            padding: '7px 12px',
+                            borderRadius: '8px',
+                            background: '#1f2937',
+                            border: '1px solid #374151',
+                            color: '#e2e8f0',
+                            fontSize: '12.5px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Tools
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('policies')}
+                          style={{
+                            padding: '7px 12px',
+                            borderRadius: '8px',
+                            background: '#1f2937',
+                            border: '1px solid #374151',
+                            color: '#e2e8f0',
+                            fontSize: '12.5px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Terms &amp; Policies
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('announcement')}
+                          style={{
+                            padding: '7px 12px',
+                            borderRadius: '8px',
+                            background: '#1f2937',
+                            border: '1px solid #374151',
+                            color: '#e2e8f0',
+                            fontSize: '12.5px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Announcement
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* TAB 2: HERO SECTION */}
           {activeTab === 'hero' && (
@@ -2875,7 +3486,7 @@ export default function AdminConsole() {
                 >
                   <option value="all">All Statuses</option>
                   <option value="active">Active Only ({activeToolsCount})</option>
-                  <option value="inactive">Inactive Only ({tools.length - activeToolsCount})</option>
+                  <option value="inactive">Inactive Only ({totalToolsCount - activeToolsCount})</option>
                 </select>
               </div>
 

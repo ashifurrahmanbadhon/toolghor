@@ -70,19 +70,30 @@ export default function PolicyMarkdown({ content }: PolicyMarkdownProps) {
   };
 
   const renderInline = (text: string) => {
-    // Replace emails with mailto links
+    // Support bold markdown (**text**) and emails
+    const boldRegex = /(\*\*[^*]+\*\*)/g;
     const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/g;
-    const parts = text.split(emailRegex);
 
-    return parts.map((part, i) => {
-      if (part.match(emailRegex)) {
+    const boldParts = text.split(boldRegex);
+    return boldParts.map((bPart, bIdx) => {
+      if (bPart.startsWith('**') && bPart.endsWith('**')) {
         return (
-          <a key={i} href={`mailto:${part}`} className="policy-doc-link">
-            {part}
-          </a>
+          <strong key={`b-${bIdx}`} style={{ fontWeight: 700, color: 'var(--ink)' }}>
+            {bPart.slice(2, -2)}
+          </strong>
         );
       }
-      return part;
+      const emailParts = bPart.split(emailRegex);
+      return emailParts.map((part, eIdx) => {
+        if (part.match(emailRegex)) {
+          return (
+            <a key={`e-${bIdx}-${eIdx}`} href={`mailto:${part}`} className="policy-doc-link">
+              {part}
+            </a>
+          );
+        }
+        return part;
+      });
     });
   };
 

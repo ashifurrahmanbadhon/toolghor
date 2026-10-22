@@ -260,6 +260,23 @@ export async function POST(req: NextRequest) {
           updated_at = CURRENT_TIMESTAMP
         WHERE slug = ${slug};
       `;
+
+      if (slug === 'remove-ai-label') {
+        try {
+          await sql`
+            UPDATE section_tool_remove_ai_label
+            SET
+              name_en = COALESCE(${title_en}, name_en),
+              name_bn = COALESCE(${title_bn}, name_bn),
+              description_en = COALESCE(${desc_en}, description_en),
+              description_bn = COALESCE(${desc_bn}, description_bn),
+              enabled = COALESCE(${is_active}, enabled),
+              updated_at = CURRENT_TIMESTAMP
+            WHERE id = 1;
+          `;
+        } catch {}
+      }
+
       return notifyLiveUpdate(`Tool ${slug} updated successfully`);
     }
 
@@ -467,6 +484,21 @@ export async function POST(req: NextRequest) {
           enabled = EXCLUDED.enabled,
           updated_at = CURRENT_TIMESTAMP;
       `;
+
+      try {
+        await sql`
+          UPDATE section_tools
+          SET
+            title_en = ${name_en ?? 'Remove AI Label'},
+            title_bn = ${name_bn ?? 'AI লেবেল রিমুভার'},
+            desc_en = ${description_en ?? ''},
+            desc_bn = ${description_bn ?? ''},
+            is_active = ${enabled !== undefined ? enabled : true},
+            updated_at = CURRENT_TIMESTAMP
+          WHERE slug = 'remove-ai-label';
+        `;
+      } catch {}
+
       return notifyLiveUpdate('Remove AI Label tool info updated successfully');
     }
 

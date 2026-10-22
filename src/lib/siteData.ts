@@ -47,31 +47,42 @@ export async function getPublicSiteData() {
     } catch {}
 
     const removeAiRow = (removeAiRows && removeAiRows[0]) || null;
-    const mergedTools = [...(toolRows || [])];
+    let mergedTools = [...(toolRows || [])];
 
-    if (removeAiRow && removeAiRow.enabled !== false) {
-      const removeAiTool = {
-        slug: 'remove-ai-label',
-        category_slug: 'images',
-        is_active: true,
-        title_bn: removeAiRow.name_bn || 'AI লেবেল রিমুভার',
-        title_en: removeAiRow.name_en || 'Remove AI Label',
-        desc_bn: removeAiRow.description_bn || 'ছবি থেকে AI লেবেল ও মেটাডেটা (C2PA, EXIF, XMP) মুছে ফেলুন — ফ্রি, ব্রাউজারেই, কোনো আপলোড ছাড়াই।',
-        desc_en: removeAiRow.description_en || 'Remove AI labels & metadata (C2PA, EXIF, XMP) from photos — free, in your browser, no upload.',
-        badge: 'New',
-      };
+    if (removeAiRow) {
+      const existingIdx = mergedTools.findIndex((t: any) => t.slug === 'remove-ai-label');
+      if (existingIdx >= 0) {
+        mergedTools[existingIdx] = {
+          ...mergedTools[existingIdx],
+          is_active: removeAiRow.enabled !== false,
+          title_bn: removeAiRow.name_bn || mergedTools[existingIdx].title_bn,
+          title_en: removeAiRow.name_en || mergedTools[existingIdx].title_en,
+          desc_bn: removeAiRow.description_bn || mergedTools[existingIdx].desc_bn,
+          desc_en: removeAiRow.description_en || mergedTools[existingIdx].desc_en,
+        };
+      } else if (removeAiRow.enabled !== false) {
+        const removeAiTool = {
+          slug: 'remove-ai-label',
+          category_slug: 'images',
+          is_active: true,
+          title_bn: removeAiRow.name_bn || 'AI লেবেল রিমুভার',
+          title_en: removeAiRow.name_en || 'Remove AI Label',
+          desc_bn: removeAiRow.description_bn || 'ছবি থেকে AI লেবেল ও মেটাডেটা (C2PA, EXIF, XMP) মুছে ফেলুন — ফ্রি, ব্রাউজারেই, কোনো আপলোড ছাড়াই।',
+          desc_en: removeAiRow.description_en || 'Remove AI labels & metadata (C2PA, EXIF, XMP) from photos — free, in your browser, no upload.',
+          badge: 'New',
+        };
 
-      // Position as the last tool in the Image Tools category
-      let lastImageIdx = -1;
-      for (let i = 0; i < mergedTools.length; i++) {
-        if (mergedTools[i].category_slug === 'images') {
-          lastImageIdx = i;
+        let lastImageIdx = -1;
+        for (let i = 0; i < mergedTools.length; i++) {
+          if (mergedTools[i].category_slug === 'images') {
+            lastImageIdx = i;
+          }
         }
-      }
-      if (lastImageIdx >= 0) {
-        mergedTools.splice(lastImageIdx + 1, 0, removeAiTool);
-      } else {
-        mergedTools.push(removeAiTool);
+        if (lastImageIdx >= 0) {
+          mergedTools.splice(lastImageIdx + 1, 0, removeAiTool);
+        } else {
+          mergedTools.push(removeAiTool);
+        }
       }
     }
 

@@ -5,7 +5,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PolicyMarkdown from '@/components/PolicyMarkdown';
 import { useApp } from '@/context/AppContext';
-import { PolicySection, POLICY_SECTIONS_LIST } from '@/data/policiesDefaults';
+import { PolicySection, POLICY_SECTIONS_LIST, DEFAULT_POLICY_SECTIONS } from '@/data/policiesDefaults';
 
 interface TermsClientProps {
   initialPolicies: Record<string, PolicySection>;
@@ -21,6 +21,7 @@ const toBengaliNumber = (num: number, isBn: boolean) => {
 export default function TermsClient({ initialPolicies }: TermsClientProps) {
   const { lang } = useApp();
   const [policies, setPolicies] = useState<Record<string, PolicySection>>(initialPolicies);
+  const [activeSection, setActiveSection] = useState<string>('terms');
 
   // Sync listener: refresh policies if admin edits in another tab
   useEffect(() => {
@@ -50,49 +51,162 @@ export default function TermsClient({ initialPolicies }: TermsClientProps) {
     };
   }, []);
 
+  // IntersectionObserver Scrollspy for sticky sidebar & mobile chip row
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Find visible section closest to top
+        const visible = entries.find((e) => e.isIntersecting);
+        if (visible && visible.target.id) {
+          setActiveSection(visible.target.id);
+        }
+      },
+      {
+        rootMargin: '-80px 0px -55% 0px',
+        threshold: [0, 0.2],
+      }
+    );
+
+    POLICY_SECTIONS_LIST.forEach((item) => {
+      const el = document.getElementById(item.id);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [policies]);
+
   const isBn = lang === 'bn';
   const pageTitle = isBn ? 'ব্যবহারের শর্তাবলী ও নীতিসমূহ' : 'Terms & Policies';
+  const sidebarTitle = isBn ? 'শর্তাবলী ও নীতিমালা' : 'Terms & Policies';
   const lastUpdatedDate = isBn ? '২২ অক্টোবর ২০২৬' : '22 October 2026';
   const lastUpdatedText = isBn
     ? `সর্বশেষ হালনাগাদ: ${lastUpdatedDate}`
     : `Last Updated: ${lastUpdatedDate}`;
 
+  const welcomeHeading = isBn ? 'স্বাগতম!' : 'Welcome!';
+  const welcomeText = isBn
+    ? 'এই নীতিগুলোতে পরিষ্কার ও সৎ ভাষায় ব্যাখ্যা করা হয়েছে ToolGhor কীভাবে কাজ করে, আপনার ফাইলের কী হয় এবং সাইট ব্যবহারের নিয়মগুলো।'
+    : 'These policies explain how ToolGhor works, what happens to your files, and the rules for using the site — in clear, honest language.';
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    const el = document.getElementById(id);
+    if (el) {
+      const yOffset = -90;
+      const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+      setActiveSection(id);
+      if (window.history && window.history.pushState) {
+        window.history.pushState(null, '', `#${id}`);
+      }
+    }
+  };
+
   return (
     <>
       <Header />
-      <main className="policy-doc-page">
-        <article className="policy-doc-container">
-          {/* Page Head */}
-          <header className="policy-doc-header">
-            <h1 className="policy-doc-title">{pageTitle}</h1>
-            <div className="policy-doc-divider" aria-hidden="true" />
-            <p className="policy-doc-meta">{lastUpdatedText}</p>
-          </header>
+      <main className="policy-docs-page">
+        <div className="policy-docs-container">
+          {/* Mobile Horizontal Scrollable Chip Bar (pinned under header on phones) */}
+          <nav
+            aria-label="Terms and Policies quick navigation"
+            className="policy-docs-mobile-nav"
+          >
+            <div className="policy-docs-mobile-chips">
+              {POLICY_SECTIONS_LIST.map((item, index) => {
+                const sec = policies[item.id];
+                const def = DEFAULT_POLICY_SECTIONS[item.id];
+                const title = isBn ? sec?.title_bn || def?.title_bn || item.id : sec?.title_en || def?.title_en || item.id;
+                const num = toBengaliNumber(index + 1, isBn);
+                const isActive = activeSection === item.id;
 
-          {/* Flowing Prose Sections */}
-          <div className="policy-doc-flow">
-            {POLICY_SECTIONS_LIST.map((item, index) => {
-              const sec = policies[item.id];
-              if (!sec) return null;
-              const title = isBn ? sec.title_bn : sec.title_en;
-              const body = isBn ? sec.body_bn : sec.body_en;
-              const numberPrefix = toBengaliNumber(index + 1, isBn);
+                return (
+                  <a
+                    key={item.id}
+                    href={`#${item.id}`}
+                    onClick={(e) => handleNavClick(e, item.id)}
+                    className={`policy-docs-mobile-chip ${isActive ? 'active' : ''}`}
+                  >
+                    <span>{num}</span> {title}
+                  </a>
+                );
+              })}
+            </div>
+          </nav>
 
-              return (
-                <section
-                  key={item.id}
-                  id={item.id}
-                  className="policy-doc-section"
-                >
-                  <h2 className="policy-doc-heading">
-                    {numberPrefix} {title}
-                  </h2>
-                  <PolicyMarkdown content={body} />
-                </section>
-              );
-            })}
+          <div className="policy-docs-grid">
+            {/* Desktop Left Sticky Sidebar */}
+            <aside className="policy-docs-sidebar">
+              <div className="policy-docs-sidebar-inner">
+                <div className="policy-docs-sidebar-header">
+                  <span className="policy-docs-sidebar-title">{sidebarTitle}</span>
+                </div>
+                <nav aria-label="Documentation sections" className="policy-docs-nav">
+                  {POLICY_SECTIONS_LIST.map((item, index) => {
+                    const sec = policies[item.id];
+                    const def = DEFAULT_POLICY_SECTIONS[item.id];
+                    const title = isBn ? sec?.title_bn || def?.title_bn || item.id : sec?.title_en || def?.title_en || item.id;
+                    const num = toBengaliNumber(index + 1, isBn);
+                    const isActive = activeSection === item.id;
+
+                    return (
+                      <a
+                        key={item.id}
+                        href={`#${item.id}`}
+                        onClick={(e) => handleNavClick(e, item.id)}
+                        className={`policy-docs-nav-link ${isActive ? 'active' : ''}`}
+                      >
+                        <span className="policy-docs-nav-num">{num}</span>
+                        <span className="policy-docs-nav-text">{title}</span>
+                      </a>
+                    );
+                  })}
+                </nav>
+              </div>
+            </aside>
+
+            {/* Right Main Content Panel */}
+            <article className="policy-docs-panel">
+              {/* Document Head */}
+              <header className="policy-docs-head">
+                <h1 className="policy-docs-main-title">{pageTitle}</h1>
+                <p className="policy-docs-meta-line">{lastUpdatedText}</p>
+
+                {/* Intro Callout Box */}
+                <div className="policy-docs-welcome-callout">
+                  <div className="policy-docs-welcome-heading">{welcomeHeading}</div>
+                  <p className="policy-docs-welcome-text">{welcomeText}</p>
+                </div>
+              </header>
+
+              {/* Sections Flow */}
+              <div className="policy-docs-sections">
+                {POLICY_SECTIONS_LIST.map((item, index) => {
+                  const sec = policies[item.id];
+                  if (!sec) return null;
+                  const title = isBn ? sec.title_bn : sec.title_en;
+                  const body = isBn ? sec.body_bn : sec.body_en;
+                  const numberPrefix = toBengaliNumber(index + 1, isBn);
+
+                  return (
+                    <section
+                      key={item.id}
+                      id={item.id}
+                      className="policy-docs-section"
+                    >
+                      {index > 0 && <div className="policy-docs-divider" aria-hidden="true" />}
+                      <h2 className="policy-docs-section-heading">
+                        <span className="policy-docs-heading-num">{numberPrefix}</span>{' '}
+                        {title}
+                      </h2>
+                      <PolicyMarkdown content={body} />
+                    </section>
+                  );
+                })}
+              </div>
+            </article>
           </div>
-        </article>
+        </div>
       </main>
       <Footer />
     </>
