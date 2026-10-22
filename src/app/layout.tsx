@@ -25,6 +25,9 @@ export const metadata: Metadata = {
   title: 'ToolGhor – Everyday tools, now on one platform',
   description: `${siteConfig.taglineEn}. Everyday productivity and file tools in your browser.`,
   metadataBase: new URL(siteConfig.url),
+  verification: {
+    google: 'HA3zZE7sqmr2f-OW02PChHvJ-DAEa2QGWe1TIJK1rPA',
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
