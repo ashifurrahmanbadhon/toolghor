@@ -789,15 +789,15 @@ body.has-motion .cat.reveal-ready.in-view {
 }
 .foot-admin {
   color: var(--ink-3) !important;
-  text-decoration: none !important;
-  transition: all .2s ease !important;
+  text-decoration: none;
+  transition: all .2s ease;
   transform: none !important;
   animation: none !important;
   box-shadow: none !important;
 }
 .foot-admin:hover {
   color: var(--ink) !important;
-  text-decoration: underline;
+  text-decoration: underline !important;
   transform: none !important;
   animation: none !important;
   box-shadow: none !important;
