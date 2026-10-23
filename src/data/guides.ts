@@ -467,6 +467,228 @@ export const GUIDES: Guide[] = [
       },
     ],
   },
+  {
+    slug: 'passport-photo-at-home',
+    metaTitle: 'How to Make a Passport-Size Photo at Home with Your Phone | ToolGhor',
+    metaDescription:
+      'Make a correct 35 × 45 mm passport-size photo at home with your phone — shooting tips, exact cropping, and fixes for KB limits. No studio needed.',
+    title: {
+      en: 'How to Make a Passport-Size Photo at Home with Your Phone',
+      bn: 'ঘরে বসে ফোন দিয়ে পাসপোর্ট সাইজ ছবি বানাবেন যেভাবে',
+    },
+    excerpt: {
+      en: 'Skip the studio: shoot a clean photo against a plain wall, crop it to exactly 35 × 45 mm, and fix the KB limit — all from your phone.',
+      bn: 'স্টুডিও ছাড়াই: সাদামাটা দেয়ালের সামনে পরিষ্কার ছবি তুলুন, ঠিক 35 × 45 mm মাপে crop করুন, KB সীমাও ঠিক করুন — সব ফোন থেকে।',
+    },
+    relatedTools: ['passport-photo', 'compress-image'],
+    datePublished: '2026-10-23',
+    intro: {
+      en: [
+        'A studio charges you for a few prints and a soft copy, and you still may not like the photo. But a passport-size photo is not magic — it is one specific size, a plain background, and a clear face. With a phone and five quiet minutes at home, you can make a photo that is every bit as correct. This guide walks you through it: how to shoot it, how to crop it to the exact millimetre, and how to fix the file size when a form also sets a KB limit.',
+      ],
+      bn: [
+        'স্টুডিওতে গিয়ে কয়েকটি প্রিন্ট আর একটি soft copy এর জন্য টাকা দিতে হয়, তারপরও ছবিটা পছন্দ না-ও হতে পারে। কিন্তু পাসপোর্ট সাইজ ছবি কোনো জাদু নয় — এটি একটি নির্দিষ্ট মাপ, একটি সাদামাটা background, আর একটি পরিষ্কার মুখ। ফোন আর মাত্র পাঁচ মিনিট সময় থাকলে বাড়িতেই একদম সঠিক মাপের ছবি বানানো যায়। এই গাইডে ধাপে ধাপে দেখানো হলো: কীভাবে ছবি তুলবেন, কীভাবে ঠিক মিলিমিটার মাপে crop করবেন, আর ফর্মে KB সীমা থাকলে ফাইলের সাইজ কীভাবে ঠিক করবেন।',
+      ],
+    },
+    sections: [
+      {
+        heading: {
+          en: 'First, what exactly is "passport size"?',
+          bn: 'আগে জানুন — "পাসপোর্ট সাইজ" মানে ঠিক কত?',
+        },
+        bullets: {
+          en: [
+            '35 × 45 mm — the standard passport photo size used in Bangladesh and most countries.',
+            'At print quality (300 DPI) that is about 413 × 531 pixels.',
+            'Used for: passport and e-passport applications, many visas, and job or admission forms that ask for a "passport-size photograph".',
+            'It is a crop, not a special camera: the photo must show your head and shoulders, face centred, at exactly this ratio.',
+            'One exception to know: a US visa photo is 2 × 2 inches (51 × 51 mm) — a different size. Always check your application\'s exact requirement first.',
+          ],
+          bn: [
+            '35 × 45 mm — বাংলাদেশসহ বেশিরভাগ দেশে ব্যবহৃত মানক পাসপোর্ট ছবির মাপ।',
+            'Print quality তে (300 DPI) এটি প্রায় 413 × 531 pixel।',
+            'যেখানে লাগে: পাসপোর্ট ও ই-পাসপোর্ট আবেদন, অনেক ভিসা, আর চাকরি বা ভর্তির ফর্মে যেখানে "passport-size photograph" চাওয়া হয়।',
+            'এটি একটি crop, কোনো বিশেষ ক্যামেরা নয়: ছবিতে আপনার মাথা ও কাঁধ থাকবে, মুখ থাকবে মাঝখানে, ঠিক এই অনুপাতে।',
+            'একটি ব্যতিক্রম জেনে রাখুন: আমেরিকান (US) ভিসার ছবি 2 × 2 inch (51 × 51 mm) — আলাদা মাপ। আবেদনের আগে সবসময় আপনার আবেদনের সঠিক মাপটা দেখে নিন।',
+          ],
+        },
+      },
+      {
+        heading: {
+          en: 'Before you shoot — a 2-minute setup',
+          bn: 'ছবি তোলার আগে — ২ মিনিটের প্রস্তুতি',
+        },
+        bullets: {
+          en: [
+            'A plain, light-coloured wall behind you — white or off-white is best; move anything hanging on it out of frame.',
+            'Daylight: stand facing a window so light falls evenly on your face. Avoid a bright window behind you (your face will go dark) and harsh sunlight from one side (half-shadow).',
+            'A formal or plain shirt — the photo will be used officially for years.',
+            'Your phone\'s rear camera if someone can help you, or the front camera with a timer. Turn beauty mode and filters OFF.',
+            'Glasses off if they reflect light or hide your eyes; a neutral expression, mouth closed, both eyes open, head straight.',
+          ],
+          bn: [
+            'পেছনে একটি সাদামাটা, হালকা রঙের দেয়াল — সাদা বা অফ-হোয়াইট সবচেয়ে ভালো; দেয়ালে ঝোলানো জিনিস ফ্রেমের বাইরে রাখুন।',
+            'দিনের আলো: জানালার দিকে মুখ করে দাঁড়ান যাতে আলো সমানভাবে মুখে পড়ে। পেছনে উজ্জ্বল জানালা থাকলে মুখ অন্ধকার দেখাবে, আর একপাশ থেকে কড়া রোদ এলে মুখে অর্ধেক ছায়া পড়বে — দুটোই এড়িয়ে চলুন।',
+            'ফরমাল বা সাদামাটা শার্ট — ছবিটি বছরের পর বছর অফিসিয়াল কাজে ব্যবহৃত হবে।',
+            'কেউ সাহায্য করতে পারলে ফোনের পেছনের ক্যামেরা, নাহলে timer দিয়ে সামনের ক্যামেরা। Beauty mode ও filter বন্ধ রাখুন।',
+            'চশমা আলো reflect করলে বা চোখ ঢাকলে খুলে ফেলুন; স্বাভাবিক অভিব্যক্তি, মুখ বন্ধ, দুই চোখ খোলা, মাথা সোজা।',
+          ],
+        },
+      },
+      {
+        heading: {
+          en: 'How to take the photo',
+          bn: 'ছবিটি তুলবেন যেভাবে',
+        },
+        steps: {
+          en: [
+            'Stand about half a metre in front of the plain wall — not touching it, so no shadow falls on it.',
+            'Hold the phone at eye level, about one metre away, and frame your head and shoulders with some space above your head.',
+            'Look straight at the lens, keep your head level — not tilted up, down, or to a side.',
+            'Take 4–5 shots and pick the sharpest one with even light on both sides of your face.',
+          ],
+          bn: [
+            'সাদামাটা দেয়ালের প্রায় আধা মিটার সামনে দাঁড়ান — দেয়ালে গা লাগিয়ে নয়, যাতে দেয়ালে ছায়া না পড়ে।',
+            'ফোনটি চোখের সমান উচ্চতায়, প্রায় এক মিটার দূরে ধরুন, আর মাথার উপরে কিছুটা জায়গা রেখে মাথা ও কাঁধ ফ্রেমে নিন।',
+            'সোজা লেন্সের দিকে তাকান, মাথা সমান রাখুন — উপরে, নিচে বা পাশে হেলিয়ে নয়।',
+            '৪–৫টি ছবি তুলে তার মধ্যে সবচেয়ে ঝকঝকে ও মুখের দুই পাশে সমান আলো আছে এমনটি বেছে নিন।',
+          ],
+        },
+      },
+      {
+        heading: {
+          en: 'Crop it to exact passport size',
+          bn: 'ছবিটি ঠিক পাসপোর্ট মাপে crop করুন',
+        },
+        steps: {
+          en: [
+            "Open ToolGhor's free Passport Photo tool.",
+            'Upload the photo you picked.',
+            'Position and zoom your face inside the guide frame — eyes on the guide line, head centred.',
+            'Download the JPG — it is cropped to exactly 35 × 45 mm.',
+          ],
+          bn: [
+            'ToolGhor এর ফ্রি Passport Photo টুলটি খুলুন।',
+            'বেছে নেওয়া ছবিটি আপলোড করুন।',
+            'Guide frame এর ভিতরে মুখ বসান ও zoom করুন — চোখ guide line এ, মাথা মাঝখানে রাখুন।',
+            'JPG ডাউনলোড করুন — এটি ঠিক 35 × 45 mm মাপে crop হয়ে যাবে।',
+          ],
+        },
+        paragraphs: {
+          en: ['Your photo is processed in your browser and never leaves your device.'],
+          bn: ['ছবিটি আপনার ব্রাউজারেই প্রসেস হয়, ডিভাইসের বাইরে যায় না।'],
+        },
+        cta: {
+          toolSlug: 'passport-photo',
+          label: {
+            en: 'Make your passport-size photo →',
+            bn: 'পাসপোর্ট সাইজ ছবি বানান →',
+          },
+        },
+      },
+      {
+        heading: {
+          en: 'Form also says "maximum 100 KB"?',
+          bn: 'ফর্মে "সর্বোচ্চ 100 KB" ও বলা আছে?',
+        },
+        paragraphs: {
+          en: [
+            'Many online forms accept the passport photo only under a file-size limit. If your downloaded JPG is too heavy: open Compress Image, upload it, set the target KB from the form (like 100), and download. The dimensions stay exactly the same; only the file weight drops.',
+          ],
+          bn: [
+            'অনেক অনলাইন ফর্ম পাসপোর্ট ছবি নেয় শুধু নির্দিষ্ট ফাইল সাইজের নিচে হলে। ডাউনলোড করা JPG টি ভারী হলে: Compress Image খুলে ছবিটি আপলোড করুন, ফর্মের target KB (যেমন 100) সেট করে ডাউনলোড করুন। ডাইমেনশন হুবহু একই থাকবে; শুধু ফাইলের ওজন কমবে।',
+          ],
+        },
+        cta: {
+          toolSlug: 'compress-image',
+          label: {
+            en: 'Compress the photo to 100 KB →',
+            bn: 'ছবি 100 KB তে কমান →',
+          },
+        },
+      },
+      {
+        heading: {
+          en: '6 mistakes that get passport photos rejected',
+          bn: 'পাসপোর্ট ছবি reject হওয়ার ৬টি ভুল',
+        },
+        bullets: {
+          en: [
+            'Shadows on the face or on the wall behind you.',
+            'A busy background — curtains, doors, furniture, other people.',
+            'Head tilted, or looking away from the camera.',
+            'Sunglasses, caps, or hair covering the eyes or face.',
+            'An old or heavily edited photo — no beauty filters; officials compare it with your face.',
+            'A blurry, dark, or pixelated photo — if it looks soft on your phone screen, retake it.',
+          ],
+          bn: [
+            'মুখে বা পেছনের দেয়ালে ছায়া।',
+            'ব্যস্ত background — পর্দা, দরজা, আসবাব, অন্য মানুষ।',
+            'মাথা হেলানো, বা ক্যামেরার বাইরে তাকানো।',
+            'সানগ্লাস, টুপি, বা চোখ-মুখ ঢাকা চুল।',
+            'পুরনো বা বেশি edit করা ছবি — beauty filter নয়; কর্তৃপক্ষ ছবিটি আপনার মুখের সাথে মিলিয়ে দেখবে।',
+            'ঝাপসা, অন্ধকার বা pixel ভাঙা ছবি — ফোনের screen এই নরম লাগলে আবার তুলুন।',
+          ],
+        },
+      },
+      {
+        heading: {
+          en: 'Printing your photo',
+          bn: 'ছবি print করা',
+        },
+        paragraphs: {
+          en: [
+            'For online forms you only need the JPG. If you need physical prints, take the downloaded file to any studio or print shop and ask for 35 × 45 mm prints — the file is already the exact size, so they only print, no re-cropping. On a colour photo printer at home, print at 100% scale (never "fit to page").',
+          ],
+          bn: [
+            'অনলাইন ফর্মের জন্য শুধু JPG ফাইলটাই লাগে। Physical print লাগলে ডাউনলোড করা ফাইলটি যেকোনো স্টুডিও বা print shop এ নিয়ে 35 × 45 mm print চাইলেই হবে — ফাইলটি আগেই ঠিক মাপে আছে, তাদের শুধু print করলেই হবে, নতুন করে crop করতে হবে না। বাসায় colour photo printer থাকলে 100% scale এ print করুন (কখনো "fit to page" নয়)।',
+          ],
+        },
+      },
+    ],
+    faq: [
+      {
+        en: {
+          q: 'Can a phone photo really be used for a passport application?',
+          a: 'Yes — officials check the size, background, lighting and that it is a clear recent photo of you, not which device took it. A carefully taken phone photo meets all of these.',
+        },
+        bn: {
+          q: 'ফোনের ছবি কি সত্যিই পাসপোর্ট আবেদনে চলবে?',
+          a: 'হ্যাঁ — কর্তৃপক্ষ দেখে মাপ, background, আলো আর ছবিটি আপনার সাম্প্রতিক ও পরিষ্কার কিনা; কোন device এ তোলা তা নয়। যত্ন করে তোলা ফোনের ছবি এসব শর্ত পূরণ করে।',
+        },
+      },
+      {
+        en: {
+          q: 'My background is not white. Will it work?',
+          a: 'For most Bangladeshi applications a plain light background is accepted, but if your form specifically says white, shoot against a white wall or sheet. A busy background is the real problem — avoid it either way.',
+        },
+        bn: {
+          q: 'আমার background সাদা নয়। চলবে?',
+          a: 'বাংলাদেশের বেশিরভাগ আবেদনে সাদামাটা হালকা background ই গৃহীত হয়, তবে ফর্মে নির্দিষ্ট করে সাদা বলা থাকলে সাদা দেয়াল বা চাদরের সামনে ছবি তুলুন। আসল সমস্যা ব্যস্ত background — সেটা যেকোনোভাবেই এড়িয়ে চলুন।',
+        },
+      },
+      {
+        en: {
+          q: 'How recent should the photo be?',
+          a: 'Use a photo taken within the last 6 months that looks like you now — this is a common requirement for passport and visa photos.',
+        },
+        bn: {
+          q: 'ছবিটি কতদিনের মধ্যে তোলা হতে হবে?',
+          a: 'গত ৬ মাসের মধ্যে তোলা ছবি ব্যবহার করুন, যাতে ছবিতে আপনাকে এখনকার মতোই দেখায় — পাসপোর্ট ও ভিসা ছবির ক্ষেত্রে এটি একটি প্রচলিত শর্ত।',
+        },
+      },
+      {
+        en: {
+          q: 'Do I need prints, or is the phone file enough?',
+          a: 'Online applications need only the JPG file. Physical prints are needed only when a form asks you to attach printed copies — then print the same file at 35 × 45 mm.',
+        },
+        bn: {
+          q: 'Print লাগবে, নাকি ফোনের ফাইলটাই যথেষ্ট?',
+          a: 'অনলাইন আবেদনে শুধু JPG ফাইলটাই লাগে। Physical print দরকার শুধু যখন কোনো ফর্মে printed copy সংযুক্ত করতে বলা হয় — তখন একই ফাইল 35 × 45 mm এ print করলেই হবে।',
+        },
+      },
+    ],
+  },
 ];
 
 export const GUIDES_BY_SLUG: Record<string, Guide> = GUIDES.reduce((acc, guide) => {
