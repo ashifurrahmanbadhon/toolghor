@@ -6194,4 +6194,80 @@ table.tbl {
   }
 }
 
+/* ============ Mobile-Responsiveness Pass v37 ============ */
+@media (max-width: 768px) {
+  /* Announcement banner close button touch target >= 40px */
+  .announcement-close {
+    min-width: 40px !important;
+    min-height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  /* Admin table container responsive scroll wrapper */
+  .admin-table-wrap {
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+}
+
+@media (max-width: 640px) {
+  /* FAQ Accordion trigger tap height >= 44px */
+  .faqpage-trigger {
+    min-height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+  /* Modals: About, API Keys, Request a Tool: width = viewport - 24px, max-height 90vh, internal scroll */
+  .about-modal-box,
+  .ai-modal-box,
+  .req-modal-box {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    margin: auto !important;
+    box-sizing: border-box !important;
+  }
+  /* Modal close buttons >= 40px */
+  .about-modal-close,
+  .ai-modal-close,
+  .req-modal-close {
+    min-width: 40px !important;
+    min-height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  /* Category filter chips tap height >= 40px */
+  .chips-row .chip {
+    min-height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 8px 14px !important;
+  }
+  /* Category collapse/expand buttons tap height >= 40px */
+  .btn-cat-toggle,
+  .btn-all-toggle {
+    min-height: 40px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  /* Modals at ultra-compact 360px viewports */
+  .about-modal-box,
+  .ai-modal-box,
+  .req-modal-box {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    padding: 16px 12px !important;
+  }
+  .faqpage-card {
+    padding: 12px 12px !important;
+  }
+}
+
+
 
