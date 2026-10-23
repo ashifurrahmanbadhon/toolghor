@@ -92,7 +92,7 @@ export default function Footer({ customSettings }: FooterProps) {
               className="foot-link foot-admin"
               title={lang === 'bn' ? 'অ্যাডমিন কনসোল' : 'Admin Console'}
             >
-              🛡️ {lang === 'bn' ? 'অ্যাডমিন' : 'Admin'}
+              {lang === 'bn' ? 'অ্যাডমিন' : 'Admin'}
             </Link>
           </div>
         </div>
