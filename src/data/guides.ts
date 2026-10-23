@@ -1087,6 +1087,195 @@ export const GUIDES: Guide[] = [
       },
     ],
   },
+  {
+    slug: 'download-facebook-youtube-video',
+    metaTitle: 'How to Download Facebook & YouTube Videos to Your Phone | ToolGhor',
+    metaDescription:
+      'Save Facebook, YouTube or Instagram videos as MP4 or MP3 — paste the link, pick the format, download. Free, no app to install, works on any phone.',
+    title: {
+      en: 'How to Download Facebook & YouTube Videos to Your Phone',
+      bn: 'Facebook ও YouTube এর ভিডিও ফোনে ডাউনলোড করবেন যেভাবে',
+    },
+    excerpt: {
+      en: 'Watch offline without burning data: save public Facebook, YouTube and Instagram videos as MP4 — or just the audio as MP3. No app needed.',
+      bn: 'Data না পুড়িয়ে offline এ দেখুন: public Facebook, YouTube ও Instagram ভিডিও MP4 হিসেবে — কিংবা শুধু audio MP3 হিসেবে সেভ করুন। কোনো app লাগবে না।',
+    },
+    relatedTools: ['video-downloader', 'audio-extractor'],
+    datePublished: '2026-10-23',
+    intro: {
+      en: [
+        "Mobile data is precious, and the video you need — a class lecture, a tutorial, a family clip a relative posted — is never there when the network is gone. The platforms' own download buttons are limited or missing, and the app stores are full of downloader apps stuffed with ads. You don't need any of them: with the video's link and a browser, you can save it as MP4 (or just the sound, as MP3) in under a minute. This guide shows how — and what to do when a link refuses to work.",
+      ],
+      bn: [
+        'মোবাইল ডেটা মূল্যবান, আর যে ভিডিওটা দরকার — ক্লাসের lecture, একটি tutorial, আত্মীয়ের পোস্ট করা পারিবারিক clip — network না থাকলেই ঠিক সেটাই পাওয়া যায় না। প্ল্যাটফর্মগুলোর নিজেদের download button সীমিত কিংবা নেই বললেই চলে, আর app store ভরা বিজ্ঞাপনে ঠাসা downloader app এ। এগুলোর একটাও লাগবে না: ভিডিওর link আর একটি browser থাকলেই এক মিনিটের মধ্যে MP4 হিসেবে (কিংবা শুধু শব্দ, MP3 হিসেবে) সেভ করা যায়। এই গাইডে দেখানো হলো কীভাবে — আর link কাজ না করলে কী করবেন।',
+      ],
+    },
+    sections: [
+      {
+        heading: {
+          en: 'Step 1 — get the video\'s real link',
+          bn: 'ধাপ ১ — ভিডিওটির আসল link নিন',
+        },
+        bullets: {
+          en: [
+            'On Facebook: open the video, tap Share → Copy link. This works for public videos, Reels and Watch videos.',
+            'On YouTube: tap Share under the video → Copy link. Works for normal videos and Shorts.',
+            'On Instagram: tap the share (paper plane) icon on a public Reel/post → Copy link.',
+            'Copy the link from the video itself, not the page you found it on — a profile link or a news-feed link will not work. The link must point to the video.',
+          ],
+          bn: [
+            'Facebook এ: ভিডিওটি খুলে Share → Copy link চাপুন। Public ভিডিও, Reels ও Watch ভিডিওতে কাজ করে।',
+            'YouTube এ: ভিডিওর নিচে Share → Copy link। সাধারণ ভিডিও ও Shorts — দুটোতেই কাজ করে।',
+            'Instagram এ: public Reel/post এ share (কাগজের plane) icon চেপে Copy link।',
+            'Link টি ভিডিও থেকেই কপি করুন, যেখান থেকে পেয়েছেন সেই page থেকে নয় — profile link বা news-feed link কাজ করবে না। Link টিকে ভিডিওর দিকেই নির্দেশ করতে হবে।',
+          ],
+        },
+      },
+      {
+        heading: {
+          en: 'Step 2 — download it with ToolGhor',
+          bn: 'ধাপ ২ — ToolGhor দিয়ে ডাউনলোড করুন',
+        },
+        steps: {
+          en: [
+            "Open ToolGhor's free Video Downloader.",
+            'Paste the video link.',
+            'Click Get Video and choose your format — MP4 for the video, or MP3/M4A if you only want the sound.',
+            'Click Download — the file saves straight to your device.',
+          ],
+          bn: [
+            'ToolGhor এর ফ্রি Video Downloader টুলটি খুলুন।',
+            'ভিডিওর link টি paste করুন।',
+            'Get Video ক্লিক করে format বেছে নিন — ভিডিওর জন্য MP4, শুধু শব্দ চাইলে MP3/M4A।',
+            'Download ক্লিক করুন — ফাইলটি সরাসরি আপনার ডিভাইসে সেভ হবে।',
+          ],
+        },
+        paragraphs: {
+          en: ['No app to install and no account to create.'],
+          bn: ['কোনো app install করতে হবে না, account ও খুলতে হবে না।'],
+        },
+        cta: {
+          toolSlug: 'video-downloader',
+          label: {
+            en: 'Download a video now →',
+            bn: 'এখনই ভিডিও ডাউনলোড করুন →',
+          },
+        },
+      },
+      {
+        heading: {
+          en: 'MP4 or MP3 — which do you actually need?',
+          bn: 'MP4 নাকি MP3 — আসলে কোনটা দরকার?',
+        },
+        bullets: {
+          en: [
+            'MP4 — the full video. Choose this for tutorials, lectures, clips you want to watch or share offline.',
+            'MP3/M4A — sound only, much smaller. Perfect for lectures you only listen to, talks, songs and recitations — and it saves a lot of storage and data.',
+            'Tip: a one-hour lecture as MP4 can be hundreds of MB; as MP3 it may be under 50 MB.',
+          ],
+          bn: [
+            'MP4 — পুরো ভিডিও। Tutorial, lecture, offline দেখতে বা শেয়ার করতে চাওয়া clip এর জন্য এটাই বেছে নিন।',
+            'MP3/M4A — শুধু শব্দ, অনেক ছোট। শুধু শুনলেই হয় এমন lecture, আলোচনা, গান ও তিলাওয়াতের জন্য উপযুক্ত — আর storage ও data অনেক বাঁচে।',
+            'টিপ: এক ঘণ্টার lecture MP4 তে কয়েকশো MB হতে পারে; MP3 তে 50 MB এর নিচেও হতে পারে।',
+          ],
+        },
+      },
+      {
+        heading: {
+          en: 'After downloading — find and manage the file',
+          bn: 'ডাউনলোডের পর — ফাইল খুঁজুন ও গুছিয়ে রাখুন',
+        },
+        bullets: {
+          en: [
+            "The file lands in your browser's Downloads — on Android, check the Files app → Downloads; on iPhone, the Files app or Safari's download list.",
+            'Rename it right away with a name you will recognise ("Physics class 12", not "videoplayback.mp4").',
+            'Long videos eat storage — if you only needed the audio, download the MP3 version and delete the MP4.',
+          ],
+          bn: [
+            'ফাইলটি যায় আপনার browser এর Downloads এ — Android এ Files app → Downloads দেখুন; iPhone এ Files app বা Safari এর download list।',
+            'সাথে সাথে নাম বদলে রাখুন চেনা যাবে এমন নামে ("Physics class 12", "videoplayback.mp4" নয়)।',
+            'লম্বা ভিডিও storage খায় — শুধু শব্দ দরকার হলে MP3 version টি ডাউনলোড করে MP4 টি মুছে ফেলুন।',
+          ],
+        },
+      },
+      {
+        heading: {
+          en: 'Link not working? Check these 4 things',
+          bn: 'Link কাজ করছে না? এই ৪টি জিনিস দেখুন',
+        },
+        bullets: {
+          en: [
+            'The video must be public. Private videos, friends-only posts and closed-group videos cannot be fetched by any downloader — the platform blocks access, and no tool can (or should) go around that.',
+            'Wrong link. You copied a profile, page or comment link instead of the video\'s own link — go back and use Share → Copy link on the video.',
+            'Live or restricted videos. Ongoing live streams and some age-restricted videos may not download — try after the live ends.',
+            'Try once more. Platforms hiccup; paste the link again after a few seconds. If it still fails, the video\'s privacy setting is almost always the reason.',
+          ],
+          bn: [
+            'ভিডিওটি public হতে হবে। Private ভিডিও, friends-only পোস্ট ও closed-group এর ভিডিও কোনো downloader এই আনতে পারে না — প্ল্যাটফর্ম নিজেই access আটকে দেয়, আর কোনো টুলের এটা ঘুরিয়ে যাওয়া উচিতও নয়।',
+            'ভুল link। ভিডিওর নিজের link এর বদলে profile, page বা comment এর link কপি করেছেন — ফিরে গিয়ে ভিডিওতে Share → Copy link ব্যবহার করুন।',
+            'Live বা restricted ভিডিও। চলমান live stream ও কিছু age-restricted ভিডিও ডাউনলোড না-ও হতে পারে — live শেষ হলে চেষ্টা করুন।',
+            'আরেকবার চেষ্টা করুন। প্ল্যাটফর্মে মাঝে মাঝে ত্রুটি হয়; কয়েক সেকেন্ড পর link টি আবার paste করুন। তবুও না হলে কারণ প্রায় নিশ্চিতভাবেই ভিডিওটির privacy setting।',
+          ],
+        },
+      },
+      {
+        heading: {
+          en: 'Download respectfully',
+          bn: 'সম্মান রেখে ডাউনলোড করুন',
+        },
+        paragraphs: {
+          en: [
+            "Save videos for your own offline viewing — a lecture for the bus ride, your own family videos, a tutorial for the workshop. Re-uploading someone else's video as your own, or selling downloaded content, steals their work and can get your account reported. If you made the video or the owner allows downloads, you're fine — enjoy it offline.",
+          ],
+          bn: [
+            'নিজের offline দেখার জন্য ভিডিও সেভ করুন — বাসের যাত্রায় lecture, নিজের পরিবারের ভিডিও, workshop এর tutorial। অন্যের ভিডিও নিজের বলে আবার আপলোড করা, কিংবা ডাউনলোড করা কনটেন্ট বিক্রি করা মানে তার কাজ চুরি করা, এবং এতে আপনার account এ report ও আসতে পারে। ভিডিওটি আপনার নিজের হলে কিংবা মালিক ডাউনলোডের অনুমতি দিলে কোনো সমস্যা নেই — offline এ উপভোগ করুন।',
+          ],
+        },
+      },
+    ],
+    faq: [
+      {
+        en: {
+          q: 'Can I download a private Facebook video?',
+          a: 'No. Only public videos can be downloaded — private and friends-only videos are blocked by Facebook itself, and any site claiming otherwise is not safe to trust.',
+        },
+        bn: {
+          q: 'Private Facebook ভিডিও ডাউনলোড করা যাবে?',
+          a: 'না। শুধু public ভিডিও ডাউনলোড করা যায় — private ও friends-only ভিডিও Facebook নিজেই আটকে দেয়, আর যে সাইট অন্যথা দাবি করে তাকে বিশ্বাস করা নিরাপদ নয়।',
+        },
+      },
+      {
+        en: {
+          q: 'Does it work on my phone, or do I need a computer?',
+          a: 'It works in the browser on any phone or computer — no app installation and no sign-up.',
+        },
+        bn: {
+          q: 'এটা কি আমার ফোনে চলবে, নাকি কম্পিউটার লাগবে?',
+          a: 'যেকোনো ফোন বা কম্পিউটারের browser এই চলে — কোনো app install বা sign-up লাগবে না।',
+        },
+      },
+      {
+        en: {
+          q: 'Can I download just the audio of a video?',
+          a: "Yes — after Get Video, choose the MP3/M4A format instead of MP4. For a video file already saved on your device, ToolGhor's Audio Extractor does the same job.",
+        },
+        bn: {
+          q: 'ভিডিওর শুধু audio ডাউনলোড করা যাবে?',
+          a: 'হ্যাঁ — Get Video এর পর MP4 এর বদলে MP3/M4A format বেছে নিন। ডিভাইসে আগেই সেভ করা ভিডিও ফাইলের জন্য ToolGhor এর Audio Extractor একই কাজ করে।',
+        },
+      },
+      {
+        en: {
+          q: 'Which sites are supported?',
+          a: 'YouTube, Facebook and Instagram public links, plus direct video links. The same tool also accepts a local video file uploaded from your device.',
+        },
+        bn: {
+          q: 'কোন কোন সাইট সমর্থিত?',
+          a: 'YouTube, Facebook ও Instagram এর public link, আর direct video link। একই টুল আপনার ডিভাইস থেকে local video file আপলোড করেও কাজ করে।',
+        },
+      },
+    ],
+  },
 ];
 
 export const GUIDES_BY_SLUG: Record<string, Guide> = GUIDES.reduce((acc, guide) => {
