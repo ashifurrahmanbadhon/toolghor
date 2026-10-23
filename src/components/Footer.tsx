@@ -65,6 +65,17 @@ export default function Footer({ customSettings }: FooterProps) {
       ? liveFooter?.copyright_text_bn || 'আপনার ফাইল ও তথ্য সরাসরি আপনার ব্রাউজারেই প্রসেস করা হয়।'
       : liveFooter?.copyright_text_en || 'Your files and data are processed in your browser.';
 
+  const handleBackToTop = () => {
+    if (typeof window === 'undefined') return;
+    const prefersReducedMotion =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({
+      top: 0,
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+    });
+  };
+
   if (!isFooterActive) return null;
 
   return (
@@ -98,6 +109,22 @@ export default function Footer({ customSettings }: FooterProps) {
             >
               {lang === 'bn' ? 'অ্যাডমিন' : 'Admin'}
             </Link>
+            <span className="foot-sep" aria-hidden="true">·</span>
+            <button
+              type="button"
+              onClick={handleBackToTop}
+              className="foot-link foot-back-to-top"
+              aria-label={lang === 'bn' ? '↑ উপরে যান' : '↑ Back to top'}
+              style={{
+                background: 'none',
+                border: 'none',
+                font: 'inherit',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              {lang === 'bn' ? '↑ উপরে যান' : '↑ Back to top'}
+            </button>
           </div>
         </div>
       </footer>
