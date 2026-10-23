@@ -2,6 +2,7 @@ import { MetadataRoute } from 'next';
 import { getPublicSiteData } from '@/lib/siteData';
 import { siteConfig } from '@/data/config';
 import { TOOLS } from '@/data/registry';
+import { GUIDES } from '@/data/guides';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -33,6 +34,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: 'monthly',
     priority: 0.5,
   };
+
+  const guidesIndexEntry: MetadataRoute.Sitemap[number] = {
+    url: `${baseUrl}/guides`,
+    changeFrequency: 'weekly',
+    priority: 0.6,
+  };
+
+  const guideEntries: MetadataRoute.Sitemap = GUIDES.map((g) => ({
+    url: `${baseUrl}/guides/${g.slug}`,
+    changeFrequency: 'monthly',
+    priority: 0.7,
+  }));
 
   try {
     const siteData = await getPublicSiteData();
@@ -69,7 +82,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }));
     }
 
-    return [homeEntry, ...toolEntries, termsEntry, privacyEntry, faqEntry];
+    return [
+      homeEntry,
+      ...toolEntries,
+      termsEntry,
+      privacyEntry,
+      faqEntry,
+      guidesIndexEntry,
+      ...guideEntries,
+    ];
   } catch (error) {
     console.warn('[sitemap] Notice: Serving resilient fallback sitemap due to error:', error);
     const fallbackToolEntries: MetadataRoute.Sitemap = TOOLS.map((t) => ({
@@ -78,6 +99,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }));
 
-    return [homeEntry, ...fallbackToolEntries, termsEntry, privacyEntry, faqEntry];
+    return [
+      homeEntry,
+      ...fallbackToolEntries,
+      termsEntry,
+      privacyEntry,
+      faqEntry,
+      guidesIndexEntry,
+      ...guideEntries,
+    ];
   }
 }
