@@ -894,6 +894,199 @@ export const GUIDES: Guide[] = [
       },
     ],
   },
+  {
+    slug: 'compress-pdf-for-application',
+    metaTitle: 'How to Compress a PDF for an Online Application | ToolGhor',
+    metaDescription:
+      'Your application form rejects the PDF as too big? Compress it under the limit in your browser — scanned certificates, transcripts and CVs, no upload.',
+    title: {
+      en: 'How to Compress a PDF for an Online Application',
+      bn: 'অনলাইন আবেদনের জন্য PDF Compress করবেন যেভাবে',
+    },
+    excerpt: {
+      en: 'Form says "file too large"? Shrink your scanned certificates or CV under the 1–5 MB limit — in your browser, documents never uploaded.',
+      bn: 'ফর্ম বলছে "file too large"? Scan করা সার্টিফিকেট বা CV টি 1–5 MB সীমার নিচে আনুন — ব্রাউজারেই, ডকুমেন্ট আপলোড হয় না।',
+    },
+    relatedTools: ['compress-pdf', 'split-pdf'],
+    datePublished: '2026-10-23',
+    intro: {
+      en: [
+        'Everything is ready — certificates scanned, form filled — and then the portal answers: "File too large." Almost every online application in Bangladesh (jobs, university admission, BCS and other government forms) limits the PDF you can upload, often to 1 MB, 2 MB or 5 MB, while a few scanned pages easily weigh 10–20 MB. This guide shows how to shrink your PDF under the limit in your browser, and how to keep it readable enough that the officer checking it can actually read your name.',
+      ],
+      bn: [
+        'সবকিছু তৈরি — সার্টিফিকেট scan করা, ফর্ম পূরণ করা — আর তখনই portal বলল: "File too large." বাংলাদেশের প্রায় প্রতিটি অনলাইন আবেদনেই (চাকরি, বিশ্ববিদ্যালয় ভর্তি, BCS সহ সরকারি ফর্ম) আপলোড করা PDF এর সাইজ সীমিত থাকে — প্রায়ই 1 MB, 2 MB বা 5 MB — অথচ কয়েক পৃষ্ঠা scan করলেই সহজে 10–20 MB হয়ে যায়। এই গাইডে দেখানো হলো ব্রাউজারেই কীভাবে PDF টি সীমার নিচে আনবেন, আর যিনি যাচাই করবেন তিনি যাতে আপনার নামটা পড়তে পারেন সেভাবে পড়ার যোগ্য রাখবেন।',
+      ],
+    },
+    sections: [
+      {
+        heading: {
+          en: "First, find your limit — and your file's size",
+          bn: 'প্রথমে সীমাটা জানুন — আর আপনার ফাইলের সাইজ',
+        },
+        bullets: {
+          en: [
+            'The limit is written on the application form or circular, next to the upload button — look for "max 1 MB", "within 2 MB" or similar. Check your own form first; limits differ from one application to another.',
+            "Check your PDF's current size: on a phone, open the file's details/properties; on a computer, right-click the file → Properties. That tells you how far you need to shrink.",
+            'Work on a copy — keep your original full-quality scan safe; you may need it for printing later.',
+          ],
+          bn: [
+            'সীমাটি লেখা থাকে আবেদনের ফর্ম বা circular এ, আপলোড বাটনের পাশেই — "max 1 MB", "within 2 MB" জাতীয় লেখা খুঁজুন। আগে নিজের ফর্মটি দেখুন; একেক আবেদনে সীমা একেক রকম।',
+            'আপনার PDF এর বর্তমান সাইজ দেখুন: ফোনে ফাইলের details/properties খুলুন; কম্পিউটারে ফাইলে right-click → Properties। এতে বুঝবেন কতটা কমাতে হবে।',
+            'Copy নিয়ে কাজ করুন — original full-quality scan টি নিরাপদে রাখুন; পরে print এর জন্য লাগতে পারে।',
+          ],
+        },
+      },
+      {
+        heading: {
+          en: 'How to compress the PDF',
+          bn: 'PDF compress করবেন যেভাবে',
+        },
+        steps: {
+          en: [
+            "Open ToolGhor's free Compress PDF tool.",
+            'Choose your PDF file.',
+            'Pick how much to shrink it — a stronger shrink gives a smaller file.',
+            'Press Compress, compare the before and after size shown, then download.',
+          ],
+          bn: [
+            'ToolGhor এর ফ্রি Compress PDF টুলটি খুলুন।',
+            'আপনার PDF ফাইলটি বেছে নিন।',
+            'কতটা shrink করবেন তা বেছে নিন — বেশি shrink মানেই ছোট ফাইল।',
+            'Compress চাপুন, আগে-পরের সাইজ তুলনা করে দেখুন, তারপর ডাউনলোড করুন।',
+          ],
+        },
+        paragraphs: {
+          en: [
+            "The whole process runs in your browser — your documents are not uploaded to a server. If the result is still above your form's limit, run it once more with the stronger option.",
+          ],
+          bn: [
+            'পুরো প্রক্রিয়াটি আপনার ব্রাউজারেই হয় — ডকুমেন্ট কোনো server এ আপলোড হয় না। ফলাফল তবুও ফর্মের সীমার উপরে থাকলে শক্তিশালী option দিয়ে আরেকবার চালান।',
+          ],
+        },
+        cta: {
+          toolSlug: 'compress-pdf',
+          label: {
+            en: 'Compress your PDF →',
+            bn: 'PDF compress করুন →',
+          },
+        },
+      },
+      {
+        heading: {
+          en: 'Why scanned PDFs are so heavy — and why they compress so well',
+          bn: 'Scan করা PDF এত ভারী হয় কেন — আর এত ভালো compress হয় কেন',
+        },
+        paragraphs: {
+          en: [
+            'A scanned certificate page is really a full-page photo inside a PDF. Photos are heavy, so scanned PDFs are mostly image weight — and image weight is exactly what compression removes best. A 15 MB scan often comes down to 1–2 MB with text still perfectly readable. The opposite case: a PDF made of typed text only (like a CV exported from Word) is already small and barely shrinks — if such a file is over the limit, the problem is usually an embedded photo or logo, not the text.',
+          ],
+          bn: [
+            'Scan করা সার্টিফিকেটের পৃষ্ঠা আসলে PDF এর ভেতরে একটি পূর্ণ-পৃষ্ঠা ছবি। ছবি ভারী, তাই scan করা PDF এর ওজন মূলত ছবির ওজন — আর compression সবচেয়ে ভালো সরায় ঠিক এই ছবির ওজনটাই। 15 MB এর একটি scan প্রায়ই 1–2 MB এ নেমে আসে, লেখা পুরোপুরি পড়ার যোগ্য থেকেই। উল্টো ঘটনা: শুধু typed লেখার PDF (যেমন Word থেকে export করা CV) এমনিতেই ছোট এবং প্রায় কমেই না — এমন ফাইল সীমার উপরে গেলে সমস্যা সাধারণত ভেতরে থাকা একটি ছবি বা logo, লেখা নয়।',
+          ],
+        },
+      },
+      {
+        heading: {
+          en: 'Keep it readable — the officer must read your name',
+          bn: 'পড়ার যোগ্য রাখুন — যাচাইকারীকে আপনার নাম পড়তে হবে',
+        },
+        bullets: {
+          en: [
+            'After compressing, zoom in to 100–200% on the result and check: name, roll/registration numbers, dates, seals and signatures must be clearly readable.',
+            "If the text turned blurry, use a lighter compression level — a file that fits but can't be read will be rejected just the same.",
+            'Certificates with small print (transcripts, mark sheets) need more care than a CV page.',
+            'Never compress so far that stamps and signatures become blobs — officials verify those.',
+          ],
+          bn: [
+            'Compress করার পর ফলাফলটি 100–200% zoom করে দেখুন: নাম, রোল/রেজিস্ট্রেশন নম্বর, তারিখ, সিল ও স্বাক্ষর স্পষ্ট পড়া যাচ্ছে কিনা।',
+            'লেখা ঝাপসা হয়ে গেলে হালকা compression level ব্যবহার করুন — ফিট হলেও পড়া না গেলে সেটাও reject ই হবে।',
+            'ছোট ছাপার ডকুমেন্টে (transcript, mark sheet) CV এর পৃষ্ঠার চেয়ে বেশি যত্ন দরকার।',
+            'এতটা compress করবেন না যাতে সিল ও স্বাক্ষর দলায় পরিণত হয় — কর্তৃপক্ষ ওগুলোই যাচাই করে।',
+          ],
+        },
+      },
+      {
+        heading: {
+          en: "If it still doesn't fit",
+          bn: 'তবুও ফিট না হলে',
+        },
+        bullets: {
+          en: [
+            'Compress the scans before making the PDF: if your pages start as photos/JPGs, shrink them with Compress Image first, then combine — the final PDF starts much smaller.',
+            'Scan smarter next time: 200 DPI in grayscale is plenty for certificates — 600 DPI colour scans are what create 20 MB files.',
+            'Split only if the form allows parts: some forms have separate upload fields per document — upload each file separately instead of one combined PDF. If the form wants ONE file, do not split; compress harder instead (ToolGhor has a Split PDF tool for the cases where splitting is allowed).',
+          ],
+          bn: [
+            'PDF বানানোর আগেই scan গুলো compress করুন: পৃষ্ঠাগুলো ছবি/JPG আকারে থাকলে আগে Compress Image দিয়ে সেগুলো ছোট করে তারপর একত্র করুন — শেষ PDF টি শুরু থেকেই অনেক ছোট হবে।',
+            'পরের বার বুদ্ধিমানভাবে scan করুন: সার্টিফিকেটের জন্য grayscale এ 200 DPI ই যথেষ্ট — 600 DPI colour scan ই তৈরি করে 20 MB এর ফাইল।',
+            'Split করুন শুধু ফর্ম অনুমতি দিলে: কিছু ফর্মে প্রতিটি ডকুমেন্টের আলাদা upload field থাকে — একটি combined PDF এর বদলে প্রতিটি ফাইল আলাদা আপলোড করুন। ফর্ম একটি ফাইল চাইলে split করবেন না; বরং আরও জোরে compress করুন (যে ক্ষেত্রে split করা যায়, তার জন্য ToolGhor এর Split PDF টুল আছে)।',
+          ],
+        },
+      },
+      {
+        heading: {
+          en: '4 mistakes that get PDFs rejected',
+          bn: 'PDF reject হওয়ার ৪টি ভুল',
+        },
+        bullets: {
+          en: [
+            'Uploading the blurry, over-compressed version because "it fit" — unreadable means rejected.',
+            'Compressing the only copy and losing the original scan.',
+            'Shrinking the wrong file and uploading an outdated version of a document.',
+            'Ignoring the page/format rules while fixing the size — the form may also demand a specific number of pages or one combined file; size is only one of its rules.',
+          ],
+          bn: [
+            '"ফিট হয়েছে" বলে ঝাপসা, অতিরিক্ত compress করা version আপলোড করা — পড়া না গেলে reject ই হবে।',
+            'একমাত্র copy টি compress করে original scan হারিয়ে ফেলা।',
+            'ভুল ফাইল ছোট করে কোনো ডকুমেন্টের পুরনো version আপলোড করা।',
+            'সাইজ ঠিক করতে গিয়ে পৃষ্ঠা/format এর নিয়ম ভুলে যাওয়া — ফর্ম নির্দিষ্ট পৃষ্ঠা সংখ্যা বা একটি combined ফাইলও চাইতে পারে; সাইজ তার নিয়মগুলোর একটি মাত্র।',
+          ],
+        },
+      },
+    ],
+    faq: [
+      {
+        en: {
+          q: 'How small can my PDF get?',
+          a: 'There is no fixed number — it depends on the file. Scanned, image-heavy PDFs shrink the most (often 70–90% smaller). Text-only PDFs are already compact and shrink very little.',
+        },
+        bn: {
+          q: 'আমার PDF সর্বনিম্ন কত ছোট হতে পারে?',
+          a: 'নির্দিষ্ট কোনো সংখ্যা নেই — ফাইলের উপর নির্ভর করে। Scan করা, ছবি-ভারী PDF সবচেয়ে বেশি ছোট হয় (প্রায়ই 70–90% পর্যন্ত)। শুধু লেখার PDF এমনিতেই compact এবং খুব সামান্য ছোট হয়।',
+        },
+      },
+      {
+        en: {
+          q: 'Will compression make my certificates blurry?',
+          a: 'At moderate levels, no — text stays sharp. At the strongest level some softness can appear, which is why you should zoom in and check names, numbers and seals before submitting.',
+        },
+        bn: {
+          q: 'Compress করলে সার্টিফিকেট ঝাপসা হয়ে যাবে?',
+          a: 'মাঝারি level এ নয় — লেখা ধারালো থাকে। সবচেয়ে শক্তিশালী level এ কিছুটা নরমভাব আসতে পারে, তাই জমা দেওয়ার আগে zoom করে নাম, নম্বর ও সিল যাচাই করুন।',
+        },
+      },
+      {
+        en: {
+          q: 'Are my documents uploaded to a server?',
+          a: 'No — compression runs in your browser on your device. Your certificates never leave your phone or computer.',
+        },
+        bn: {
+          q: 'আমার ডকুমেন্ট কি server এ আপলোড হয়?',
+          a: 'না — compression আপনার ডিভাইসের ব্রাউজারেই হয়। সার্টিফিকেট আপনার ফোন বা কম্পিউটারের বাইরে যায় না।',
+        },
+      },
+      {
+        en: {
+          q: "My form's limit is 1 MB and the file is still bigger after compressing. What now?",
+          a: 'Use the strongest compression level, and if your PDF was made from photo scans, compress those images first and rebuild the PDF. Also confirm the limit from the form itself — some forms state the limit per file, others per document.',
+        },
+        bn: {
+          q: 'ফর্মের সীমা 1 MB, compress করেও ফাইল বড়। এখন কী করব?',
+          a: 'সবচেয়ে শক্তিশালী compression level ব্যবহার করুন, আর PDF টি ছবি scan দিয়ে বানানো হলে আগে সেই ছবিগুলো compress করে PDF আবার বানান। ফর্মের সীমাটিও আবার নিশ্চিত করুন — কিছু ফর্মে সীমা প্রতি ফাইলে, কিছুতে প্রতি ডকুমেন্টে।',
+        },
+      },
+    ],
+  },
 ];
 
 export const GUIDES_BY_SLUG: Record<string, Guide> = GUIDES.reduce((acc, guide) => {
