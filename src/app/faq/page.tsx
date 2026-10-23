@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { GENERAL_FAQ } from '@/data/seoData';
+import { siteConfig } from '@/data/config';
 import FaqClient from './FaqClient';
 
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,9 @@ export const metadata: Metadata = {
     title: 'Frequently Asked Questions | ToolGhor',
     description:
       'Answers to common questions about ToolGhor — free online PDF, image, QR, video tools, calculators and resume builder. ToolGhor সম্পর্কে সাধারণ প্রশ্নের উত্তর।',
+  },
+  alternates: {
+    canonical: `${siteConfig.url}/faq`,
   },
 };
 

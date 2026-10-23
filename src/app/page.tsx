@@ -1,18 +1,28 @@
 import { Metadata } from 'next';
 import { getPublicSiteData } from '@/lib/siteData';
 import { SEO_TITLES } from '@/data/seoData';
+import { siteConfig } from '@/data/config';
 import HomeClient from './HomeClient';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+const homeDescription =
+  'Free online tools for everyday tasks — merge & compress PDF, edit images, make QR codes, convert currency, build resumes. No sign-up, in your browser.';
+
 export const metadata: Metadata = {
   title: SEO_TITLES['home'],
+  description: homeDescription,
   openGraph: {
     title: SEO_TITLES['home'],
+    description: homeDescription,
   },
   twitter: {
     title: SEO_TITLES['home'],
+    description: homeDescription,
+  },
+  alternates: {
+    canonical: `${siteConfig.url}/`,
   },
 };
 

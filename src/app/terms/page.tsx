@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { getAllPolicySections } from '@/lib/policiesData';
+import { siteConfig } from '@/data/config';
 import TermsClient from './TermsClient';
 
 export const metadata: Metadata = {
@@ -7,6 +8,9 @@ export const metadata: Metadata = {
   description:
     'Comprehensive Terms & Conditions, Acceptable Use, Disclaimer, Cookie Policy, and intellectual property terms for ToolGhor — Bangladesh’s trusted web tools platform.',
   keywords: ['Terms of Service', 'ToolGhor terms', 'Bangladesh legal web tools'],
+  alternates: {
+    canonical: `${siteConfig.url}/terms`,
+  },
 };
 
 export const dynamic = 'force-dynamic';

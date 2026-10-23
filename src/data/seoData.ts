@@ -37,6 +37,9 @@ export const SEO_TITLES: Record<string, string> = {
 export const SEO_DESCRIPTIONS: Record<string, string> = {
   'remove-ai-label': 'Remove AI labels & hidden metadata (C2PA, EXIF, XMP) from photos — free, 100% in your browser, no upload. ছবি থেকে AI লেবেল ও মেটাডেটা মুছুন — ফ্রি, আপলোড ছাড়াই।',
   'video-downloader': 'Download videos or audio from YouTube, Instagram, Facebook & direct links with one click. ইউটিউব, ফেসবুক, ইনস্টাগ্রাম থেকে ভিডিও/অডিও ডাউনলোড করুন।',
+  'compress-pdf': 'Compress PDF online free — reduce PDF file size for email and application forms, keeping quality. পিডিএফের সাইজ ছোট করুন — ফ্রি, ব্রাউজারেই প্রসেস হয়।',
+  'currency-converter': "Live currency exchange rates — convert USD, SAR, AED, EUR, GBP to BDT at today's rate, updated daily. ডলার, রিয়াল, ইউরো, পাউন্ডের লাইভ রেট।",
+  'word-to-pdf': 'Convert Word (DOCX, DOC) files to high-quality PDF documents online in seconds, free. Word ফাইলকে সহজে পিডিএফে রূপান্তর করুন — ব্রাউজারেই হয়।',
 };
 
 export const FAQ_DATA: Record<string, FaqItem[]> = {
