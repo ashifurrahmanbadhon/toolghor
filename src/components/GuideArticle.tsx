@@ -57,6 +57,7 @@ export default function GuideArticle({ guide }: GuideArticleProps) {
               const paragraphs = section.paragraphs?.[lang];
               const bullets = section.bullets?.[lang];
               const steps = section.steps?.[lang];
+              const paragraphsAfter = section.paragraphsAfter?.[lang];
               const cta = section.cta;
 
               return (
@@ -107,6 +108,17 @@ export default function GuideArticle({ guide }: GuideArticleProps) {
                         </li>
                       ))}
                     </ul>
+                  )}
+
+                  {/* Paragraphs After Bullets/Steps if any */}
+                  {paragraphsAfter && paragraphsAfter.length > 0 && (
+                    <div className="guide-paragraphs guide-post-steps">
+                      {paragraphsAfter.map((p, pIdx) => (
+                        <p key={pIdx} className="guide-p">
+                          {p}
+                        </p>
+                      ))}
+                    </div>
                   )}
 
                   {/* Section CTA Button */}
