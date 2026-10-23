@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { getPublicSiteData } from '@/lib/siteData';
-import { SEO_TITLES } from '@/data/seoData';
+import { SEO_TITLES, HOME_FAQ } from '@/data/seoData';
 import HomeClient from './HomeClient';
 
 export const dynamic = 'force-dynamic';
@@ -32,12 +32,31 @@ export default async function Page() {
     url: 'https://toolghor.vercel.app',
   };
 
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: HOME_FAQ.map((f) => ({
+      '@type': 'Question',
+      name: f.en.q,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: f.en.a,
+      },
+    })),
+  };
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(websiteSchema),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(faqSchema),
         }}
       />
       {creatorConfigScript && (

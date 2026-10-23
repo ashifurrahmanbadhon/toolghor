@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ToolCard from '@/components/ToolCard';
+import ToolFaq from '@/components/ToolFaq';
 import { CATEGORIES as DEFAULT_CATEGORIES, TOOLS as DEFAULT_TOOLS, ToolItem, Category } from '@/data/registry';
 import { useApp } from '@/context/AppContext';
 import { ASSET_VERSION } from '@/data/config';
+import { HOME_FAQ } from '@/data/seoData';
 
 interface HomeClientProps {
   initialData: any;
@@ -735,6 +737,9 @@ export default function HomeClient({ initialData }: HomeClientProps) {
               : 'No tool found. Try a different word, or click "Request a Tool" at the top to suggest one.'}
           </p>
         )}
+
+        {/* Homepage FAQ Section */}
+        <ToolFaq faqs={HOME_FAQ} />
       </main>
 
       <Footer customSettings={publicData?.footerSocial} />

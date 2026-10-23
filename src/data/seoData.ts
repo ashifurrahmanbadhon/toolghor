@@ -384,3 +384,67 @@ export const FAQ_DATA: Record<string, FaqItem[]> = {
     },
   ],
 };
+
+export const HOME_FAQ: FaqItem[] = [
+  {
+    en: {
+      q: 'Is ToolGhor really free to use?',
+      a: 'Yes — all 27 tools on ToolGhor are completely free. There is no sign-up, no subscription and no hidden charge.',
+    },
+    bn: {
+      q: 'ToolGhor কি সত্যিই ফ্রি?',
+      a: 'হ্যাঁ — ToolGhor এর সব 27টি টুল সম্পূর্ণ ফ্রি। কোনো সাইন-আপ, সাবস্ক্রিপশন বা গোপন চার্জ নেই।',
+    },
+  },
+  {
+    en: {
+      q: 'Do I need to create an account?',
+      a: 'No. Just open the tool you need and start using it — no registration or login is required.',
+    },
+    bn: {
+      q: 'আমাকে কি অ্যাকাউন্ট খুলতে হবে?',
+      a: 'না। আপনার প্রয়োজনীয় টুলটি খুলেই ব্যবহার শুরু করুন — কোনো রেজিস্ট্রেশন বা লগইন লাগে না।',
+    },
+  },
+  {
+    en: {
+      q: 'Are my files safe and private?',
+      a: 'Most ToolGhor tools run 100% in your browser, so your files never leave your device. A few tools (for example background removal) use a secure server API to do their job — your file is used only to produce your result and is never stored.',
+    },
+    bn: {
+      q: 'আমার ফাইল কি নিরাপদ ও প্রাইভেট থাকে?',
+      a: 'ToolGhor এর বেশিরভাগ টুল 100% আপনার ব্রাউজারেই চলে, তাই আপনার ফাইল ডিভাইসের বাইরে যায় না। কিছু টুল (যেমন background removal) কাজের জন্য secure server API ব্যবহার করে — আপনার ফাইল শুধু result তৈরি করতেই ব্যবহৃত হয়, কখনো সংরক্ষণ করা হয় না।',
+    },
+  },
+  {
+    en: {
+      q: 'What tools are available on ToolGhor?',
+      a: '27 free tools in 6 categories — PDF tools, image tools, QR tools, video & audio tools, calculators and converters, and a resume builder.',
+    },
+    bn: {
+      q: 'ToolGhor এ কী কী টুল আছে?',
+      a: '6টি category তে 27টি ফ্রি টুল — PDF টুল, image টুল, QR টুল, video ও audio টুল, calculator ও converter, এবং resume builder।',
+    },
+  },
+  {
+    en: {
+      q: 'Does ToolGhor work on mobile phones?',
+      a: 'Yes — every tool works in your mobile browser. There is nothing to install; just open the site and use the tool you need.',
+    },
+    bn: {
+      q: 'ToolGhor কি মোবাইল ফোনে কাজ করে?',
+      a: 'হ্যাঁ — প্রতিটি টুল আপনার মোবাইল ব্রাউজারেই কাজ করে। কিছু install করতে হয় না; সাইট খুলেই প্রয়োজনীয় টুল ব্যবহার করুন।',
+    },
+  },
+  {
+    en: {
+      q: 'Can I use ToolGhor in Bangla?',
+      a: 'Yes — use the language option in the header to switch the whole site between English and বাংলা at any time.',
+    },
+    bn: {
+      q: 'ToolGhor কি বাংলায় ব্যবহার করা যায়?',
+      a: 'হ্যাঁ — header এর language অপশন দিয়ে যেকোনো সময় পুরো সাইট English ও বাংলার মধ্যে বদলে নিতে পারবেন।',
+    },
+  },
+];
+
