@@ -644,6 +644,20 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Scope and items array are required' }, { status: 400 });
       }
 
+      // Validate: reject if any item has an empty/whitespace question or answer field
+      const invalidIndex = items.findIndex((item: any) =>
+        !item.question_en?.trim() ||
+        !item.question_bn?.trim() ||
+        !item.answer_en?.trim() ||
+        !item.answer_bn?.trim()
+      );
+      if (invalidIndex !== -1) {
+        return NextResponse.json(
+          { success: false, error: `Item ${invalidIndex + 1} has an empty question or answer field. All four fields (question EN, question BN, answer EN, answer BN) are required.` },
+          { status: 400 }
+        );
+      }
+
       await sql`DELETE FROM content_faq_items WHERE scope = ${scope};`;
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
@@ -653,10 +667,10 @@ export async function POST(req: NextRequest) {
             ${scope},
             ${item.sort_order ?? i + 1},
             ${item.enabled !== undefined ? Boolean(item.enabled) : true},
-            ${item.question_en ?? ''},
-            ${item.question_bn ?? ''},
-            ${item.answer_en ?? ''},
-            ${item.answer_bn ?? ''}
+            ${item.question_en.trim()},
+            ${item.question_bn.trim()},
+            ${item.answer_en.trim()},
+            ${item.answer_bn.trim()}
           );
         `;
       }

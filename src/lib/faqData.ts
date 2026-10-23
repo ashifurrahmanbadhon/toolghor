@@ -10,6 +10,20 @@ function buildDefaultMap(): Record<string, FaqItem[]> {
   };
 }
 
+/** Returns true if a DB row has non-empty, non-whitespace content for both language questions. */
+function isValidRow(r: any): boolean {
+  return (
+    typeof r.question_en === 'string' && r.question_en.trim() !== '' &&
+    typeof r.question_bn === 'string' && r.question_bn.trim() !== ''
+  );
+}
+
+/** Returns the code-default fallback for a given scope. */
+function fallbackForScope(scope: string): FaqItem[] {
+  if (scope === 'general') return GENERAL_FAQ;
+  return FAQ_DATA[scope] || [];
+}
+
 export async function getAllFaqScopes(): Promise<Record<string, FaqItem[]>> {
   try {
     const sql = getDb();
@@ -25,14 +39,31 @@ export async function getAllFaqScopes(): Promise<Record<string, FaqItem[]>> {
 
     const rows = await Promise.race([queryPromise, timeoutPromise]);
     if (Array.isArray(rows) && rows.length > 0) {
-      const map: Record<string, FaqItem[]> = {};
+      const rawMap: Record<string, any[]> = {};
       for (const r of rows) {
-        if (!map[r.scope]) map[r.scope] = [];
-        map[r.scope].push({
-          en: { q: r.question_en, a: r.answer_en },
-          bn: { q: r.question_bn, a: r.answer_bn },
-        });
+        if (!rawMap[r.scope]) rawMap[r.scope] = [];
+        rawMap[r.scope].push(r);
       }
+
+      const map: Record<string, FaqItem[]> = {};
+      for (const [scope, scopeRows] of Object.entries(rawMap)) {
+        const validItems = scopeRows
+          .filter(isValidRow)
+          .map((r) => ({
+            en: { q: r.question_en, a: r.answer_en },
+            bn: { q: r.question_bn, a: r.answer_bn },
+          }));
+        // Per-scope fallback: if all rows were blank, serve code defaults
+        map[scope] = validItems.length > 0 ? validItems : fallbackForScope(scope);
+      }
+
+      // Also ensure every known default scope is represented even if absent from DB
+      for (const scope of ['general', ...Object.keys(FAQ_DATA)]) {
+        if (!map[scope]) {
+          map[scope] = fallbackForScope(scope);
+        }
+      }
+
       cachedFaqMap = map;
       return map;
     }
@@ -44,7 +75,7 @@ export async function getAllFaqScopes(): Promise<Record<string, FaqItem[]>> {
 }
 
 export async function getFaqByScope(scope: string): Promise<FaqItem[]> {
-  const fallback = scope === 'general' ? GENERAL_FAQ : (FAQ_DATA[scope] || []);
+  const fallback = fallbackForScope(scope);
   try {
     const sql = getDb();
     const queryPromise = sql`
@@ -59,10 +90,14 @@ export async function getFaqByScope(scope: string): Promise<FaqItem[]> {
 
     const rows = await Promise.race([queryPromise, timeoutPromise]);
     if (Array.isArray(rows) && rows.length > 0) {
-      return rows.map((r: any) => ({
-        en: { q: r.question_en, a: r.answer_en },
-        bn: { q: r.question_bn, a: r.answer_bn },
-      }));
+      const validItems = rows
+        .filter(isValidRow)
+        .map((r: any) => ({
+          en: { q: r.question_en, a: r.answer_en },
+          bn: { q: r.question_bn, a: r.answer_bn },
+        }));
+      // If all rows were blank, fall back to code defaults for this scope
+      return validItems.length > 0 ? validItems : fallback;
     }
   } catch (error) {
     console.warn(`[getFaqByScope] Fallback for scope "${scope}":`, error);

@@ -556,6 +556,25 @@ export async function initDatabase() {
         `;
       }
     }
+  } else {
+    // Idempotent repair: if any general-scope row has an empty question_en, the whole
+    // general scope was corrupted (e.g. an admin save wrote blanks). Re-seed it from code defaults.
+    const generalCheck = await sql`
+      SELECT COUNT(*)::int AS bad
+      FROM content_faq_items
+      WHERE scope = 'general' AND (question_en = '' OR question_en IS NULL);
+    `;
+    const badCount = generalCheck[0]?.bad ?? 0;
+    if (badCount > 0) {
+      await sql`DELETE FROM content_faq_items WHERE scope = 'general';`;
+      for (let i = 0; i < GENERAL_FAQ.length; i++) {
+        const f = GENERAL_FAQ[i];
+        await sql`
+          INSERT INTO content_faq_items (scope, sort_order, enabled, question_en, question_bn, answer_en, answer_bn)
+          VALUES ('general', ${i + 1}, true, ${f.en.q}, ${f.bn.q}, ${f.en.a}, ${f.bn.a});
+        `;
+      }
+    }
   }
 
   isInitialized = true;

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { ExternalLink, Check, AlertTriangle, RefreshCw, Plus, Trash2, Eye, EyeOff, HelpCircle } from 'lucide-react';
 
@@ -47,10 +47,35 @@ export default function FaqEditor({
   savingScope,
   saveStatus,
 }: FaqEditorProps) {
+  const [validationError, setValidationError] = useState<string | null>(null);
+
   // Current scope items
   const currentItems = faqItems
     .filter((f) => f.scope === selectedScope)
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+  /** Validates the current scope's items; returns an error string or null. */
+  const validateCurrentScope = (): string | null => {
+    for (let i = 0; i < currentItems.length; i++) {
+      const item = currentItems[i];
+      if (!item.question_en?.trim()) return `Question ${i + 1}: English question is required.`;
+      if (!item.question_bn?.trim()) return `Question ${i + 1}: Bangla question is required.`;
+      if (!item.answer_en?.trim()) return `Question ${i + 1}: English answer is required.`;
+      if (!item.answer_bn?.trim()) return `Question ${i + 1}: Bangla answer is required.`;
+    }
+    return null;
+  };
+
+  /** Save handler with client-side validation gate. */
+  const handleSave = async (scope: string) => {
+    const err = validateCurrentScope();
+    if (err) {
+      setValidationError(err);
+      return;
+    }
+    setValidationError(null);
+    await onSaveScope(scope);
+  };
 
   const handleUpdateItem = (indexInScope: number, field: keyof FaqItemRow, value: any) => {
     // Find the actual item in faqItems
@@ -228,12 +253,17 @@ export default function FaqEditor({
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {/* Status Indicator */}
-            {saveStatus === 'saved' && (
+            {validationError && (
+              <span style={{ color: '#fbbf24', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', maxWidth: '260px' }}>
+                <AlertTriangle size={16} /> {validationError}
+              </span>
+            )}
+            {!validationError && saveStatus === 'saved' && (
               <span style={{ color: '#10b981', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <Check size={16} /> Scope Saved!
               </span>
             )}
-            {saveStatus === 'error' && (
+            {!validationError && saveStatus === 'error' && (
               <span style={{ color: '#f87171', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <AlertTriangle size={16} /> Error saving
               </span>
@@ -264,7 +294,7 @@ export default function FaqEditor({
             <button
               type="button"
               disabled={savingScope}
-              onClick={() => onSaveScope(selectedScope)}
+              onClick={() => handleSave(selectedScope)}
               style={{
                 background: '#10b981',
                 color: '#ffffff',
@@ -485,7 +515,7 @@ export default function FaqEditor({
           <button
             type="button"
             disabled={savingScope}
-            onClick={() => onSaveScope(selectedScope)}
+            onClick={() => handleSave(selectedScope)}
             style={{
               background: '#10b981',
               color: '#ffffff',
