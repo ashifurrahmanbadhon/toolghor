@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb, initDatabase } from '@/lib/db';
 import { clearSiteDataCache } from '@/lib/siteData';
 import { getAllPolicySections, clearPoliciesCache } from '@/lib/policiesData';
+import { clearGuidesCache } from '@/lib/guidesData';
+import { clearFaqCache } from '@/lib/faqData';
 import { revalidatePath } from 'next/cache';
 import { verifyAdminRequest, isAuthSecretDerived } from '@/lib/adminAuth';
 
@@ -80,6 +82,13 @@ export async function GET(req: NextRequest) {
 
     const policySections = await getAllPolicySections();
 
+    let guideRows: any[] = [];
+    let faqRows: any[] = [];
+    try {
+      guideRows = await sql`SELECT * FROM content_guides ORDER BY sort_order ASC, slug ASC;`;
+      faqRows = await sql`SELECT * FROM content_faq_items ORDER BY scope ASC, sort_order ASC, id ASC;`;
+    } catch {}
+
     return NextResponse.json({
       success: true,
       dbConnected: true,
@@ -95,6 +104,8 @@ export async function GET(req: NextRequest) {
         removeAiLabel: removeAiLabelRows?.[0] || null,
       },
       policies: policySections,
+      guides: guideRows || [],
+      faq: faqRows || [],
       analytics: analyticsMap,
       periodicAnalytics,
     });
@@ -128,6 +139,8 @@ export async function POST(req: NextRequest) {
     function notifyLiveUpdate(message: string, extra: any = {}) {
       clearSiteDataCache();
       clearPoliciesCache();
+      clearGuidesCache();
+      clearFaqCache();
       try {
         revalidatePath('/', 'page');
         revalidatePath('/', 'layout');
@@ -135,6 +148,12 @@ export async function POST(req: NextRequest) {
         revalidatePath('/terms', 'layout');
         revalidatePath('/privacy', 'page');
         revalidatePath('/privacy', 'layout');
+        revalidatePath('/guides', 'page');
+        revalidatePath('/guides', 'layout');
+        revalidatePath('/guides/[slug]', 'page');
+        revalidatePath('/guides/[slug]', 'layout');
+        revalidatePath('/faq', 'page');
+        revalidatePath('/faq', 'layout');
         revalidatePath('/tools/[slug]', 'page');
         revalidatePath('/tools/[slug]', 'layout');
         revalidatePath('/admin', 'page');
@@ -531,6 +550,118 @@ export async function POST(req: NextRequest) {
       } catch {}
 
       return notifyLiveUpdate('Remove AI Label tool info updated successfully');
+    }
+
+    // 11. Update Single Guide independently (content_guides row isolation)
+    if (action === 'update_guide') {
+      const {
+        slug,
+        sort_order,
+        enabled,
+        category,
+        read_minutes,
+        title_en,
+        title_bn,
+        description_en,
+        description_bn,
+        hero_en,
+        hero_bn,
+        sections_en,
+        sections_bn,
+        faq_en,
+        faq_bn,
+        tool_slug,
+        tool_slug_2,
+        meta_title,
+        meta_description,
+        date_published,
+      } = payload || {};
+
+      if (!slug) {
+        return NextResponse.json({ success: false, error: 'Guide slug is required' }, { status: 400 });
+      }
+
+      await sql`
+        INSERT INTO content_guides (
+          slug, sort_order, enabled, category, read_minutes,
+          title_en, title_bn, description_en, description_bn,
+          hero_en, hero_bn, sections_en, sections_bn,
+          faq_en, faq_bn, tool_slug, tool_slug_2,
+          meta_title, meta_description, date_published
+        )
+        VALUES (
+          ${slug},
+          ${sort_order ?? 1},
+          ${enabled !== undefined ? Boolean(enabled) : true},
+          ${category ?? 'practical'},
+          ${read_minutes ?? 4},
+          ${title_en ?? ''},
+          ${title_bn ?? ''},
+          ${description_en ?? ''},
+          ${description_bn ?? ''},
+          ${hero_en ?? ''},
+          ${hero_bn ?? ''},
+          ${JSON.stringify(sections_en ?? [])}::jsonb,
+          ${JSON.stringify(sections_bn ?? [])}::jsonb,
+          ${JSON.stringify(faq_en ?? [])}::jsonb,
+          ${JSON.stringify(faq_bn ?? [])}::jsonb,
+          ${tool_slug ?? null},
+          ${tool_slug_2 ?? null},
+          ${meta_title ?? null},
+          ${meta_description ?? null},
+          ${date_published ?? '2026-10-23'}
+        )
+        ON CONFLICT (slug) DO UPDATE SET
+          sort_order = EXCLUDED.sort_order,
+          enabled = EXCLUDED.enabled,
+          category = EXCLUDED.category,
+          read_minutes = EXCLUDED.read_minutes,
+          title_en = EXCLUDED.title_en,
+          title_bn = EXCLUDED.title_bn,
+          description_en = EXCLUDED.description_en,
+          description_bn = EXCLUDED.description_bn,
+          hero_en = EXCLUDED.hero_en,
+          hero_bn = EXCLUDED.hero_bn,
+          sections_en = EXCLUDED.sections_en,
+          sections_bn = EXCLUDED.sections_bn,
+          faq_en = EXCLUDED.faq_en,
+          faq_bn = EXCLUDED.faq_bn,
+          tool_slug = EXCLUDED.tool_slug,
+          tool_slug_2 = EXCLUDED.tool_slug_2,
+          meta_title = COALESCE(EXCLUDED.meta_title, content_guides.meta_title),
+          meta_description = COALESCE(EXCLUDED.meta_description, content_guides.meta_description),
+          date_published = COALESCE(EXCLUDED.date_published, content_guides.date_published),
+          updated_at = CURRENT_TIMESTAMP;
+      `;
+
+      return notifyLiveUpdate(`Guide "${slug}" updated successfully`, { slug });
+    }
+
+    // 12. Update FAQ Scope independently (content_faq_items scope isolation)
+    if (action === 'update_faq_scope') {
+      const { scope, items } = payload || {};
+      if (!scope || !Array.isArray(items)) {
+        return NextResponse.json({ success: false, error: 'Scope and items array are required' }, { status: 400 });
+      }
+
+      await sql`DELETE FROM content_faq_items WHERE scope = ${scope};`;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        await sql`
+          INSERT INTO content_faq_items (scope, sort_order, enabled, question_en, question_bn, answer_en, answer_bn)
+          VALUES (
+            ${scope},
+            ${item.sort_order ?? i + 1},
+            ${item.enabled !== undefined ? Boolean(item.enabled) : true},
+            ${item.question_en ?? ''},
+            ${item.question_bn ?? ''},
+            ${item.answer_en ?? ''},
+            ${item.answer_bn ?? ''}
+          );
+        `;
+      }
+
+      return notifyLiveUpdate(`FAQ scope "${scope}" updated successfully`, { scope });
     }
 
     return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 });

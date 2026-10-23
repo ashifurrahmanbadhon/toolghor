@@ -35,12 +35,16 @@ import {
   KeyRound,
   Zap,
   FileText,
+  BookOpen,
+  HelpCircle,
 } from 'lucide-react';
 import {
   DEFAULT_POLICY_SECTIONS,
   POLICY_SECTIONS_LIST,
   PolicySection,
 } from '@/data/policiesDefaults';
+import GuidesEditor, { GuideRow } from '@/components/admin/GuidesEditor';
+import FaqEditor, { FaqItemRow } from '@/components/admin/FaqEditor';
 
 interface HeroSection {
   is_active: boolean;
@@ -145,6 +149,8 @@ type MenuTab =
   | 'announcement'
   | 'categories'
   | 'tools'
+  | 'guides'
+  | 'faq'
   | 'footer'
   | 'creator'
   | 'apis'
@@ -285,6 +291,17 @@ export default function AdminConsole() {
   const [policies, setPolicies] = useState<Record<string, PolicySection>>(DEFAULT_POLICY_SECTIONS);
   const [savingPolicies, setSavingPolicies] = useState<Record<string, boolean>>({});
   const [policySaveStatus, setPolicySaveStatus] = useState<Record<string, 'saved' | 'error' | null>>({});
+
+  // Guides Manager State (content_guides table)
+  const [guides, setGuides] = useState<GuideRow[]>([]);
+  const [savingGuide, setSavingGuide] = useState<Record<string, boolean>>({});
+  const [guideSaveStatus, setGuideSaveStatus] = useState<Record<string, 'saved' | 'error' | null>>({});
+
+  // FAQ Manager State (content_faq_items table)
+  const [faqItems, setFaqItems] = useState<FaqItemRow[]>([]);
+  const [selectedFaqScope, setSelectedFaqScope] = useState<string>('general');
+  const [savingFaqScope, setSavingFaqScope] = useState(false);
+  const [faqScopeSaveStatus, setFaqScopeSaveStatus] = useState<'saved' | 'error' | null>(null);
 
   // Remove AI Label Tool (Isolated Table: section_tool_remove_ai_label)
   const [removeAiLabel, setRemoveAiLabel] = useState<RemoveAiLabelToolSection>({
@@ -441,6 +458,8 @@ export default function AdminConsole() {
           }
         }
         if (data.policies) setPolicies(data.policies);
+        if (data.guides) setGuides(data.guides);
+        if (data.faq) setFaqItems(data.faq);
         if (data.analytics) setAnalytics(data.analytics);
         if (data.periodicAnalytics) setPeriodicAnalytics(data.periodicAnalytics);
 
@@ -496,7 +515,7 @@ export default function AdminConsole() {
       if (typeof window !== 'undefined') {
         const params = new URLSearchParams(window.location.search);
         const tabParam = params.get('tab') as MenuTab;
-        const validTabs: MenuTab[] = ['overview', 'hero', 'announcement', 'categories', 'tools', 'footer', 'creator', 'apis', 'policies', 'analytics', 'profile'];
+        const validTabs: MenuTab[] = ['overview', 'hero', 'announcement', 'categories', 'tools', 'guides', 'faq', 'footer', 'creator', 'apis', 'policies', 'analytics', 'profile'];
         if (tabParam && validTabs.includes(tabParam)) {
           setActiveTab(tabParam);
         }
@@ -941,6 +960,49 @@ export default function AdminConsole() {
       }, 3500);
     } finally {
       setSavingPolicies((prev) => ({ ...prev, [sectionKey]: false }));
+    }
+  };
+
+  // 9. Guides Save Handler (Single-guide row isolation)
+  const saveGuide = async (slug: string) => {
+    const guide = guides.find((g) => g.slug === slug);
+    if (!guide) return;
+    setSavingGuide((prev) => ({ ...prev, [slug]: true }));
+    try {
+      const ok = await postApi('update_guide', guide, `Guide "${guide.title_en}" saved successfully!`);
+      if (ok) {
+        setGuideSaveStatus((prev) => ({ ...prev, [slug]: 'saved' }));
+        setTimeout(() => setGuideSaveStatus((prev) => ({ ...prev, [slug]: null })), 3500);
+      } else {
+        setGuideSaveStatus((prev) => ({ ...prev, [slug]: 'error' }));
+        setTimeout(() => setGuideSaveStatus((prev) => ({ ...prev, [slug]: null })), 3500);
+      }
+    } catch {
+      setGuideSaveStatus((prev) => ({ ...prev, [slug]: 'error' }));
+      setTimeout(() => setGuideSaveStatus((prev) => ({ ...prev, [slug]: null })), 3500);
+    } finally {
+      setSavingGuide((prev) => ({ ...prev, [slug]: false }));
+    }
+  };
+
+  // 10. FAQ Scope Save Handler (Single-scope isolation)
+  const saveFaqScope = async (scope: string) => {
+    const items = faqItems.filter((f) => f.scope === scope);
+    setSavingFaqScope(true);
+    try {
+      const ok = await postApi('update_faq_scope', { scope, items }, `FAQ scope "${scope}" (${items.length} questions) saved successfully!`);
+      if (ok) {
+        setFaqScopeSaveStatus('saved');
+        setTimeout(() => setFaqScopeSaveStatus(null), 3500);
+      } else {
+        setFaqScopeSaveStatus('error');
+        setTimeout(() => setFaqScopeSaveStatus(null), 3500);
+      }
+    } catch {
+      setFaqScopeSaveStatus('error');
+      setTimeout(() => setFaqScopeSaveStatus(null), 3500);
+    } finally {
+      setSavingFaqScope(false);
     }
   };
 
@@ -1709,6 +1771,8 @@ export default function AdminConsole() {
                 { id: 'announcement', label: 'Announcement Banner', icon: Bell },
                 { id: 'categories', label: 'Categories Manager', icon: Layers, badge: categories.length },
                 { id: 'tools', label: 'Tools Manager', icon: Wrench, badge: tools.length },
+                { id: 'guides', label: 'Guides Manager', icon: BookOpen, badge: guides.length },
+                { id: 'faq', label: 'FAQ Manager', icon: HelpCircle, badge: faqItems.length },
                 { id: 'footer', label: 'Footer & WhatsApp', icon: MessageSquare },
                 { id: 'policies', label: 'Terms & Policies', icon: FileText, badge: '9' },
                 { id: 'creator', label: 'Creator Profile', icon: User },
@@ -1805,6 +1869,8 @@ export default function AdminConsole() {
               { id: 'announcement', label: 'Banner' },
               { id: 'categories', label: `Categories (${categories.length})` },
               { id: 'tools', label: `Tools (${tools.length})` },
+              { id: 'guides', label: `Guides (${guides.length})` },
+              { id: 'faq', label: `FAQ (${faqItems.length})` },
               { id: 'footer', label: 'Footer & WhatsApp' },
               { id: 'policies', label: 'Policies (9)' },
               { id: 'creator', label: 'Creator' },
@@ -4831,6 +4897,31 @@ export default function AdminConsole() {
                 })}
               </div>
             </div>
+          )}
+
+          {/* TAB: GUIDES MANAGER */}
+          {activeTab === 'guides' && (
+            <GuidesEditor
+              guides={guides}
+              setGuides={setGuides}
+              onSaveGuide={saveGuide}
+              savingGuide={savingGuide}
+              guideSaveStatus={guideSaveStatus}
+            />
+          )}
+
+          {/* TAB: FAQ MANAGER */}
+          {activeTab === 'faq' && (
+            <FaqEditor
+              faqItems={faqItems}
+              setFaqItems={setFaqItems}
+              selectedScope={selectedFaqScope}
+              setSelectedScope={setSelectedFaqScope}
+              onSaveScope={saveFaqScope}
+              savingScope={savingFaqScope}
+              saveStatus={faqScopeSaveStatus}
+              toolList={tools}
+            />
           )}
 
           {/* TAB 9: USAGE ANALYTICS */}

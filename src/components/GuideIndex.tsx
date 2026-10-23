@@ -5,9 +5,13 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useApp } from '@/context/AppContext';
-import { GUIDES } from '@/data/guides';
+import { GUIDES, Guide } from '@/data/guides';
 
-export default function GuideIndex() {
+interface GuideIndexProps {
+  guides?: Guide[];
+}
+
+export default function GuideIndex({ guides = GUIDES }: GuideIndexProps) {
   const { lang } = useApp();
   const isBn = lang === 'bn';
 
@@ -31,18 +35,22 @@ export default function GuideIndex() {
           </header>
 
           <div className="guide-cards-grid">
-            {GUIDES.map((guide) => (
-              <article key={guide.slug} className="guide-card">
-                <div className="guide-card-content">
-                  <div className="guide-card-meta">
-                    <span className="guide-card-tag">
-                      {isBn ? 'ব্যবহারিক নির্দেশিকা' : 'Practical Guide'}
-                    </span>
-                  </div>
-                  <h2 className="guide-card-title">
-                    <Link href={`/guides/${guide.slug}`} className="guide-card-link">
-                      {guide.title[lang]}
-                    </Link>
+            {guides.map((guide) => {
+              const readMin = guide.slug.includes('land') ? 6 : 4;
+              const readText = isBn ? `${readMin === 6 ? '৬' : '৪'} মিনিট পাঠ` : `${readMin} min read`;
+              return (
+                <article key={guide.slug} className="guide-card">
+                  <div className="guide-card-content">
+                    <div className="guide-card-meta">
+                      <span className="guide-card-tag">
+                        {isBn ? 'ব্যবহারিক নির্দেশিকা' : 'Practical Guide'}
+                      </span>
+                      <span className="guide-card-time">{readText}</span>
+                    </div>
+                    <h2 className="guide-card-title">
+                      <Link href={`/guides/${guide.slug}`} className="guide-card-link">
+                        {guide.title[lang]}
+                      </Link>
                   </h2>
                   <p className="guide-card-excerpt">
                     {guide.excerpt[lang]}
@@ -54,8 +62,9 @@ export default function GuideIndex() {
                   </Link>
                 </div>
               </article>
-            ))}
-          </div>
+            );
+          })}
+        </div>
         </div>
       </main>
       <Footer />

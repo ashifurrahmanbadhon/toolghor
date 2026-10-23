@@ -1442,8 +1442,7 @@
     );
 
     var title = UI.el('h2', { class: 'about-hero-title' },
-      document.createTextNode('ToolGhor'),
-      UI.el('span', { class: 'about-hero-dot', 'aria-hidden': 'true' }, '.')
+      document.createTextNode('ToolGhor')
     );
 
     var desc = UI.el('p', { class: 'about-modal-desc' },

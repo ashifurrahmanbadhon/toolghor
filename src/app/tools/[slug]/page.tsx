@@ -12,6 +12,7 @@ import { getPublicSiteData } from '@/lib/siteData';
 import ToolPageClient from './ToolPageClient';
 
 import { SEO_TITLES, SEO_DESCRIPTIONS, FAQ_DATA } from '@/data/seoData';
+import { getFaqByScope } from '@/lib/faqData';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -121,7 +122,7 @@ export default async function ToolPage({ params }: Props) {
     },
   };
 
-  const faqs = FAQ_DATA[slug];
+  const faqs = (await getFaqByScope(slug)) || FAQ_DATA[slug];
   const faqSchema =
     faqs && faqs.length > 0
       ? {

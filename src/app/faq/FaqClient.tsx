@@ -5,8 +5,13 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import FaqAccordion from '@/components/FaqAccordion';
 import { useApp } from '@/context/AppContext';
+import { FaqItem, GENERAL_FAQ } from '@/data/seoData';
 
-export default function FaqClient() {
+interface FaqClientProps {
+  faqs?: FaqItem[];
+}
+
+export default function FaqClient({ faqs = GENERAL_FAQ }: FaqClientProps) {
   const { lang } = useApp();
 
   return (
@@ -28,7 +33,7 @@ export default function FaqClient() {
             </p>
           </header>
 
-          <FaqAccordion />
+          <FaqAccordion faqs={faqs} />
         </div>
       </main>
       <Footer />

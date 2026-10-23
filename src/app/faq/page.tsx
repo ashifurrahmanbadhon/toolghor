@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { GENERAL_FAQ } from '@/data/seoData';
 import { siteConfig } from '@/data/config';
 import FaqClient from './FaqClient';
+import { getGeneralFaq } from '@/lib/faqData';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -25,11 +26,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function FaqPage() {
+export default async function FaqPage() {
+  const faqs = (await getGeneralFaq()) || GENERAL_FAQ;
+
   const faqSchema = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
-    mainEntity: GENERAL_FAQ.map((f) => ({
+    mainEntity: faqs.map((f) => ({
       '@type': 'Question',
       name: f.en.q,
       acceptedAnswer: {
@@ -47,7 +50,7 @@ export default function FaqPage() {
           __html: JSON.stringify(faqSchema),
         }}
       />
-      <FaqClient />
+      <FaqClient faqs={faqs} />
     </>
   );
 }

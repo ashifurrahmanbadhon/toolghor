@@ -3,6 +3,7 @@ import { getPublicSiteData } from '@/lib/siteData';
 import { siteConfig } from '@/data/config';
 import { TOOLS } from '@/data/registry';
 import { GUIDES } from '@/data/guides';
+import { getAllGuides } from '@/lib/guidesData';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -41,7 +42,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   };
 
-  const guideEntries: MetadataRoute.Sitemap = GUIDES.map((g) => ({
+  const guides = await getAllGuides();
+  const guideEntries: MetadataRoute.Sitemap = (guides && guides.length > 0 ? guides : GUIDES).map((g) => ({
     url: `${baseUrl}/guides/${g.slug}`,
     changeFrequency: 'monthly',
     priority: 0.7,

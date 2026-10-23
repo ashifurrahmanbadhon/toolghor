@@ -2961,11 +2961,6 @@ body.dark .lang button.on {
   display: flex;
   align-items: baseline;
 }
-.about-hero-dot {
-  color: var(--paddy);
-  font-size: 32px;
-  line-height: 0;
-}
 .about-modal-desc {
   margin: 0 0 18px;
   color: var(--ink-2);
@@ -4880,10 +4875,9 @@ table.tbl {
 .policy-docs-page {
   padding: 38px 16px 88px;
   min-height: 75vh;
-  background: var(--paper);
 }
 .policy-docs-container {
-  max-width: 1180px;
+  max-width: 1120px;
   margin: 0 auto;
   width: 100%;
 }
@@ -4950,6 +4944,10 @@ table.tbl {
   font-weight: 700;
   border-color: color-mix(in srgb, var(--paddy) 45%, transparent);
 }
+.policy-docs-nav-link:focus-visible {
+  outline: 2px solid var(--paddy);
+  outline-offset: 2px;
+}
 .policy-docs-nav-num {
   font-size: 12px;
   font-weight: 700;
@@ -4993,13 +4991,14 @@ table.tbl {
 .policy-docs-mobile-chip {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 6px 12px;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 14px;
   border-radius: 999px;
   background: var(--paper);
   border: 1px solid var(--line);
   color: var(--ink-2);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
   text-decoration: none;
@@ -5015,14 +5014,18 @@ table.tbl {
   color: #ffffff !important;
   border-color: var(--paddy);
 }
+.policy-docs-mobile-chip:focus-visible {
+  outline: 2px solid var(--paddy);
+  outline-offset: 2px;
+}
 
 /* Right Content Panel */
 .policy-docs-panel {
-  background: color-mix(in srgb, var(--paper) 75%, var(--mist));
+  background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: 18px;
   padding: clamp(24px, 4vw, 40px);
-  box-shadow: 0 8px 30px -8px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.3);
 }
 .policy-docs-head {
   margin-bottom: 24px;
@@ -5168,6 +5171,22 @@ table.tbl {
   .policy-doc-list {
     margin-left: 18px;
     gap: 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .policy-docs-page {
+    padding: 16px 10px 48px;
+  }
+  .policy-docs-panel {
+    padding: 16px 12px;
+    border-radius: 12px;
+  }
+  .policy-docs-main-title {
+    font-size: 24px;
+  }
+  .policy-docs-section-heading {
+    font-size: 19px;
   }
 }
 
@@ -5646,9 +5665,14 @@ table.tbl {
   padding: 44px 16px 88px;
 }
 
-.guide-index-wrap,
+.guide-index-wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  width: 100%;
+}
+
 .guide-article-wrap {
-  max-width: 860px;
+  max-width: 820px;
   margin: 0 auto;
   width: 100%;
 }
@@ -5693,32 +5717,42 @@ table.tbl {
 }
 
 .guide-cards-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
   width: 100%;
 }
 
 .guide-card {
   background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 24px 28px;
+  border-radius: 16px;
+  padding: 24px 26px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: 18px;
   transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+  box-shadow: 0 4px 18px -4px rgba(0, 0, 0, 0.22);
 }
 
 .guide-card:hover {
   border-color: color-mix(in srgb, var(--paddy) 45%, var(--line));
-  box-shadow: 0 6px 24px -4px rgba(0, 0, 0, 0.25);
-  transform: translateY(-1px);
+  box-shadow: 0 8px 28px -6px rgba(0, 0, 0, 0.35);
+  transform: translateY(-2px);
 }
 
 .guide-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 10px;
+}
+
+.guide-card-time {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-3);
 }
 
 .guide-card-tag {
@@ -5764,6 +5798,7 @@ table.tbl {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-height: 40px;
   color: var(--paddy-d);
   font-weight: 600;
   font-size: 14.5px;
@@ -5777,6 +5812,16 @@ table.tbl {
   text-decoration: underline;
 }
 
+.guide-card-btn:focus-visible,
+.guide-card-link:focus-visible,
+.guide-back-link:focus-visible,
+.guide-cta-btn:focus-visible,
+.guide-final-tool-btn:focus-visible {
+  outline: 2px solid var(--paddy);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
 /* --- Guide Article Page --- */
 .guide-breadcrumb {
   margin-bottom: 24px;
@@ -5785,6 +5830,7 @@ table.tbl {
 .guide-back-link {
   display: inline-flex;
   align-items: center;
+  min-height: 40px;
   color: var(--ink-3);
   font-size: 14px;
   font-weight: 500;
@@ -6046,6 +6092,10 @@ table.tbl {
 }
 
 @media (max-width: 640px) {
+  .guide-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
   .guide-index-main,
   .guide-page-main {
     padding: 32px 14px 64px;

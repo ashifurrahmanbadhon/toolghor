@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { siteConfig } from '@/data/config';
 import GuideIndex from '@/components/GuideIndex';
+import { getAllGuides } from '@/lib/guidesData';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -27,6 +28,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function GuidesPage() {
-  return <GuideIndex />;
+export default async function GuidesPage() {
+  const guides = await getAllGuides();
+  return <GuideIndex guides={guides} />;
 }

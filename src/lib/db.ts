@@ -1,6 +1,8 @@
 import { neon } from '@neondatabase/serverless';
 import { CATEGORIES, TOOLS } from '../data/registry';
 import { siteConfig } from '../data/config';
+import { GUIDES } from '../data/guides';
+import { GENERAL_FAQ, FAQ_DATA } from '../data/seoData';
 
 function getDbUrl() {
   const url =
@@ -435,6 +437,126 @@ export async function initDatabase() {
     )
     ON CONFLICT (id) DO NOTHING;
   `;
+
+  // 15. Content: Guides (content_guides)
+  await sql`
+    CREATE TABLE IF NOT EXISTS content_guides (
+      slug VARCHAR(120) PRIMARY KEY,
+      sort_order INT NOT NULL DEFAULT 1,
+      enabled BOOLEAN NOT NULL DEFAULT true,
+      category VARCHAR(80) NOT NULL DEFAULT 'practical',
+      read_minutes INT NOT NULL DEFAULT 4,
+      title_en TEXT NOT NULL,
+      title_bn TEXT NOT NULL,
+      description_en TEXT NOT NULL,
+      description_bn TEXT NOT NULL,
+      hero_en TEXT NOT NULL,
+      hero_bn TEXT NOT NULL,
+      sections_en JSONB NOT NULL DEFAULT '[]'::jsonb,
+      sections_bn JSONB NOT NULL DEFAULT '[]'::jsonb,
+      faq_en JSONB NOT NULL DEFAULT '[]'::jsonb,
+      faq_bn JSONB NOT NULL DEFAULT '[]'::jsonb,
+      tool_slug VARCHAR(120),
+      tool_slug_2 VARCHAR(120),
+      meta_title TEXT,
+      meta_description TEXT,
+      date_published VARCHAR(30) DEFAULT '2026-10-23',
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+
+  for (let i = 0; i < GUIDES.length; i++) {
+    const g = GUIDES[i];
+    const sections_en = g.sections.map((s) => ({
+      heading: s.heading.en,
+      paragraphs: s.paragraphs?.en || [],
+      bullets: s.bullets?.en || [],
+      steps: s.steps?.en || [],
+      paragraphsAfter: s.paragraphsAfter?.en || [],
+      cta: s.cta ? { toolSlug: s.cta.toolSlug, label: s.cta.label.en } : null,
+    }));
+    const sections_bn = g.sections.map((s) => ({
+      heading: s.heading.bn,
+      paragraphs: s.paragraphs?.bn || [],
+      bullets: s.bullets?.bn || [],
+      steps: s.steps?.bn || [],
+      paragraphsAfter: s.paragraphsAfter?.bn || [],
+      cta: s.cta ? { toolSlug: s.cta.toolSlug, label: s.cta.label.bn } : null,
+    }));
+    const faq_en = g.faq.map((f) => ({ q: f.en.q, a: f.en.a }));
+    const faq_bn = g.faq.map((f) => ({ q: f.bn.q, a: f.bn.a }));
+
+    await sql`
+      INSERT INTO content_guides (
+        slug, sort_order, enabled, category, read_minutes,
+        title_en, title_bn, description_en, description_bn,
+        hero_en, hero_bn, sections_en, sections_bn,
+        faq_en, faq_bn, tool_slug, tool_slug_2,
+        meta_title, meta_description, date_published
+      )
+      VALUES (
+        ${g.slug},
+        ${i + 1},
+        true,
+        'practical',
+        ${g.slug.includes('land') ? 6 : 4},
+        ${g.title.en},
+        ${g.title.bn},
+        ${g.excerpt.en},
+        ${g.excerpt.bn},
+        ${g.intro.en.join('\n\n')},
+        ${g.intro.bn.join('\n\n')},
+        ${JSON.stringify(sections_en)}::jsonb,
+        ${JSON.stringify(sections_bn)}::jsonb,
+        ${JSON.stringify(faq_en)}::jsonb,
+        ${JSON.stringify(faq_bn)}::jsonb,
+        ${g.relatedTools[0] || null},
+        ${g.relatedTools[1] || null},
+        ${g.metaTitle},
+        ${g.metaDescription},
+        ${g.datePublished}
+      )
+      ON CONFLICT (slug) DO NOTHING;
+    `;
+  }
+
+  // 16. Content: FAQ Items (content_faq_items)
+  await sql`
+    CREATE TABLE IF NOT EXISTS content_faq_items (
+      id SERIAL PRIMARY KEY,
+      scope VARCHAR(120) NOT NULL,
+      sort_order INT NOT NULL DEFAULT 1,
+      enabled BOOLEAN NOT NULL DEFAULT true,
+      question_en TEXT NOT NULL,
+      question_bn TEXT NOT NULL,
+      answer_en TEXT NOT NULL,
+      answer_bn TEXT NOT NULL,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_faq_scope ON content_faq_items(scope);
+  `;
+
+  const faqCountRes = await sql`SELECT COUNT(*)::int AS count FROM content_faq_items;`;
+  if (!faqCountRes[0] || faqCountRes[0].count === 0) {
+    for (let i = 0; i < GENERAL_FAQ.length; i++) {
+      const f = GENERAL_FAQ[i];
+      await sql`
+        INSERT INTO content_faq_items (scope, sort_order, enabled, question_en, question_bn, answer_en, answer_bn)
+        VALUES ('general', ${i + 1}, true, ${f.en.q}, ${f.bn.q}, ${f.en.a}, ${f.bn.a});
+      `;
+    }
+    for (const [toolSlug, items] of Object.entries(FAQ_DATA)) {
+      for (let i = 0; i < items.length; i++) {
+        const f = items[i];
+        await sql`
+          INSERT INTO content_faq_items (scope, sort_order, enabled, question_en, question_bn, answer_en, answer_bn)
+          VALUES (${toolSlug}, ${i + 1}, true, ${f.en.q}, ${f.bn.q}, ${f.en.a}, ${f.bn.a});
+        `;
+      }
+    }
+  }
 
   isInitialized = true;
   return { success: true };

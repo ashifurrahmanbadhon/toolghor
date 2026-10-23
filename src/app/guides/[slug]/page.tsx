@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { GUIDES, GUIDES_BY_SLUG } from '@/data/guides';
 import { siteConfig } from '@/data/config';
 import GuideArticle from '@/components/GuideArticle';
+import { getGuideBySlug } from '@/lib/guidesData';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -17,7 +18,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const guide = GUIDES_BY_SLUG[slug];
+  const guide = (await getGuideBySlug(slug)) || GUIDES_BY_SLUG[slug];
 
   if (!guide) {
     return {
@@ -60,7 +61,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function GuidePage({ params }: Props) {
   const { slug } = await params;
-  const guide = GUIDES_BY_SLUG[slug];
+  const guide = (await getGuideBySlug(slug)) || GUIDES_BY_SLUG[slug];
 
   if (!guide) {
     notFound();
