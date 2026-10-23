@@ -22,7 +22,7 @@ const hindSiliguri = Hind_Siliguri({
 });
 
 export const metadata: Metadata = {
-  title: 'ToolGhor – Everyday tools, now on one platform',
+  title: 'Free Online Tools — PDF, Image, QR, Video | ToolGhor',
   description: `${siteConfig.taglineEn}. Everyday productivity and file tools in your browser.`,
   metadataBase: new URL(siteConfig.url),
   verification: {
@@ -94,7 +94,7 @@ export default function RootLayout({
                 if (window.location.pathname === '/' || window.location.pathname === '') {
                   document.title = (l === 'bn') 
                     ? 'ToolGhor – দৈনন্দিন কাজের সব টুল' 
-                    : 'ToolGhor – Everyday tools, now on one platform';
+                    : 'Free Online Tools — PDF, Image, QR, Video | ToolGhor';
                 }
               } catch (e) {}
             `,

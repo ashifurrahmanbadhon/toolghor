@@ -5392,3 +5392,42 @@ table.tbl {
   }
 }
 
+/* ==========================================================================
+   TOOL FAQ SECTION (P3 SEO UPGRADE)
+   ========================================================================== */
+.faq-section {
+  margin-top: 36px;
+  margin-bottom: 24px;
+}
+.faq-section h2 {
+  font-size: 21px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--ink);
+}
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 860px;
+}
+.faq-item {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+.faq-q {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 8px 0;
+}
+.faq-a {
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--ink-2);
+  margin: 0;
+}
+
+

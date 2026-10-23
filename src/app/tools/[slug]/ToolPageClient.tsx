@@ -8,11 +8,15 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ToolRunner from '@/components/ToolRunner';
 import ToolCard from '@/components/ToolCard';
+import ToolFaq from '@/components/ToolFaq';
+import { FaqItem } from '@/data/seoData';
 
 interface ToolPageClientProps {
   tool: ToolItem;
   relatedTools: ToolItem[];
   apiKeys?: any;
+  faqs?: FaqItem[];
+  seoTitle?: string;
 }
 
 const CAT_NAMES: Record<string, { bn: string; en: string }> = {
@@ -24,7 +28,7 @@ const CAT_NAMES: Record<string, { bn: string; en: string }> = {
   resume: { bn: 'রেজুমি ও সিভি', en: 'Resume' },
 };
 
-export default function ToolPageClient({ tool, relatedTools, apiKeys }: ToolPageClientProps) {
+export default function ToolPageClient({ tool, relatedTools, apiKeys, faqs, seoTitle }: ToolPageClientProps) {
   const { lang } = useApp();
 
   const title = lang === 'bn' ? tool.bn : tool.en;
@@ -38,9 +42,13 @@ export default function ToolPageClient({ tool, relatedTools, apiKeys }: ToolPage
 
   React.useEffect(() => {
     if (typeof document !== 'undefined') {
-      document.title = `${title} | ToolGhor`;
+      if (seoTitle) {
+        document.title = seoTitle;
+      } else {
+        document.title = `${title} | ToolGhor`;
+      }
     }
-  }, [lang, title]);
+  }, [lang, title, seoTitle]);
 
   const trustText =
     lang === 'bn'
@@ -127,6 +135,9 @@ export default function ToolPageClient({ tool, relatedTools, apiKeys }: ToolPage
             </div>
           </div>
         )}
+
+        {/* FAQ Section (rendered only on the 8 listed tool pages) */}
+        {faqs && faqs.length > 0 && <ToolFaq faqs={faqs} />}
       </main>
 
       <Footer />

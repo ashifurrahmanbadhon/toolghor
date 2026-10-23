@@ -11,6 +11,8 @@ import { ShieldCheck, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { getPublicSiteData } from '@/lib/siteData';
 import ToolPageClient from './ToolPageClient';
 
+import { SEO_TITLES, SEO_DESCRIPTIONS, FAQ_DATA } from '@/data/seoData';
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -32,10 +34,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
-  const title = slug === 'remove-ai-label'
-    ? 'Remove AI Label & Metadata from Photos — Free, No Upload | ToolGhor'
-    : `${tool.en} (${tool.bn}) | ${siteConfig.name}`;
-  const description = `${tool.descEn}. ${tool.desc} - Free, fast, and 100% private in-browser tool.`;
+  const title = SEO_TITLES[slug] || `${tool.en} (${tool.bn}) | ${siteConfig.name}`;
+  const description = SEO_DESCRIPTIONS[slug] || `${tool.descEn}. ${tool.desc} - Free, fast, and 100% private in-browser tool.`;
 
   return {
     title,
@@ -106,5 +106,57 @@ export default async function ToolPage({ params }: Props) {
       dbToolMap.get(t.slug) !== false
   ).slice(0, 4);
 
-  return <ToolPageClient tool={tool} relatedTools={relatedTools} apiKeys={siteData?.apiKeys} />;
+  // Structured Data (JSON-LD)
+  const webAppSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: tool.en,
+    url: `${siteConfig.url}/tools/${tool.slug}`,
+    applicationCategory: tool.cats[0] || 'Utilities',
+    operatingSystem: 'Any',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+  };
+
+  const faqs = FAQ_DATA[slug];
+  const faqSchema =
+    faqs && faqs.length > 0
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: faqs.map((f) => ({
+            '@type': 'Question',
+            name: f.en.q,
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: f.en.a,
+            },
+          })),
+        }
+      : null;
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppSchema) }}
+      />
+      {faqSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        />
+      )}
+      <ToolPageClient
+        tool={tool}
+        relatedTools={relatedTools}
+        apiKeys={siteData?.apiKeys}
+        faqs={faqs}
+        seoTitle={SEO_TITLES[slug]}
+      />
+    </>
+  );
 }
