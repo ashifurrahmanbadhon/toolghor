@@ -83,6 +83,10 @@ export default function Footer({ customSettings }: FooterProps) {
               {lang === 'bn' ? 'ব্যবহারের শর্তাবলী' : 'Terms of Service'}
             </Link>
             <span className="foot-sep" aria-hidden="true">·</span>
+            <Link href="/faq" className="foot-link">
+              {lang === 'bn' ? 'সাধারণ জিজ্ঞাসা' : 'FAQ'}
+            </Link>
+            <span className="foot-sep" aria-hidden="true">·</span>
             <Link
               href="/admin"
               className="foot-link foot-admin"

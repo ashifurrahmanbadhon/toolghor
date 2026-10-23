@@ -385,7 +385,7 @@ export const FAQ_DATA: Record<string, FaqItem[]> = {
   ],
 };
 
-export const HOME_FAQ: FaqItem[] = [
+export const GENERAL_FAQ: FaqItem[] = [
   {
     en: {
       q: 'Is ToolGhor really free to use?',
@@ -447,4 +447,5 @@ export const HOME_FAQ: FaqItem[] = [
     },
   },
 ];
+export const HOME_FAQ = GENERAL_FAQ;
 

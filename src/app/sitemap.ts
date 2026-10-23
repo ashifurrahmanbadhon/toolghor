@@ -28,6 +28,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.3,
   };
 
+  const faqEntry: MetadataRoute.Sitemap[number] = {
+    url: `${baseUrl}/faq`,
+    changeFrequency: 'monthly',
+    priority: 0.5,
+  };
+
   try {
     const siteData = await getPublicSiteData();
     let toolEntries: MetadataRoute.Sitemap = [];
@@ -63,7 +69,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }));
     }
 
-    return [homeEntry, ...toolEntries, termsEntry, privacyEntry];
+    return [homeEntry, ...toolEntries, termsEntry, privacyEntry, faqEntry];
   } catch (error) {
     console.warn('[sitemap] Notice: Serving resilient fallback sitemap due to error:', error);
     const fallbackToolEntries: MetadataRoute.Sitemap = TOOLS.map((t) => ({
@@ -72,6 +78,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }));
 
-    return [homeEntry, ...fallbackToolEntries, termsEntry, privacyEntry];
+    return [homeEntry, ...fallbackToolEntries, termsEntry, privacyEntry, faqEntry];
   }
 }
