@@ -689,6 +689,211 @@ export const GUIDES: Guide[] = [
       },
     ],
   },
+  {
+    slug: 'remove-ai-label-from-photo',
+    metaTitle: 'How to Remove the AI Label from a Photo | ToolGhor',
+    metaDescription:
+      'Strip the hidden AI markers (C2PA, EXIF, XMP) that make Instagram, Facebook and TikTok show "Made with AI" — free, in your browser, no upload.',
+    title: {
+      en: 'How to Remove the AI Label from a Photo',
+      bn: 'ছবি থেকে AI লেবেল সরাবেন যেভাবে',
+    },
+    excerpt: {
+      en: 'Platforms read hidden markers inside photos and show "AI Info / Made with AI". Clean them out — free, in your browser, photo unchanged.',
+      bn: 'ছবির ভেতরের লুকানো মার্কার দেখে প্ল্যাটফর্মগুলো "AI Info / Made with AI" লেবেল দেয়। সেগুলো সরিয়ে নিন — ফ্রি, আপনার ব্রাউজারেই, ছবি একই থাকবে।',
+    },
+    relatedTools: ['remove-ai-label'],
+    datePublished: '2026-10-23',
+    intro: {
+      en: [
+        'You post a photo, and Facebook or Instagram stamps an "AI Info" or "Made with AI" label on it. It looks wrong on your post — and it is not about what the photo shows. The label comes from hidden data inside the file. This guide explains where the label comes from, how to strip those hidden markers with a free tool that runs entirely in your browser, and — honestly — the cases where the label can still appear anyway.',
+      ],
+      bn: [
+        'ছবি পোস্ট করলেন, আর ফেসবুক বা ইনস্টাগ্রাম সেটাতে "AI Info" বা "Made with AI" লেবেল বসিয়ে দিল। পোস্টে এটা দেখতে খারাপ লাগে — অথচ ব্যাপারটা ছবিতে কী আছে তা নিয়ে নয়। লেবেলটা আসে ফাইলের ভেতরের লুকানো তথ্য থেকে। এই গাইডে বোঝানো হলো লেবেলটা কোথা থেকে আসে, পুরোপুরি আপনার ব্রাউজারে চলা ফ্রি টুল দিয়ে সেই লুকানো মার্কার কীভাবে সরাবেন, আর — সততার সাথে — কোন ক্ষেত্রে লেবেল তাও আসতে পারে।',
+      ],
+    },
+    sections: [
+      {
+        heading: {
+          en: 'Why does a photo get an "AI Info" label?',
+          bn: 'ছবিতে "AI Info" লেবেল আসে কেন?',
+        },
+        bullets: {
+          en: [
+            'Platforms (Instagram, Facebook, TikTok, and others) look for hidden markers inside a photo file — C2PA credentials, XMP, EXIF, IPTC data, and PNG text chunks.',
+            'When you create or edit a photo with an AI tool, that tool embeds its own markers — that is how platforms "know" it was AI-made.',
+            'Seeing those markers, the platform adds the "AI Info" / "Made with AI" label automatically.',
+            'Note: some platforms also run their own AI classifiers on the image itself — metadata is only one of their signals.',
+          ],
+          bn: [
+            'প্ল্যাটফর্মগুলো (ইনস্টাগ্রাম, ফেসবুক, টিকটকসহ আরও অনেক) ছবির ফাইলের ভেতরের লুকানো মার্কার দেখে — C2PA credential, XMP, EXIF, IPTC তথ্য, আর PNG text chunk।',
+            'AI টুল দিয়ে ছবি বানালে বা এডিট করলে সেই টুল নিজের মার্কার বসিয়ে দেয় — এভাবেই প্ল্যাটফর্ম "বুঝতে পারে" ছবিটা AI দিয়ে বানানো।',
+            'সেই মার্কার দেখলেই প্ল্যাটফর্ম স্বয়ংক্রিয়ভাবে "AI Info" / "Made with AI" লেবেল বসিয়ে দেয়।',
+            'একটা কথা জেনে রাখুন: কিছু প্ল্যাটফর্ম ছবির ওপর নিজের AI classifier ও চালায় — metadata তাদের একমাত্র সংকেত নয়।',
+          ],
+        },
+      },
+      {
+        heading: {
+          en: 'What removing the metadata does — and does NOT do',
+          bn: 'Metadata সরালে কী হয় — আর কী হয় না',
+        },
+        bullets: {
+          en: [
+            'Removing the hidden markers takes away the main signal platforms read — in most cases the label simply does not appear.',
+            'It does NOT remove invisible pixel watermarks (for example Google\'s SynthID), which some AI tools embed inside the image pixels themselves.',
+            'It does NOT fool a platform\'s own AI classifier, which judges the image content, not the file data.',
+            'So: no tool anywhere can guarantee the label will never appear. Anyone promising that is misleading you — we say it plainly instead.',
+          ],
+          bn: [
+            'লুকানো মার্কার সরিয়ে ফেললে প্ল্যাটফর্ম যে প্রধান সংকেত পড়ে সেটাই চলে যায় — বেশিরভাগ ক্ষেত্রে লেবেল আর আসেই না।',
+            'এতে অদৃশ্য pixel watermark (যেমন গুগলের SynthID) সরবে না, যেটা কিছু AI টুল ছবির pixel এর ভেতরেই বসিয়ে দেয়।',
+            'প্ল্যাটফর্মের নিজস্ব AI classifier কেও এটা ফাঁকি দিতে পারে না — সেটা ফাইলের তথ্য নয়, ছবির content বিচার করে।',
+            'তাই: পৃথিবীর কোনো টুলই গ্যারান্টি দিতে পারে না যে লেবেল কখনো আসবে না। যে এটা প্রতিশ্রুতি দেয় সে আপনাকে ভুল বোঝাচ্ছে — আমরা বরং সত্যটাই বলি।',
+          ],
+        },
+      },
+      {
+        heading: {
+          en: 'How to clean a photo with ToolGhor',
+          bn: 'ToolGhor দিয়ে ছবি পরিষ্কার করবেন যেভাবে',
+        },
+        steps: {
+          en: [
+            "Open ToolGhor's free Remove AI Label tool.",
+            'Choose or drop one or more photos (JPG, PNG, WebP) — you can clean several at once.',
+            'The tool automatically strips all AI labels and metadata, one photo at a time.',
+            'Check the clean verification status shown for each photo.',
+            'Download with one click.',
+          ],
+          bn: [
+            'ToolGhor এর ফ্রি Remove AI Label টুলটি খুলুন।',
+            'এক বা একাধিক ছবি বেছে নিন বা টেনে দিন (JPG, PNG, WebP) — একসাথে কয়েকটা পরিষ্কার করা যায়।',
+            'টুলটি স্বয়ংক্রিয়ভাবে সব AI লেবেল ও metadata মুছে দেবে, একটা একটা করে।',
+            'প্রতিটি ছবির পাশে clean verification status টি দেখে নিন।',
+            'এক ক্লিকে ডাউনলোড করুন।',
+          ],
+        },
+        paragraphs: {
+          en: ['Your photo is processed 100% in your browser — the file is never uploaded to any server, and nobody else sees it.'],
+          bn: ['ছবিটি ১০০% আপনার ব্রাউজারেই প্রসেস হয় — ফাইল কোনো সার্ভারে আপলোড হয় না, আর কেউ দেখেও না।'],
+        },
+        cta: {
+          toolSlug: 'remove-ai-label',
+          label: {
+            en: 'Remove the AI label from your photo →',
+            bn: 'ছবি থেকে AI লেবেল সরান →',
+          },
+        },
+      },
+      {
+        heading: {
+          en: 'After cleaning — check before you post',
+          bn: 'পরিষ্কারের পর — পোস্ট করার আগে পরীক্ষা করুন',
+        },
+        paragraphs: {
+          en: [
+            'Do not send the cleaned photo straight to an important post. Upload it somewhere private first — a test post visible only to you — and check whether the "AI Info" label appears. If it still appears, the platform is detecting it through pixels or its own classifier, not metadata — re-cleaning will not change that. If no label appears, you are good to go.',
+          ],
+          bn: [
+            'পরিষ্কার করা ছবিটা সরাসরি গুরুত্বপূর্ণ পোস্টে দেবেন না। আগে কোথাও private এ আপলোড করুন — শুধু আপনি দেখতে পান এমন একটি test post — আর দেখুন "AI Info" লেবেল আসে কিনা। তাও এলে বুঝবেন প্ল্যাটফর্ম pixel বা নিজের classifier দিয়ে ধরছে, metadata দিয়ে নয় — আবার পরিষ্কার করলে কিছু বদলাবে না। লেবেল না এলে নিশ্চিন্তে পোস্ট করুন।',
+          ],
+        },
+      },
+      {
+        heading: {
+          en: 'A bonus: metadata removal is also privacy protection',
+          bn: 'বোনাস সুবিধা: metadata সরানো মানে privacy রক্ষাও',
+        },
+        paragraphs: {
+          en: [
+            'EXIF data is not only about AI markers. A photo\'s hidden data can also contain the camera or phone model, the date it was taken, and sometimes even the GPS location where it was shot. Cleaning the metadata strips those too — so think of this as a privacy habit, not just a label trick. Never share the original file publicly when you only want the picture seen.',
+          ],
+          bn: [
+            'EXIF তথ্য শুধু AI মার্কার নিয়ে নয়। ছবির লুকানো তথ্যে থাকতে পারে ক্যামেরা বা ফোনের মডেল, তোলার তারিখ, এমনকি কখনো কখনো তোলার GPS location ও। Metadata পরিষ্কার করলে এগুলোও মুছে যায় — তাই এটাকে শুধু লেবেলের কৌশল নয়, privacy এর অভ্যাস হিসেবে ভাবুন। শুধু ছবিটা দেখাতে চাইলে কখনো original ফাইলটা publicly শেয়ার করবেন না।',
+          ],
+        },
+      },
+      {
+        heading: {
+          en: 'Five mistakes people make',
+          bn: 'মানুষ যে ৫টি ভুল করে',
+        },
+        bullets: {
+          en: [
+            'Expecting a guarantee. Cleaning removes the metadata signal; it cannot promise every platform will stay silent every time.',
+            'Cleaning the original and deleting it. Always clean a copy and keep the original file somewhere safe.',
+            'Assuming the tool failed when a label still shows. That usually means pixel-level detection or a classifier — not a cleaning problem.',
+            'Trying to add fake camera data to trick platforms into thinking the photo is from a real camera. That is deception, real camera EXIF has deep internal consistency that is trivial to check, and it can get your account flagged.',
+            'Re-editing in the platform\'s own AI tools after cleaning — that embeds the markers right back in, and the label returns.',
+          ],
+          bn: [
+            'গ্যারান্টি আশা করা। পরিষ্কার করা metadata এর সংকেত সরায়; প্রতিবার প্রতিটি প্ল্যাটফর্ম চুপ থাকবে এটা প্রতিশ্রুতি দিতে পারে না।',
+            'Original টা পরিষ্কার করে মুছে ফেলা। সবসময় copy পরিষ্কার করুন, original ফাইলটা নিরাপদে রেখে দিন।',
+            'লেবেল তাও এলে টুলকে দোষ দেওয়া। সাধারণত এর মানে pixel-level detection বা classifier — পরিষ্কারে সমস্যা নয়।',
+            'ভুয়া ক্যামেরা তথ্য বসিয়ে প্ল্যাটফর্মকে বোকা বানানোর চেষ্টা। এটা প্রতারণা, আসল ক্যামেরা EXIF এর ভেতরের মিল সহজেই যাচাই করা যায়, আর এতে অ্যাকাউন্টে সমস্যা হতে পারে।',
+            'পরিষ্কারের পর প্ল্যাটফর্মের নিজের AI টুলে আবার এডিট করা — তাতে মার্কার আবার বসে যায়, আর লেবেলও ফিরে আসে।',
+          ],
+        },
+      },
+      {
+        heading: {
+          en: 'Keep it honest — why we do not add fake camera data',
+          bn: 'সততা বজায় রাখুন — ভুয়া ক্যামেরা তথ্য আমরা বসাই না কেন',
+        },
+        paragraphs: {
+          en: [
+            'Removing hidden data is fine: it is your file, your privacy, and nothing false is claimed. Adding fake camera data is the opposite: it presents a photo as something it is not. Platforms and people can and do check, and getting caught costs more than the label ever did. ToolGhor\'s tool cleans — it never invents.',
+          ],
+          bn: [
+            'লুকানো তথ্য মুছে ফেলা ঠিক আছে: এটা আপনার ফাইল, আপনার privacy, আর এতে কোনো মিথ্যা দাবি নেই। ভুয়া ক্যামেরা তথ্য বসানো এর উল্টোটা: ছবিকে এমন কিছু সাজানো যা সে নয়। প্ল্যাটফর্ম আর মানুষ যাচাই করে ও করতে পারে, আর ধরা পড়লে ক্ষতি লেবেলের চেয়ে অনেক বেশি। ToolGhor এর টুল পরিষ্কার করে — কখনো বানায় না।',
+          ],
+        },
+      },
+    ],
+    faq: [
+      {
+        en: {
+          q: 'Will Facebook or Instagram still show an "AI Info" label after cleaning?',
+          a: 'The metadata the platforms read is removed. But platforms can also detect AI content in other ways — invisible pixel watermarks (like SynthID) or AI classifiers — so no tool can guarantee a label will never appear.',
+        },
+        bn: {
+          q: 'পরিষ্কার করার পরও ফেসবুক বা ইনস্টাগ্রামে "AI Info" লেবেল আসবে?',
+          a: 'প্ল্যাটফর্ম যে metadata পড়ে তা সরিয়ে ফেলা হয়। তবে প্ল্যাটফর্ম অন্য উপায়েও AI কনটেন্ট শনাক্ত করতে পারে — অদৃশ্য pixel watermark (যেমন SynthID) বা AI classifier — তাই কোনো টুলই গ্যারান্টি দিতে পারে না যে লেবেল কখনো আসবে না।',
+        },
+      },
+      {
+        en: {
+          q: 'Does cleaning change how my photo looks?',
+          a: 'No — the picture itself stays exactly the same; only the hidden data is stripped. The file size may change a little because the photo is re-saved.',
+        },
+        bn: {
+          q: 'পরিষ্কার করলে আমার ছবি দেখতে বদলে যাবে?',
+          a: 'না — ছবি হুবহু একই থাকে; শুধু লুকানো তথ্য মুছে যায়। ছবিটি আবার save হয় বলে ফাইলের সাইজ একটু বদলাতে পারে।',
+        },
+      },
+      {
+        en: {
+          q: 'Is my photo uploaded anywhere when I clean it?',
+          a: 'No — everything runs in your browser on your own device. The file never leaves it, and nobody else sees it.',
+        },
+        bn: {
+          q: 'পরিষ্কার করার সময় আমার ছবি কোথাও আপলোড হয়?',
+          a: 'না — সবকিছু আপনার নিজের ডিভাইসের ব্রাউজারেই হয়। ফাইল ডিভাইসের বাইরে যায় না, আর কেউ দেখেও না।',
+        },
+      },
+      {
+        en: {
+          q: 'Is there a file size limit? Which formats work?',
+          a: "No fixed limit — photos are cleaned one by one in your browser, so very large files depend on your device's memory. Works with JPG, PNG and WebP.",
+        },
+        bn: {
+          q: 'ফাইলের সাইজের কোনো সীমা আছে? কোন format চলে?',
+          a: 'নির্দিষ্ট সীমা নেই — ছবি একটা একটা করে আপনার ব্রাউজারে পরিষ্কার হয়, তাই খুব বড় ফাইল ডিভাইসের memory এর ওপর নির্ভর করে। JPG, PNG ও WebP — তিনটাতেই চলে।',
+        },
+      },
+    ],
+  },
 ];
 
 export const GUIDES_BY_SLUG: Record<string, Guide> = GUIDES.reduce((acc, guide) => {
