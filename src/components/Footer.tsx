@@ -65,6 +65,18 @@ export default function Footer({ customSettings }: FooterProps) {
       ? liveFooter?.copyright_text_bn || 'আপনার ফাইল ও তথ্য সরাসরি আপনার ব্রাউজারেই প্রসেস করা হয়।'
       : liveFooter?.copyright_text_en || 'Your files and data are processed in your browser.';
 
+  const [showToTop, setShowToTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const y = window.scrollY || document.documentElement.scrollTop;
+      setShowToTop(y > 600);
+    };
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const handleBackToTop = () => {
     if (typeof window === 'undefined') return;
     const prefersReducedMotion =
@@ -109,25 +121,36 @@ export default function Footer({ customSettings }: FooterProps) {
             >
               {lang === 'bn' ? 'অ্যাডমিন' : 'Admin'}
             </Link>
-            <span className="foot-sep" aria-hidden="true">·</span>
-            <button
-              type="button"
-              onClick={handleBackToTop}
-              className="foot-link foot-back-to-top"
-              aria-label={lang === 'bn' ? '↑ উপরে যান' : '↑ Back to top'}
-              style={{
-                background: 'none',
-                border: 'none',
-                font: 'inherit',
-                cursor: 'pointer',
-                padding: 0,
-              }}
-            >
-              {lang === 'bn' ? '↑ উপরে যান' : '↑ Back to top'}
-            </button>
           </div>
         </div>
       </footer>
+
+      {/* Floating Back-to-Top Button */}
+      <button
+        type="button"
+        onClick={handleBackToTop}
+        className={`to-top-fab ${isWhatsappActive ? 'has-wa' : ''} ${showToTop ? 'show' : ''}`}
+        aria-label={lang === 'bn' ? 'উপরে যান' : 'Back to top'}
+        title={lang === 'bn' ? 'উপরে যান' : 'Back to top'}
+        tabIndex={showToTop ? 0 : -1}
+        aria-hidden={!showToTop}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <line x1="12" y1="19" x2="12" y2="5" />
+          <polyline points="5 12 12 5 19 12" />
+        </svg>
+      </button>
 
       {/* Floating WhatsApp Action Button */}
       {isWhatsappActive && (
