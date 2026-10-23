@@ -21,13 +21,15 @@ export default function GuideArticle({ guide }: GuideArticleProps) {
     <>
       <Header />
       <main className="guide-page-main">
-        <article className="guide-article-wrap">
+        <div className="guide-article-wrap">
           {/* Breadcrumb / Back Link */}
           <nav aria-label="Breadcrumb" className="guide-breadcrumb">
             <Link href="/guides" className="guide-back-link">
               ← {isBn ? 'সকল গাইড' : 'All Guides'}
             </Link>
           </nav>
+
+          <article className="guide-article">
 
           {/* Article Header */}
           <header className="guide-header">
@@ -160,15 +162,16 @@ export default function GuideArticle({ guide }: GuideArticleProps) {
               })}
             </div>
           </div>
-
-          {/* Guide's FAQ Section */}
-          {guide.faq && guide.faq.length > 0 && (
-            <div className="guide-faq-wrapper">
-              <ToolFaq faqs={guide.faq} />
-            </div>
-          )}
         </article>
-      </main>
+
+        {/* Guide's FAQ Section */}
+        {guide.faq && guide.faq.length > 0 && (
+          <div className="guide-faq-wrapper">
+            <ToolFaq faqs={guide.faq} />
+          </div>
+        )}
+      </div>
+    </main>
       <Footer />
     </>
   );
