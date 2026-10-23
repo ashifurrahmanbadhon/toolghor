@@ -75,20 +75,20 @@ export default function Footer({ customSettings }: FooterProps) {
             © 2026 <span>{siteConfig.name}</span>. {copyrightText}
           </div>
           <div className="foot-links">
-            <Link href="/privacy" className="foot-link">
-              {lang === 'bn' ? 'গোপনীয়তা নীতি' : 'Privacy Policy'}
-            </Link>
-            <span className="foot-sep" aria-hidden="true">·</span>
-            <Link href="/terms" className="foot-link">
-              {lang === 'bn' ? 'ব্যবহারের শর্তাবলী' : 'Terms of Service'}
+            <Link href="/guides" className="foot-link">
+              {lang === 'bn' ? 'গাইড' : 'Guides'}
             </Link>
             <span className="foot-sep" aria-hidden="true">·</span>
             <Link href="/faq" className="foot-link">
               {lang === 'bn' ? 'সাধারণ জিজ্ঞাসা' : 'FAQ'}
             </Link>
             <span className="foot-sep" aria-hidden="true">·</span>
-            <Link href="/guides" className="foot-link">
-              {lang === 'bn' ? 'গাইড' : 'Guides'}
+            <Link href="/terms" className="foot-link">
+              {lang === 'bn' ? 'ব্যবহারের শর্তাবলী' : 'Terms of Service'}
+            </Link>
+            <span className="foot-sep" aria-hidden="true">·</span>
+            <Link href="/privacy" className="foot-link">
+              {lang === 'bn' ? 'গোপনীয়তা নীতি' : 'Privacy Policy'}
             </Link>
             <span className="foot-sep" aria-hidden="true">·</span>
             <Link
