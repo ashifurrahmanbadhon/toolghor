@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ASSET_VERSION as BUILT_VERSION } from '@/data/config';
-// Version marker: 20261023_v41
+// Version marker: 20261024_v42
 import { useApp } from '@/context/AppContext';
 
 export default function VersionUpdateChecker() {
