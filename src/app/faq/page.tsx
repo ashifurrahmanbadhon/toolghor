@@ -4,8 +4,6 @@ import { siteConfig } from '@/data/config';
 import FaqClient from './FaqClient';
 import { getGeneralFaq } from '@/lib/faqData';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: 'Frequently Asked Questions | ToolGhor',
@@ -26,8 +24,13 @@ export const metadata: Metadata = {
   },
 };
 
+import { getPublicSiteData } from '@/lib/siteData';
+
 export default async function FaqPage() {
-  const faqs = (await getGeneralFaq()) || GENERAL_FAQ;
+  const [faqs, siteData] = await Promise.all([
+    getGeneralFaq().then((res) => res || GENERAL_FAQ),
+    getPublicSiteData(),
+  ]);
 
   const faqSchema = {
     '@context': 'https://schema.org',
@@ -50,7 +53,7 @@ export default async function FaqPage() {
           __html: JSON.stringify(faqSchema),
         }}
       />
-      <FaqClient faqs={faqs} />
+      <FaqClient faqs={faqs} contentTexts={siteData?.contentTexts} />
     </>
   );
 }

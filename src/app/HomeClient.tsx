@@ -9,6 +9,7 @@ import ToolCard from '@/components/ToolCard';
 import { CATEGORIES as DEFAULT_CATEGORIES, TOOLS as DEFAULT_TOOLS, ToolItem, Category } from '@/data/registry';
 import { useApp } from '@/context/AppContext';
 import { ASSET_VERSION } from '@/data/config';
+import { DEFAULT_CONTENT_TEXTS } from '@/data/contentTexts';
 
 interface HomeClientProps {
   initialData: any;
@@ -114,6 +115,9 @@ export default function HomeClient({ initialData }: HomeClientProps) {
       }
       if (data.uiSettings) {
         w.UI_SETTINGS = data.uiSettings;
+      }
+      if (data.contentTexts) {
+        w.CONTENT_TEXTS = data.contentTexts;
       }
     };
 
@@ -438,6 +442,8 @@ export default function HomeClient({ initialData }: HomeClientProps) {
   const bannerStyle = getBannerStyle(announcementConfig?.type || 'info');
 
   const totalToolsCount = activeTools.length;
+  const contentTexts = publicData?.contentTexts || DEFAULT_CONTENT_TEXTS;
+  const hTexts = contentTexts.home || DEFAULT_CONTENT_TEXTS.home;
 
   return (
     <>
@@ -588,7 +594,9 @@ export default function HomeClient({ initialData }: HomeClientProps) {
                 onClick={(e) => handleChipClick('all', e)}
               >
                 <span className="chip-sym">✨</span>
-                {lang === 'bn' ? 'সব টুলস (সব খুলুন)' : 'All (Expand All)'}
+                {lang === 'bn'
+                  ? (hTexts.all_tools_chip_bn || 'সব টুলস (সব খুলুন)')
+                  : (hTexts.all_tools_chip_en || 'All (Expand All)')}
               </a>
 
               {activeCategories.map((cat) => (
@@ -618,8 +626,8 @@ export default function HomeClient({ initialData }: HomeClientProps) {
             </span>
             <span className="all-expand-text">
               {lang === 'bn'
-                ? `ক্যাটাগরি (${activeCategories.length}টি ক্যাটাগরি, ${totalToolsCount}টি টুল)`
-                : `Categories (${activeCategories.length} categories, ${totalToolsCount} tools)`}
+                ? `${hTexts.categories_label_bn || 'ক্যাটাগরি'} (${activeCategories.length}টি ক্যাটাগরি, ${totalToolsCount}টি টুল)`
+                : `${hTexts.categories_label_en || 'Categories'} (${activeCategories.length} categories, ${totalToolsCount} tools)`}
             </span>
           </div>
           <button
@@ -635,11 +643,11 @@ export default function HomeClient({ initialData }: HomeClientProps) {
             <span className="all-toggle-text">
               {isAllExpanded
                 ? lang === 'bn'
-                  ? 'সব বন্ধ করুন'
-                  : 'Collapse All'
+                  ? (hTexts.collapse_all_bn || 'সব বন্ধ করুন')
+                  : (hTexts.collapse_all_en || 'Collapse All')
                 : lang === 'bn'
-                ? 'সব খুলুন'
-                : 'Expand All'}
+                ? (hTexts.expand_all_bn || 'সব খুলুন')
+                : (hTexts.expand_all_en || 'Expand All')}
             </span>
           </button>
         </div>
@@ -731,8 +739,8 @@ export default function HomeClient({ initialData }: HomeClientProps) {
         {filteredTools && filteredTools.length === 0 && (
           <p className="empty" id="emptyMsg">
             {lang === 'bn'
-              ? 'কোনো টুল পাওয়া যায়নি। অন্য শব্দে চেষ্টা করুন, অথবা ওপরে "টুলের অনুরোধ" বাটনে ক্লিক করে জানান।'
-              : 'No tool found. Try a different word, or click "Request a Tool" at the top to suggest one.'}
+              ? (hTexts.empty_search_bn || 'কোনো টুল পাওয়া যায়নি। অন্য শব্দে চেষ্টা করুন, অথবা ওপরে "টুলের অনুরোধ" বাটনে ক্লিক করে জানান।')
+              : (hTexts.empty_search_en || 'No tool found. Try a different word, or click "Request a Tool" at the top to suggest one.')}
           </p>
         )}
       </main>

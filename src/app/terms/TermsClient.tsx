@@ -7,8 +7,11 @@ import PolicyMarkdown from '@/components/PolicyMarkdown';
 import { useApp } from '@/context/AppContext';
 import { PolicySection, TERMS_SECTIONS_LIST, DEFAULT_POLICY_SECTIONS } from '@/data/policiesDefaults';
 
+import { ContentTexts, DEFAULT_CONTENT_TEXTS } from '@/data/contentTexts';
+
 interface TermsClientProps {
   initialPolicies: Record<string, PolicySection>;
+  contentTexts?: ContentTexts;
 }
 
 const toBengaliNumber = (num: number, isBn: boolean) => {
@@ -18,9 +21,15 @@ const toBengaliNumber = (num: number, isBn: boolean) => {
   return `${bnStr}.`;
 };
 
-export default function TermsClient({ initialPolicies }: TermsClientProps) {
+export default function TermsClient({
+  initialPolicies,
+  contentTexts: initialContentTexts,
+}: TermsClientProps) {
   const { lang } = useApp();
   const [policies, setPolicies] = useState<Record<string, PolicySection>>(initialPolicies);
+  const [contentTexts, setContentTexts] = useState<ContentTexts>(
+    initialContentTexts || DEFAULT_CONTENT_TEXTS
+  );
   const [activeSection, setActiveSection] = useState<string>('terms');
 
   // Sync listener: refresh policies if admin edits in another tab
@@ -32,6 +41,14 @@ export default function TermsClient({ initialPolicies }: TermsClientProps) {
           if (data && data.success && data.policies) {
             const { privacy: _omitted, ...termsPolicies } = data.policies;
             setPolicies(termsPolicies);
+          }
+        })
+        .catch(() => {});
+      fetch('/api/public/data?t=' + Date.now(), { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && data.success && data.contentTexts) {
+            setContentTexts(data.contentTexts);
           }
         })
         .catch(() => {});
@@ -77,17 +94,21 @@ export default function TermsClient({ initialPolicies }: TermsClientProps) {
   }, [policies]);
 
   const isBn = lang === 'bn';
-  const pageTitle = isBn ? 'ব্যবহারের শর্তাবলী ও নীতিসমূহ' : 'Terms & Policies';
-  const sidebarTitle = isBn ? 'শর্তাবলী ও নীতিমালা' : 'Terms & Policies';
-  const lastUpdatedDate = isBn ? '২২ অক্টোবর ২০২৬' : '22 October 2026';
+  const tTexts = contentTexts?.terms || DEFAULT_CONTENT_TEXTS.terms;
+  const pageTitle = isBn
+    ? (tTexts.page_title_bn || 'ব্যবহারের শর্তাবলী ও নীতিসমূহ')
+    : (tTexts.page_title_en || 'Terms & Policies');
+  const sidebarTitle = isBn
+    ? (tTexts.sidebar_title_bn || 'শর্তাবলী ও নীতিমালা')
+    : (tTexts.sidebar_title_en || 'Terms & Policies');
   const lastUpdatedText = isBn
-    ? `সর্বশেষ হালনাগাদ: ${lastUpdatedDate}`
-    : `Last Updated: ${lastUpdatedDate}`;
+    ? (tTexts.last_updated_bn || 'সর্বশেষ হালনাগাদ: ২২ অক্টোবর ২০২৬')
+    : (tTexts.last_updated_en || 'Last Updated: 22 October 2026');
 
-  const welcomeHeading = isBn ? 'স্বাগতম!' : 'Welcome!';
+  const welcomeHeading = isBn ? (tTexts.welcome_heading_bn || 'স্বাগতম!') : (tTexts.welcome_heading_en || 'Welcome!');
   const welcomeText = isBn
-    ? 'এই নীতিগুলোতে পরিষ্কার ও সৎ ভাষায় ব্যাখ্যা করা হয়েছে ToolGhor কীভাবে কাজ করে, আপনার ফাইলের কী হয় এবং সাইট ব্যবহারের নিয়মগুলো।'
-    : 'These policies explain how ToolGhor works, what happens to your files, and the rules for using the site — in clear, honest language.';
+    ? (tTexts.welcome_text_bn || 'এই নীতিগুলোতে পরিষ্কার ও সৎ ভাষায় ব্যাখ্যা করা হয়েছে ToolGhor কীভাবে কাজ করে, আপনার ফাইলের কী হয় এবং সাইট ব্যবহারের নিয়মগুলো।')
+    : (tTexts.welcome_text_en || 'These policies explain how ToolGhor works, what happens to your files, and the rules for using the site — in clear, honest language.');
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     e.preventDefault();

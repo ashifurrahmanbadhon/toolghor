@@ -13,11 +13,14 @@ export const metadata: Metadata = {
   },
 };
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+
+import { getPublicSiteData } from '@/lib/siteData';
 
 export default async function PrivacyPage() {
-  const privacyPolicy = await getPolicySection('privacy');
+  const [privacyPolicy, siteData] = await Promise.all([
+    getPolicySection('privacy'),
+    getPublicSiteData(),
+  ]);
 
-  return <PrivacyClient initialPolicy={privacyPolicy} />;
+  return <PrivacyClient initialPolicy={privacyPolicy} contentTexts={siteData?.contentTexts} />;
 }

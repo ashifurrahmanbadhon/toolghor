@@ -3,8 +3,6 @@ import { siteConfig } from '@/data/config';
 import GuideIndex from '@/components/GuideIndex';
 import { getAllGuides } from '@/lib/guidesData';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: 'Guides | ToolGhor',
@@ -28,7 +26,12 @@ export const metadata: Metadata = {
   },
 };
 
+import { getPublicSiteData } from '@/lib/siteData';
+
 export default async function GuidesPage() {
-  const guides = await getAllGuides();
-  return <GuideIndex guides={guides} />;
+  const [guides, siteData] = await Promise.all([
+    getAllGuides(),
+    getPublicSiteData(),
+  ]);
+  return <GuideIndex guides={guides} contentTexts={siteData?.contentTexts} />;
 }

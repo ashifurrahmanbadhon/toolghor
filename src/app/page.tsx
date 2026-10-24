@@ -4,8 +4,6 @@ import { SEO_TITLES } from '@/data/seoData';
 import { siteConfig } from '@/data/config';
 import HomeClient from './HomeClient';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 const homeDescription =
   'Free online tools for everyday tasks — merge & compress PDF, edit images, make QR codes, convert currency, build resumes. No sign-up, in your browser.';

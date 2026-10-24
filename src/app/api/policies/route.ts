@@ -2,19 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAllPolicySections, getPolicySection } from '@/lib/policiesData';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-export const fetchCache = 'force-no-store';
+export const revalidate = 60;
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const section = searchParams.get('section');
+    const section = req.nextUrl.searchParams.get('section');
 
     if (section) {
       const secData = await getPolicySection(section);
       return NextResponse.json({ success: true, policy: secData }, {
         headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0',
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+          'CDN-Cache-Control': 's-maxage=60, stale-while-revalidate=300',
+          'Vercel-CDN-Cache-Control': 's-maxage=60, stale-while-revalidate=300',
         },
       });
     }
@@ -22,7 +22,9 @@ export async function GET(req: NextRequest) {
     const allPolicies = await getAllPolicySections();
     return NextResponse.json({ success: true, policies: allPolicies }, {
       headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0',
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        'CDN-Cache-Control': 's-maxage=60, stale-while-revalidate=300',
+        'Vercel-CDN-Cache-Control': 's-maxage=60, stale-while-revalidate=300',
       },
     });
   } catch (error: any) {

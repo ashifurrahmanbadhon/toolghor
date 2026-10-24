@@ -1,9 +1,11 @@
 import { getDb } from '@/lib/db';
+import { unstable_cache } from 'next/cache';
+import { cache } from 'react';
+import { DEFAULT_CONTENT_TEXTS, mergeContentTexts, ContentTexts } from '@/data/contentTexts';
 
 let cachedSiteData: any = null;
 
-export async function getPublicSiteData() {
-
+async function fetchRawSiteData() {
   try {
     const sql = getDb();
 
@@ -22,9 +24,10 @@ export async function getPublicSiteData() {
       sql`SELECT is_active, gemini_active, openai_active, convertapi_active, removebg_active, ilovepdf_active, ilovepdf_public_key FROM section_api_keys WHERE id = 1 LIMIT 1`,
       sql`SELECT * FROM section_ui_settings WHERE id = 1 LIMIT 1`,
       sql`SELECT * FROM section_tool_remove_ai_label WHERE id = 1 LIMIT 1`.catch(() => []),
+      sql`SELECT key, value FROM site_settings WHERE key = 'content_texts' LIMIT 1`.catch(() => []),
     ]);
 
-    const [heroRows, announcementRows, categoryRows, toolRows, footerRows, creatorRows, apiKeysRows, uiSettingsRows, removeAiRows] =
+    const [heroRows, announcementRows, categoryRows, toolRows, footerRows, creatorRows, apiKeysRows, uiSettingsRows, removeAiRows, siteSettingsRows] =
       (await Promise.race([queryPromise, timeoutPromise])) as any;
 
     const rawApi = apiKeysRows[0] || null;
@@ -93,6 +96,9 @@ export async function getPublicSiteData() {
       }
     }
 
+    const rawContentTexts = siteSettingsRows?.[0]?.value || null;
+    const contentTexts: ContentTexts = mergeContentTexts(rawContentTexts);
+
     const data = {
       success: true,
       hero: heroRows[0] || null,
@@ -105,6 +111,7 @@ export async function getPublicSiteData() {
       uiSettings: uiSettingsRows[0] || null,
       policies: policySections,
       removeAiLabel: removeAiRow,
+      contentTexts,
     };
 
     cachedSiteData = data;
@@ -112,11 +119,40 @@ export async function getPublicSiteData() {
   } catch (error: any) {
     console.warn('[getPublicSiteData Notice]: Serving cached/default site data. Reason:', error?.message);
     if (cachedSiteData) return cachedSiteData;
-    return null;
+    return {
+      success: true,
+      hero: null,
+      announcement: null,
+      categories: [],
+      tools: [],
+      footerSocial: null,
+      creatorAbout: null,
+      apiKeys: null,
+      uiSettings: null,
+      policies: null,
+      removeAiLabel: null,
+      contentTexts: DEFAULT_CONTENT_TEXTS,
+    };
   }
 }
+
+// Next.js Data Cache with tag 'site-content' and 1 hour TTL backstop
+const getCachedPublicSiteData = unstable_cache(
+  fetchRawSiteData,
+  ['site-content-cache'],
+  { tags: ['site-content'], revalidate: 3600 }
+);
+
+// React cache() wrapper for per-request de-duplication on multi-read pages
+export const getPublicSiteData = cache(async () => {
+  try {
+    return await getCachedPublicSiteData();
+  } catch (error: any) {
+    console.warn('[getPublicSiteData Cache Catch]: Falling back to in-memory/defaults:', error?.message);
+    return cachedSiteData || (await fetchRawSiteData());
+  }
+});
 
 export function clearSiteDataCache() {
   cachedSiteData = null;
 }
-

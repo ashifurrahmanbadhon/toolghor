@@ -4,8 +4,9 @@ import { clearSiteDataCache } from '@/lib/siteData';
 import { getAllPolicySections, clearPoliciesCache } from '@/lib/policiesData';
 import { clearGuidesCache } from '@/lib/guidesData';
 import { clearFaqCache } from '@/lib/faqData';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { verifyAdminRequest, isAuthSecretDerived } from '@/lib/adminAuth';
+import { DEFAULT_CONTENT_TEXTS, mergeContentTexts } from '@/data/contentTexts';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -84,9 +85,14 @@ export async function GET(req: NextRequest) {
 
     let guideRows: any[] = [];
     let faqRows: any[] = [];
+    let contentTexts = DEFAULT_CONTENT_TEXTS;
     try {
       guideRows = await sql`SELECT * FROM content_guides ORDER BY sort_order ASC, slug ASC;`;
       faqRows = await sql`SELECT * FROM content_faq_items ORDER BY scope ASC, sort_order ASC, id ASC;`;
+      const siteSettingsRows = await sql`SELECT key, value FROM site_settings WHERE key = 'content_texts' LIMIT 1;`.catch(() => []);
+      if (siteSettingsRows && siteSettingsRows[0]?.value) {
+        contentTexts = mergeContentTexts(siteSettingsRows[0].value);
+      }
     } catch {}
 
     return NextResponse.json({
@@ -106,6 +112,7 @@ export async function GET(req: NextRequest) {
       policies: policySections,
       guides: guideRows || [],
       faq: faqRows || [],
+      contentTexts,
       analytics: analyticsMap,
       periodicAnalytics,
     });
@@ -136,12 +143,21 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { action, payload } = body;
 
-    function notifyLiveUpdate(message: string, extra: any = {}) {
+    function notifyLiveUpdate(
+      message: string,
+      extra: any = {},
+      tags: string[] = ['site-content', 'policies', 'guides', 'faqs']
+    ) {
       clearSiteDataCache();
       clearPoliciesCache();
       clearGuidesCache();
       clearFaqCache();
       try {
+        for (const t of tags) {
+          try {
+            revalidateTag(t, { expire: 0 });
+          } catch (te) {}
+        }
         revalidatePath('/', 'page');
         revalidatePath('/', 'layout');
         revalidatePath('/terms', 'page');
@@ -508,7 +524,11 @@ export async function POST(req: NextRequest) {
           updated_at = CURRENT_TIMESTAMP;
       `, [title_en ?? '', title_bn ?? '', body_en ?? '', body_bn ?? '']);
 
-      return notifyLiveUpdate(`Policy section "${sectionKey}" updated successfully`, { section: sectionKey });
+      return notifyLiveUpdate(
+        `Policy section "${sectionKey}" updated successfully`,
+        { section: sectionKey },
+        ['policies', 'site-content']
+      );
     }
 
     // 10. Update Remove AI Label Tool independently (Dedicated table isolation)
@@ -634,7 +654,7 @@ export async function POST(req: NextRequest) {
           updated_at = CURRENT_TIMESTAMP;
       `;
 
-      return notifyLiveUpdate(`Guide "${slug}" updated successfully`, { slug });
+      return notifyLiveUpdate(`Guide "${slug}" updated successfully`, { slug }, ['guides']);
     }
 
     // 12. Update FAQ Scope independently (content_faq_items scope isolation)
@@ -675,7 +695,20 @@ export async function POST(req: NextRequest) {
         `;
       }
 
-      return notifyLiveUpdate(`FAQ scope "${scope}" updated successfully`, { scope });
+      return notifyLiveUpdate(`FAQ scope "${scope}" updated successfully`, { scope }, ['faqs']);
+    }
+
+    // 13. Update Global Content Texts (FAQ headers, Guides headers, Policy headers, Home labels, etc.)
+    if (action === 'update_content_texts') {
+      const merged = mergeContentTexts(payload);
+      await sql`
+        INSERT INTO site_settings (key, value, updated_at)
+        VALUES ('content_texts', ${JSON.stringify(merged)}::jsonb, CURRENT_TIMESTAMP)
+        ON CONFLICT (key) DO UPDATE SET
+          value = EXCLUDED.value,
+          updated_at = CURRENT_TIMESTAMP;
+      `;
+      return notifyLiveUpdate('Content texts updated successfully', { contentTexts: merged }, ['site-content', 'policies', 'guides', 'faqs']);
     }
 
     return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 });

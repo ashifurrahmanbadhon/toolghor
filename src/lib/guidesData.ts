@@ -1,4 +1,6 @@
 import { getDb } from '@/lib/db';
+import { unstable_cache } from 'next/cache';
+import { cache } from 'react';
 import { GUIDES, GUIDES_BY_SLUG, Guide, GuideSection } from '@/data/guides';
 import { FaqItem } from '@/data/seoData';
 
@@ -89,7 +91,7 @@ function rowToGuide(row: any): Guide {
   };
 }
 
-export async function getAllGuides(): Promise<Guide[]> {
+async function fetchRawGuides(): Promise<Guide[]> {
   try {
     const sql = getDb();
     const queryPromise = sql`
@@ -114,28 +116,33 @@ export async function getAllGuides(): Promise<Guide[]> {
   }
 }
 
-export async function getGuideBySlug(slug: string): Promise<Guide | null> {
+// Next.js Data Cache with tag 'guides' and 1 hour TTL backstop
+const getCachedAllGuides = unstable_cache(
+  fetchRawGuides,
+  ['guides-all-cache'],
+  { tags: ['guides'], revalidate: 3600 }
+);
+
+// React cache() wrapper for per-request de-duplication
+export const getAllGuides = cache(async (): Promise<Guide[]> => {
+  try {
+    return await getCachedAllGuides();
+  } catch (err) {
+    return cachedGuides || GUIDES;
+  }
+});
+
+export const getGuideBySlug = cache(async (slug: string): Promise<Guide | null> => {
   const defaultGuide = GUIDES_BY_SLUG[slug] || null;
   try {
-    const sql = getDb();
-    const queryPromise = sql`
-      SELECT * FROM content_guides
-      WHERE slug = ${slug} AND enabled = true
-      LIMIT 1;
-    `;
-    const timeoutPromise = new Promise<any[]>((_, reject) =>
-      setTimeout(() => reject(new Error('Guide Query Timeout')), 3500)
-    );
-
-    const rows = await Promise.race([queryPromise, timeoutPromise]);
-    if (Array.isArray(rows) && rows.length > 0 && rows[0]) {
-      return rowToGuide(rows[0]);
-    }
-  } catch (error) {
-    console.warn(`[getGuideBySlug] Fallback for "${slug}":`, error);
+    const all = await getAllGuides();
+    const found = all.find((g) => g.slug === slug);
+    if (found) return found;
+  } catch (err) {
+    console.warn(`[getGuideBySlug] Fallback for "${slug}":`, err);
   }
   return defaultGuide;
-}
+});
 
 export function clearGuidesCache(): void {
   cachedGuides = null;

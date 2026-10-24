@@ -1430,10 +1430,13 @@
     }, UI.icon('x', 18));
 
     var isBn = (UI.lang === 'bn');
+    var ct = (typeof window !== 'undefined' && window.CONTENT_TEXTS) || {};
+    var ab = ct.about || {};
 
+    var badgeText = (isBn ? ab.tagline_badge_bn : ab.tagline_badge_en) || tr('সহজ টুলস • স্মার্ট দৈনন্দিন কাজ', 'Simple tools. Smarter everyday work.');
     var badge = UI.el('div', { class: 'about-tagline-badge' },
       UI.el('span', { class: 'about-badge-spark', 'aria-hidden': 'true' }, '✨'),
-      UI.el('span', {}, tr('সহজ টুলস • স্মার্ট দৈনন্দিন কাজ', 'Simple tools. Smarter everyday work.'))
+      UI.el('span', {}, badgeText)
     );
 
     var head = UI.el('div', { class: 'about-modal-head' },
@@ -1445,26 +1448,33 @@
       document.createTextNode('ToolGhor')
     );
 
-    var desc = UI.el('p', { class: 'about-modal-desc' },
-      tr(
+    var descText = (isBn ? ab.desc_bn : ab.desc_en) || tr(
         'ToolGhor নিয়ে এসেছে প্রয়োজনীয় সব অনলাইন টুলের একটি সমৃদ্ধ ও নির্ভরযোগ্য সংগ্রহ, যা আপনার দৈনন্দিন ডিজিটাল কাজগুলোকে আরও সহজ, দ্রুত ও স্বাচ্ছন্দ্যময় করে তোলার জন্য তৈরি।',
         'ToolGhor brings together a thoughtfully curated collection of useful online tools, designed to make everyday digital tasks simpler, faster, and more convenient.'
-      )
+      );
+    var desc = UI.el('p', { class: 'about-modal-desc' },
+      descText
     );
+
+    var hl1Title = (isBn ? ab.hl1_title_bn : ab.hl1_title_en) || tr('সহজ ব্যবহারের নিশ্চয়তা', 'Built for simplicity');
+    var hl1Sub = (isBn ? ab.hl1_sub_bn : ab.hl1_sub_en) || tr('ঝামেলাহীন ও সাবলীল ইন্টারফেস', 'Clean & distraction-free interface');
+    var hl2Title = (isBn ? ab.hl2_title_bn : ab.hl2_title_en) || tr('দৈনন্দিন কাজের উপযোগী', 'Designed for everyday use');
+    var hl2Sub = (isBn ? ab.hl2_sub_bn : ab.hl2_sub_en) || tr('মুহূর্তেই নির্ভুল ও দ্রুত সমাধান', 'Fast, reliable and daily-ready');
+    var builtByText = (isBn ? ab.built_by_bn : ab.built_by_en) || tr('তৈরি করেছেন', 'BUILT BY');
 
     var highlightsGrid = UI.el('div', { class: 'about-hl-grid' },
       UI.el('div', { class: 'about-hl-card' },
         UI.el('span', { class: 'about-hl-ic', 'aria-hidden': 'true' }, '⚡'),
         UI.el('div', { class: 'about-hl-body' },
-          UI.el('strong', {}, tr('সহজ ব্যবহারের নিশ্চয়তা', 'Built for simplicity')),
-          UI.el('small', {}, tr('ঝামেলাহীন ও সাবলীল ইন্টারফেস', 'Clean & distraction-free interface'))
+          UI.el('strong', {}, hl1Title),
+          UI.el('small', {}, hl1Sub)
         )
       ),
       UI.el('div', { class: 'about-hl-card' },
         UI.el('span', { class: 'about-hl-ic', 'aria-hidden': 'true' }, '🎯'),
         UI.el('div', { class: 'about-hl-body' },
-          UI.el('strong', {}, tr('দৈনন্দিন কাজের উপযোগী', 'Designed for everyday use')),
-          UI.el('small', {}, tr('মুহূর্তেই নির্ভুল ও দ্রুত সমাধান', 'Fast, reliable and daily-ready'))
+          UI.el('strong', {}, hl2Title),
+          UI.el('small', {}, hl2Sub)
         )
       )
     );
@@ -1482,7 +1492,7 @@
     var isSocialActive = creatorCfg.social_active !== false;
 
     var builtByLabel = UI.el('div', { class: 'about-section-label' },
-      tr('তৈরি করেছেন', 'BUILT BY')
+      builtByText
     );
 
     var root = UI.getRoot ? UI.getRoot() : (UI.ROOT || '');

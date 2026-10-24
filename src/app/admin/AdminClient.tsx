@@ -45,6 +45,8 @@ import {
 } from '@/data/policiesDefaults';
 import GuidesEditor, { GuideRow } from '@/components/admin/GuidesEditor';
 import FaqEditor, { FaqItemRow } from '@/components/admin/FaqEditor';
+import { ContentTexts, DEFAULT_CONTENT_TEXTS } from '@/data/contentTexts';
+import SectionTextsEditor from '@/components/admin/SectionTextsEditor';
 
 interface HeroSection {
   is_active: boolean;
@@ -313,6 +315,8 @@ export default function AdminConsole() {
     enabled: true,
   });
   const [savingRemoveAiLabel, setSavingRemoveAiLabel] = useState(false);
+  const [contentTexts, setContentTexts] = useState<ContentTexts>(DEFAULT_CONTENT_TEXTS);
+  const [savingContentTexts, setSavingContentTexts] = useState(false);
 
   // Tool Filters & Search
   const [toolSearch, setToolSearch] = useState('');
@@ -460,6 +464,7 @@ export default function AdminConsole() {
         if (data.policies) setPolicies(data.policies);
         if (data.guides) setGuides(data.guides);
         if (data.faq) setFaqItems(data.faq);
+        if (data.contentTexts) setContentTexts(data.contentTexts);
         if (data.analytics) setAnalytics(data.analytics);
         if (data.periodicAnalytics) setPeriodicAnalytics(data.periodicAnalytics);
 
@@ -906,6 +911,14 @@ export default function AdminConsole() {
   const saveCreatorAbout = async (updated: CreatorAboutSection) => {
     setCreatorAbout(updated);
     await postApi('update_creator_about', updated, 'Creator Profile saved!');
+  };
+
+  // 6b. Global Content Texts Updates (FAQ headers, Guides headers, Policy headers, Home labels, etc.)
+  const saveContentTexts = async (updated: ContentTexts, label: string = 'Content texts') => {
+    setSavingContentTexts(true);
+    setContentTexts(updated);
+    await postApi('update_content_texts', updated, `${label} saved successfully!`);
+    setSavingContentTexts(false);
   };
 
   // 7. API Keys Updates
@@ -2814,6 +2827,74 @@ export default function AdminConsole() {
                   </div>
                 </form>
               </div>
+
+              <SectionTextsEditor
+                title="Homepage Section Controls & Search Labels"
+                description="Edit the filter buttons, category header, expand/collapse toggles, and empty search message on the homepage."
+                badge="Homepage Controls"
+                saving={savingContentTexts}
+                fields={[
+                  {
+                    key: 'all_tools_chip',
+                    label: '"All Tools" Chip Label',
+                    valueEn: contentTexts.home?.all_tools_chip_en || '',
+                    valueBn: contentTexts.home?.all_tools_chip_bn || '',
+                    placeholderEn: 'All (Expand All)',
+                    placeholderBn: 'সব টুলস (সব খুলুন)',
+                  },
+                  {
+                    key: 'categories_label',
+                    label: 'Categories Section Heading',
+                    valueEn: contentTexts.home?.categories_label_en || '',
+                    valueBn: contentTexts.home?.categories_label_bn || '',
+                    placeholderEn: 'Categories',
+                    placeholderBn: 'ক্যাটাগরি',
+                  },
+                  {
+                    key: 'expand_all',
+                    label: 'Expand All Button Label',
+                    valueEn: contentTexts.home?.expand_all_en || '',
+                    valueBn: contentTexts.home?.expand_all_bn || '',
+                    placeholderEn: 'Expand All',
+                    placeholderBn: 'সব খুলুন',
+                  },
+                  {
+                    key: 'collapse_all',
+                    label: 'Collapse All Button Label',
+                    valueEn: contentTexts.home?.collapse_all_en || '',
+                    valueBn: contentTexts.home?.collapse_all_bn || '',
+                    placeholderEn: 'Collapse All',
+                    placeholderBn: 'সব বন্ধ করুন',
+                  },
+                  {
+                    key: 'empty_search',
+                    label: 'Empty Search Results Message',
+                    valueEn: contentTexts.home?.empty_search_en || '',
+                    valueBn: contentTexts.home?.empty_search_bn || '',
+                    placeholderEn: 'No tool found. Try a different word, or click "Request a Tool" at the top to suggest one.',
+                    placeholderBn: 'কোনো টুল পাওয়া যায়নি। অন্য শব্দে চেষ্টা করুন, অথবা ওপরে "টুলের অনুরোধ" বাটনে ক্লিক করে জানান।',
+                    isTextarea: true,
+                  },
+                ]}
+                onSave={async (vals) => {
+                  const updated: ContentTexts = {
+                    ...contentTexts,
+                    home: {
+                      all_tools_chip_en: vals.all_tools_chip.en,
+                      all_tools_chip_bn: vals.all_tools_chip.bn,
+                      categories_label_en: vals.categories_label.en,
+                      categories_label_bn: vals.categories_label.bn,
+                      expand_all_en: vals.expand_all.en,
+                      expand_all_bn: vals.expand_all.bn,
+                      collapse_all_en: vals.collapse_all.en,
+                      collapse_all_bn: vals.collapse_all.bn,
+                      empty_search_en: vals.empty_search.en,
+                      empty_search_bn: vals.empty_search.bn,
+                    },
+                  };
+                  await saveContentTexts(updated, 'Homepage Section Controls');
+                }}
+              />
             </div>
           )}
 
@@ -3911,6 +3992,83 @@ export default function AdminConsole() {
                   </button>
                 </div>
               </div>
+
+              <SectionTextsEditor
+                title="Footer Navigation Links & Labels"
+                description="Edit the labels for the standard navigation links and back-to-top button in the website footer."
+                badge="Footer Links"
+                saving={savingContentTexts}
+                fields={[
+                  {
+                    key: 'guides',
+                    label: 'Guides Link Label',
+                    valueEn: contentTexts.footer?.guides_en || '',
+                    valueBn: contentTexts.footer?.guides_bn || '',
+                    placeholderEn: 'Guides',
+                    placeholderBn: 'গাইড',
+                  },
+                  {
+                    key: 'faq',
+                    label: 'FAQ Link Label',
+                    valueEn: contentTexts.footer?.faq_en || '',
+                    valueBn: contentTexts.footer?.faq_bn || '',
+                    placeholderEn: 'FAQ',
+                    placeholderBn: 'সাধারণ জিজ্ঞাসা',
+                  },
+                  {
+                    key: 'terms',
+                    label: 'Terms of Service Link Label',
+                    valueEn: contentTexts.footer?.terms_en || '',
+                    valueBn: contentTexts.footer?.terms_bn || '',
+                    placeholderEn: 'Terms of Service',
+                    placeholderBn: 'ব্যবহারের শর্তাবলী',
+                  },
+                  {
+                    key: 'privacy',
+                    label: 'Privacy Policy Link Label',
+                    valueEn: contentTexts.footer?.privacy_en || '',
+                    valueBn: contentTexts.footer?.privacy_bn || '',
+                    placeholderEn: 'Privacy Policy',
+                    placeholderBn: 'গোপনীয়তা নীতি',
+                  },
+                  {
+                    key: 'admin',
+                    label: 'Admin Panel Link Label',
+                    valueEn: contentTexts.footer?.admin_en || '',
+                    valueBn: contentTexts.footer?.admin_bn || '',
+                    placeholderEn: 'Admin',
+                    placeholderBn: 'অ্যাডমিন',
+                  },
+                  {
+                    key: 'back_to_top',
+                    label: 'Back to Top Button Label',
+                    valueEn: contentTexts.footer?.back_to_top_en || '',
+                    valueBn: contentTexts.footer?.back_to_top_bn || '',
+                    placeholderEn: 'Back to top',
+                    placeholderBn: 'উপরে যান',
+                  },
+                ]}
+                onSave={async (vals) => {
+                  const updated: ContentTexts = {
+                    ...contentTexts,
+                    footer: {
+                      guides_en: vals.guides.en,
+                      guides_bn: vals.guides.bn,
+                      faq_en: vals.faq.en,
+                      faq_bn: vals.faq.bn,
+                      terms_en: vals.terms.en,
+                      terms_bn: vals.terms.bn,
+                      privacy_en: vals.privacy.en,
+                      privacy_bn: vals.privacy.bn,
+                      admin_en: vals.admin.en,
+                      admin_bn: vals.admin.bn,
+                      back_to_top_en: vals.back_to_top.en,
+                      back_to_top_bn: vals.back_to_top.bn,
+                    },
+                  };
+                  await saveContentTexts(updated, 'Footer Links & Labels');
+                }}
+              />
             </div>
           )}
 
@@ -4220,6 +4378,94 @@ export default function AdminConsole() {
                   </button>
                 </div>
               </div>
+
+              <SectionTextsEditor
+                title="About ToolGhor Modal Content"
+                description="Edit the tagline badge, description, feature highlights, and 'Built by' label shown in the 'About ToolGhor' modal."
+                badge="About Modal"
+                saving={savingContentTexts}
+                fields={[
+                  {
+                    key: 'tagline_badge',
+                    label: 'Tagline Badge Text',
+                    valueEn: contentTexts.about?.tagline_badge_en || '',
+                    valueBn: contentTexts.about?.tagline_badge_bn || '',
+                    placeholderEn: 'Simple tools • Smarter everyday work',
+                    placeholderBn: 'সহজ টুলস • স্মার্ট দৈনন্দিন কাজ',
+                  },
+                  {
+                    key: 'desc',
+                    label: 'Modal Body Description',
+                    valueEn: contentTexts.about?.desc_en || '',
+                    valueBn: contentTexts.about?.desc_bn || '',
+                    placeholderEn: 'ToolGhor brings together a thoughtfully curated collection...',
+                    placeholderBn: 'ToolGhor নিয়ে এসেছে প্রয়োজনীয় সব অনলাইন টুলের...',
+                    isTextarea: true,
+                  },
+                  {
+                    key: 'hl1_title',
+                    label: 'Highlight 1 Title',
+                    valueEn: contentTexts.about?.hl1_title_en || '',
+                    valueBn: contentTexts.about?.hl1_title_bn || '',
+                    placeholderEn: 'Built for simplicity',
+                    placeholderBn: 'সহজ ব্যবহারের নিশ্চয়তা',
+                  },
+                  {
+                    key: 'hl1_sub',
+                    label: 'Highlight 1 Subtitle',
+                    valueEn: contentTexts.about?.hl1_sub_en || '',
+                    valueBn: contentTexts.about?.hl1_sub_bn || '',
+                    placeholderEn: 'Clean & distraction-free interface',
+                    placeholderBn: 'ঝামেলাহীন ও সাবলীল ইন্টারফেস',
+                  },
+                  {
+                    key: 'hl2_title',
+                    label: 'Highlight 2 Title',
+                    valueEn: contentTexts.about?.hl2_title_en || '',
+                    valueBn: contentTexts.about?.hl2_title_bn || '',
+                    placeholderEn: 'Designed for everyday use',
+                    placeholderBn: 'দৈনন্দিন কাজের উপযোগী',
+                  },
+                  {
+                    key: 'hl2_sub',
+                    label: 'Highlight 2 Subtitle',
+                    valueEn: contentTexts.about?.hl2_sub_en || '',
+                    valueBn: contentTexts.about?.hl2_sub_bn || '',
+                    placeholderEn: 'Fast, reliable and daily-ready',
+                    placeholderBn: 'মুহূর্তেই নির্ভুল ও দ্রুত সমাধান',
+                  },
+                  {
+                    key: 'built_by',
+                    label: 'Built By Caption Label',
+                    valueEn: contentTexts.about?.built_by_en || '',
+                    valueBn: contentTexts.about?.built_by_bn || '',
+                    placeholderEn: 'BUILT BY',
+                    placeholderBn: 'তৈরি করেছেন',
+                  },
+                ]}
+                onSave={async (vals) => {
+                  const updated: ContentTexts = {
+                    ...contentTexts,
+                    about: {
+                      tagline_badge_en: vals.tagline_badge.en,
+                      tagline_badge_bn: vals.tagline_badge.bn,
+                      desc_en: vals.desc.en,
+                      desc_bn: vals.desc.bn,
+                      hl1_title_en: vals.hl1_title.en,
+                      hl1_title_bn: vals.hl1_title.bn,
+                      hl1_sub_en: vals.hl1_sub.en,
+                      hl1_sub_bn: vals.hl1_sub.bn,
+                      hl2_title_en: vals.hl2_title.en,
+                      hl2_title_bn: vals.hl2_title.bn,
+                      hl2_sub_en: vals.hl2_sub.en,
+                      hl2_sub_bn: vals.hl2_sub.bn,
+                      built_by_en: vals.built_by.en,
+                      built_by_bn: vals.built_by.bn,
+                    },
+                  };
+                  await saveContentTexts(updated, 'About Modal Content');
+                }}
+              />
             </div>
           )}
 
@@ -4641,6 +4887,142 @@ export default function AdminConsole() {
                 </div>
               </div>
 
+              <SectionTextsEditor
+                title="Terms of Service Page Header & Intro"
+                description="Edit the header texts, last updated badge, and welcome intro on the public /terms page."
+                badge="Terms Header"
+                saving={savingContentTexts}
+                fields={[
+                  {
+                    key: 'page_title',
+                    label: 'Page Title & Top Heading',
+                    valueEn: contentTexts.terms?.page_title_en || '',
+                    valueBn: contentTexts.terms?.page_title_bn || '',
+                    placeholderEn: 'Terms & Policies',
+                    placeholderBn: 'ব্যবহারের শর্তাবলী ও নীতিসমূহ',
+                  },
+                  {
+                    key: 'sidebar_title',
+                    label: 'Sidebar Navigation Title',
+                    valueEn: contentTexts.terms?.sidebar_title_en || '',
+                    valueBn: contentTexts.terms?.sidebar_title_bn || '',
+                    placeholderEn: 'Terms & Policies',
+                    placeholderBn: 'শর্তাবলী ও নীতিমালা',
+                  },
+                  {
+                    key: 'last_updated',
+                    label: 'Last Updated Date Label',
+                    valueEn: contentTexts.terms?.last_updated_en || '',
+                    valueBn: contentTexts.terms?.last_updated_bn || '',
+                    placeholderEn: 'Last Updated: 22 October 2026',
+                    placeholderBn: 'সর্বশেষ হালনাগাদ: ২২ অক্টোবর ২০২৬',
+                  },
+                  {
+                    key: 'welcome_heading',
+                    label: 'Welcome Card Heading',
+                    valueEn: contentTexts.terms?.welcome_heading_en || '',
+                    valueBn: contentTexts.terms?.welcome_heading_bn || '',
+                    placeholderEn: 'Welcome!',
+                    placeholderBn: 'স্বাগতম!',
+                  },
+                  {
+                    key: 'welcome_text',
+                    label: 'Welcome Card Intro Text',
+                    valueEn: contentTexts.terms?.welcome_text_en || '',
+                    valueBn: contentTexts.terms?.welcome_text_bn || '',
+                    placeholderEn: 'These policies explain how ToolGhor works...',
+                    placeholderBn: 'এই নীতিগুলোতে পরিষ্কার ও সৎ ভাষায় ব্যাখ্যা করা হয়েছে...',
+                    isTextarea: true,
+                  },
+                ]}
+                onSave={async (vals) => {
+                  const updated: ContentTexts = {
+                    ...contentTexts,
+                    terms: {
+                      page_title_en: vals.page_title.en,
+                      page_title_bn: vals.page_title.bn,
+                      sidebar_title_en: vals.sidebar_title.en,
+                      sidebar_title_bn: vals.sidebar_title.bn,
+                      last_updated_en: vals.last_updated.en,
+                      last_updated_bn: vals.last_updated.bn,
+                      welcome_heading_en: vals.welcome_heading.en,
+                      welcome_heading_bn: vals.welcome_heading.bn,
+                      welcome_text_en: vals.welcome_text.en,
+                      welcome_text_bn: vals.welcome_text.bn,
+                    },
+                  };
+                  await saveContentTexts(updated, 'Terms Page Header');
+                }}
+              />
+
+              <SectionTextsEditor
+                title="Privacy Policy Page Header & Intro"
+                description="Edit the header texts, last updated badge, and welcome intro on the public /privacy page."
+                badge="Privacy Header"
+                saving={savingContentTexts}
+                fields={[
+                  {
+                    key: 'page_title',
+                    label: 'Page Title & Top Heading',
+                    valueEn: contentTexts.privacy?.page_title_en || '',
+                    valueBn: contentTexts.privacy?.page_title_bn || '',
+                    placeholderEn: 'Privacy Policy',
+                    placeholderBn: 'গোপনীয়তা নীতি',
+                  },
+                  {
+                    key: 'sidebar_title',
+                    label: 'Sidebar Navigation Title',
+                    valueEn: contentTexts.privacy?.sidebar_title_en || '',
+                    valueBn: contentTexts.privacy?.sidebar_title_bn || '',
+                    placeholderEn: 'Privacy Policy',
+                    placeholderBn: 'গোপনীয়তা নীতি',
+                  },
+                  {
+                    key: 'last_updated',
+                    label: 'Last Updated Date Label',
+                    valueEn: contentTexts.privacy?.last_updated_en || '',
+                    valueBn: contentTexts.privacy?.last_updated_bn || '',
+                    placeholderEn: 'Last Updated: 22 October 2026',
+                    placeholderBn: 'সর্বশেষ হালনাগাদ: ২২ অক্টোবর ২০২৬',
+                  },
+                  {
+                    key: 'welcome_heading',
+                    label: 'Welcome Card Heading',
+                    valueEn: contentTexts.privacy?.welcome_heading_en || '',
+                    valueBn: contentTexts.privacy?.welcome_heading_bn || '',
+                    placeholderEn: 'Welcome!',
+                    placeholderBn: 'স্বাগতম!',
+                  },
+                  {
+                    key: 'welcome_text',
+                    label: 'Welcome Card Intro Text',
+                    valueEn: contentTexts.privacy?.welcome_text_en || '',
+                    valueBn: contentTexts.privacy?.welcome_text_bn || '',
+                    placeholderEn: 'Your privacy is paramount at ToolGhor...',
+                    placeholderBn: 'ToolGhor-এ আপনার তথ্যের গোপনীয়তা রক্ষা করা...',
+                    isTextarea: true,
+                  },
+                ]}
+                onSave={async (vals) => {
+                  const updated: ContentTexts = {
+                    ...contentTexts,
+                    privacy: {
+                      page_title_en: vals.page_title.en,
+                      page_title_bn: vals.page_title.bn,
+                      sidebar_title_en: vals.sidebar_title.en,
+                      sidebar_title_bn: vals.sidebar_title.bn,
+                      last_updated_en: vals.last_updated.en,
+                      last_updated_bn: vals.last_updated.bn,
+                      welcome_heading_en: vals.welcome_heading.en,
+                      welcome_heading_bn: vals.welcome_heading.bn,
+                      welcome_text_en: vals.welcome_text.en,
+                      welcome_text_bn: vals.welcome_text.bn,
+                    },
+                  };
+                  await saveContentTexts(updated, 'Privacy Page Header');
+                }}
+              />
+
               {/* 9 Separate Editor Cards */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                 {POLICY_SECTIONS_LIST.map((item, index) => {
@@ -4901,27 +5283,200 @@ export default function AdminConsole() {
 
           {/* TAB: GUIDES MANAGER */}
           {activeTab === 'guides' && (
-            <GuidesEditor
-              guides={guides}
-              setGuides={setGuides}
-              onSaveGuide={saveGuide}
-              savingGuide={savingGuide}
-              guideSaveStatus={guideSaveStatus}
-            />
+            <div>
+              <SectionTextsEditor
+                title="Guides Index & Article Chrome Labels"
+                description="Edit the header texts on /guides and the recurring chrome labels around guide articles."
+                badge="Guides Chrome"
+                saving={savingContentTexts}
+                fields={[
+                  {
+                    key: 'idx_pill',
+                    label: 'Index Badge / Pill Text',
+                    valueEn: contentTexts.guides?.pill_en || '',
+                    valueBn: contentTexts.guides?.pill_bn || '',
+                    placeholderEn: 'HELPFUL GUIDES',
+                    placeholderBn: 'সহায়ক গাইড',
+                  },
+                  {
+                    key: 'idx_title',
+                    label: 'Index Main Heading',
+                    valueEn: contentTexts.guides?.title_en || '',
+                    valueBn: contentTexts.guides?.title_bn || '',
+                    placeholderEn: 'Guides',
+                    placeholderBn: 'গাইড',
+                  },
+                  {
+                    key: 'idx_sub',
+                    label: 'Index Subtitle',
+                    valueEn: contentTexts.guides?.sub_en || '',
+                    valueBn: contentTexts.guides?.sub_bn || '',
+                    placeholderEn: 'Helpful step-by-step guides...',
+                    placeholderBn: 'দৈনন্দিন কাজের জন্য প্রয়োজনীয় গাইড...',
+                    isTextarea: true,
+                  },
+                  {
+                    key: 'idx_practical_tag',
+                    label: 'Index Practical Guide Tag',
+                    valueEn: contentTexts.guides?.practical_tag_en || '',
+                    valueBn: contentTexts.guides?.practical_tag_bn || '',
+                    placeholderEn: 'Practical Guide',
+                    placeholderBn: 'ব্যবহারিক নির্দেশিকা',
+                  },
+                  {
+                    key: 'idx_read_guide',
+                    label: 'Index Read Guide Button',
+                    valueEn: contentTexts.guides?.read_guide_en || '',
+                    valueBn: contentTexts.guides?.read_guide_bn || '',
+                    placeholderEn: 'Read Guide →',
+                    placeholderBn: 'গাইডটি পড়ুন →',
+                  },
+                  {
+                    key: 'art_back',
+                    label: 'Article Back Breadcrumb',
+                    valueEn: contentTexts.guide_article?.back_all_en || '',
+                    valueBn: contentTexts.guide_article?.back_all_bn || '',
+                    placeholderEn: 'All Guides',
+                    placeholderBn: 'সকল গাইড',
+                  },
+                  {
+                    key: 'art_published',
+                    label: 'Article Published Date Chrome',
+                    valueEn: contentTexts.guide_article?.published_en || '',
+                    valueBn: contentTexts.guide_article?.published_bn || '',
+                    placeholderEn: 'Published: October 23, 2026',
+                    placeholderBn: 'প্রকাশিত: ২৩ অক্টোবর ২০২৬',
+                  },
+                  {
+                    key: 'art_tag',
+                    label: 'Article Practical Guide Tag',
+                    valueEn: contentTexts.guide_article?.practical_tag_en || '',
+                    valueBn: contentTexts.guide_article?.practical_tag_bn || '',
+                    placeholderEn: 'Practical Guide',
+                    placeholderBn: 'ব্যবহারিক গাইড',
+                  },
+                  {
+                    key: 'art_cta_title',
+                    label: 'Article Final CTA Card Title',
+                    valueEn: contentTexts.guide_article?.cta_title_en || '',
+                    valueBn: contentTexts.guide_article?.cta_title_bn || '',
+                    placeholderEn: 'Try the free tools',
+                    placeholderBn: 'ফ্রি টুলগুলো ব্যবহার করে দেখুন',
+                  },
+                  {
+                    key: 'art_cta_desc',
+                    label: 'Article Final CTA Card Description',
+                    valueEn: contentTexts.guide_article?.cta_desc_en || '',
+                    valueBn: contentTexts.guide_article?.cta_desc_bn || '',
+                    placeholderEn: 'All tools run 100% free...',
+                    placeholderBn: 'ToolGhor-এর এই টুলগুলো সম্পূর্ণ ফ্রি...',
+                    isTextarea: true,
+                  },
+                ]}
+                onSave={async (vals) => {
+                  const updated: ContentTexts = {
+                    ...contentTexts,
+                    guides: {
+                      ...contentTexts.guides,
+                      pill_en: vals.idx_pill.en,
+                      pill_bn: vals.idx_pill.bn,
+                      title_en: vals.idx_title.en,
+                      title_bn: vals.idx_title.bn,
+                      sub_en: vals.idx_sub.en,
+                      sub_bn: vals.idx_sub.bn,
+                      practical_tag_en: vals.idx_practical_tag.en,
+                      practical_tag_bn: vals.idx_practical_tag.bn,
+                      read_guide_en: vals.idx_read_guide.en,
+                      read_guide_bn: vals.idx_read_guide.bn,
+                    },
+                    guide_article: {
+                      ...contentTexts.guide_article,
+                      back_all_en: vals.art_back.en,
+                      back_all_bn: vals.art_back.bn,
+                      practical_tag_en: vals.art_tag.en,
+                      practical_tag_bn: vals.art_tag.bn,
+                      published_en: vals.art_published.en,
+                      published_bn: vals.art_published.bn,
+                      cta_title_en: vals.art_cta_title.en,
+                      cta_title_bn: vals.art_cta_title.bn,
+                      cta_desc_en: vals.art_cta_desc.en,
+                      cta_desc_bn: vals.art_cta_desc.bn,
+                    },
+                  };
+                  await saveContentTexts(updated, 'Guides Page Labels');
+                }}
+              />
+              <GuidesEditor
+                guides={guides}
+                setGuides={setGuides}
+                onSaveGuide={saveGuide}
+                savingGuide={savingGuide}
+                guideSaveStatus={guideSaveStatus}
+              />
+            </div>
           )}
 
           {/* TAB: FAQ MANAGER */}
           {activeTab === 'faq' && (
-            <FaqEditor
-              faqItems={faqItems}
-              setFaqItems={setFaqItems}
-              selectedScope={selectedFaqScope}
-              setSelectedScope={setSelectedFaqScope}
-              onSaveScope={saveFaqScope}
-              savingScope={savingFaqScope}
-              saveStatus={faqScopeSaveStatus}
-              toolList={tools}
-            />
+            <div>
+              <SectionTextsEditor
+                title="FAQ Page Header & Subtitle"
+                description="Edit the top badge, heading, and description displayed on the public /faq page."
+                badge="FAQ Header"
+                saving={savingContentTexts}
+                fields={[
+                  {
+                    key: 'pill',
+                    label: 'Badge / Pill Text',
+                    valueEn: contentTexts.faq?.pill_en || '',
+                    valueBn: contentTexts.faq?.pill_bn || '',
+                    placeholderEn: 'NEED HELP?',
+                    placeholderBn: 'কোনো প্রশ্ন আছে?',
+                  },
+                  {
+                    key: 'title',
+                    label: 'Main Heading (H1)',
+                    valueEn: contentTexts.faq?.title_en || '',
+                    valueBn: contentTexts.faq?.title_bn || '',
+                    placeholderEn: 'Frequently Asked Questions',
+                    placeholderBn: 'সাধারণ জিজ্ঞাসা',
+                  },
+                  {
+                    key: 'sub',
+                    label: 'Subtitle / Description',
+                    valueEn: contentTexts.faq?.sub_en || '',
+                    valueBn: contentTexts.faq?.sub_bn || '',
+                    placeholderEn: 'Everything you need to know about ToolGhor...',
+                    placeholderBn: 'ToolGhor সম্পর্কে যা যা জানা দরকার...',
+                    isTextarea: true,
+                  },
+                ]}
+                onSave={async (vals) => {
+                  const updated: ContentTexts = {
+                    ...contentTexts,
+                    faq: {
+                      pill_en: vals.pill.en,
+                      pill_bn: vals.pill.bn,
+                      title_en: vals.title.en,
+                      title_bn: vals.title.bn,
+                      sub_en: vals.sub.en,
+                      sub_bn: vals.sub.bn,
+                    },
+                  };
+                  await saveContentTexts(updated, 'FAQ Page Header');
+                }}
+              />
+              <FaqEditor
+                faqItems={faqItems}
+                setFaqItems={setFaqItems}
+                selectedScope={selectedFaqScope}
+                setSelectedScope={setSelectedFaqScope}
+                onSaveScope={saveFaqScope}
+                savingScope={savingFaqScope}
+                saveStatus={faqScopeSaveStatus}
+                toolList={tools}
+              />
+            </div>
           )}
 
           {/* TAB 9: USAGE ANALYTICS */}

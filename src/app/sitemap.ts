@@ -5,8 +5,7 @@ import { TOOLS } from '@/data/registry';
 import { GUIDES } from '@/data/guides';
 import { getAllGuides } from '@/lib/guidesData';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = (siteConfig.url || 'https://toolghor.vercel.app').replace(/\/+$/, '');

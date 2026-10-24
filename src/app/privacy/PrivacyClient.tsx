@@ -7,8 +7,11 @@ import PolicyMarkdown from '@/components/PolicyMarkdown';
 import { useApp } from '@/context/AppContext';
 import { PolicySection, extractSubheadings } from '@/data/policiesDefaults';
 
+import { ContentTexts, DEFAULT_CONTENT_TEXTS } from '@/data/contentTexts';
+
 interface PrivacyClientProps {
   initialPolicy: PolicySection;
+  contentTexts?: ContentTexts;
 }
 
 const toBengaliNumber = (num: number, isBn: boolean) => {
@@ -18,9 +21,15 @@ const toBengaliNumber = (num: number, isBn: boolean) => {
   return `${bnStr}.`;
 };
 
-export default function PrivacyClient({ initialPolicy }: PrivacyClientProps) {
+export default function PrivacyClient({
+  initialPolicy,
+  contentTexts: initialContentTexts,
+}: PrivacyClientProps) {
   const { lang } = useApp();
   const [policy, setPolicy] = useState<PolicySection>(initialPolicy);
+  const [contentTexts, setContentTexts] = useState<ContentTexts>(
+    initialContentTexts || DEFAULT_CONTENT_TEXTS
+  );
 
   // Sync listener: refresh policy if admin edits in another tab
   useEffect(() => {
@@ -30,6 +39,14 @@ export default function PrivacyClient({ initialPolicy }: PrivacyClientProps) {
         .then((data) => {
           if (data && data.success && data.policy) {
             setPolicy(data.policy);
+          }
+        })
+        .catch(() => {});
+      fetch('/api/public/data?t=' + Date.now(), { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && data.success && data.contentTexts) {
+            setContentTexts(data.contentTexts);
           }
         })
         .catch(() => {});
@@ -51,18 +68,22 @@ export default function PrivacyClient({ initialPolicy }: PrivacyClientProps) {
   }, []);
 
   const isBn = lang === 'bn';
-  const pageTitle = isBn ? policy.title_bn : policy.title_en;
+  const pTexts = contentTexts?.privacy || DEFAULT_CONTENT_TEXTS.privacy;
+  const pageTitle = isBn
+    ? (policy.title_bn || pTexts.page_title_bn)
+    : (policy.title_en || pTexts.page_title_en);
   const pageBody = isBn ? policy.body_bn : policy.body_en;
-  const sidebarTitle = isBn ? 'গোপনীয়তা নীতি' : 'Privacy Policy';
-  const lastUpdatedDate = isBn ? '২২ অক্টোবর ২০২৬' : '22 October 2026';
+  const sidebarTitle = isBn
+    ? (pTexts.sidebar_title_bn || 'গোপনীয়তা নীতি')
+    : (pTexts.sidebar_title_en || 'Privacy Policy');
   const lastUpdatedText = isBn
-    ? `সর্বশেষ হালনাগাদ: ${lastUpdatedDate}`
-    : `Last Updated: ${lastUpdatedDate}`;
+    ? (pTexts.last_updated_bn || 'সর্বশেষ হালনাগাদ: ২২ অক্টোবর ২০২৬')
+    : (pTexts.last_updated_en || 'Last Updated: 22 October 2026');
 
-  const welcomeHeading = isBn ? 'স্বাগতম!' : 'Welcome!';
+  const welcomeHeading = isBn ? (pTexts.welcome_heading_bn || 'স্বাগতম!') : (pTexts.welcome_heading_en || 'Welcome!');
   const welcomeText = isBn
-    ? 'ToolGhor-এ আপনার তথ্যের গোপনীয়তা রক্ষা করা আমাদের প্রধান অগ্রাধিকার। আমাদের কোনো টুল আপনার ফাইল কোনো রিমোট সার্ভারে জমা করে না — সব প্রসেসিং সরাসরি আপনার ডিভাইসে ঘটে।'
-    : 'Your privacy is paramount at ToolGhor. We do not store your files on external servers — all processing happens directly in your browser on your own device.';
+    ? (pTexts.welcome_text_bn || 'ToolGhor-এ আপনার তথ্যের গোপনীয়তা রক্ষা করা আমাদের প্রধান অগ্রাধিকার। আমাদের কোনো টুল আপনার ফাইল কোনো রিমোট সার্ভারে জমা করে না — সব প্রসেসিং সরাসরি আপনার ডিভাইসে ঘটে।')
+    : (pTexts.welcome_text_en || 'Your privacy is paramount at ToolGhor. We do not store your files on external servers — all processing happens directly in your browser on your own device.');
 
   // Extract only the Privacy Policy's own sub-sections
   const subheadings = useMemo(() => extractSubheadings(pageBody), [pageBody]);

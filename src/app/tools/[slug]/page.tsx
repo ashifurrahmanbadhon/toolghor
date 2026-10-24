@@ -14,8 +14,6 @@ import ToolPageClient from './ToolPageClient';
 import { SEO_TITLES, SEO_DESCRIPTIONS, FAQ_DATA } from '@/data/seoData';
 import { getFaqByScope } from '@/lib/faqData';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export function generateStaticParams() {
   return TOOLS.map((t) => ({ slug: t.slug }));

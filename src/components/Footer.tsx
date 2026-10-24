@@ -4,14 +4,19 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { siteConfig } from '@/data/config';
+import { ContentTexts, DEFAULT_CONTENT_TEXTS } from '@/data/contentTexts';
 
 interface FooterProps {
   customSettings?: any;
+  contentTexts?: ContentTexts;
 }
 
-export default function Footer({ customSettings }: FooterProps) {
+export default function Footer({ customSettings, contentTexts: initialContentTexts }: FooterProps) {
   const { lang } = useApp();
   const [liveFooter, setLiveFooter] = useState<any>(customSettings || null);
+  const [contentTexts, setContentTexts] = useState<ContentTexts>(
+    initialContentTexts || DEFAULT_CONTENT_TEXTS
+  );
 
   useEffect(() => {
     if (customSettings) {
@@ -22,8 +27,9 @@ export default function Footer({ customSettings }: FooterProps) {
       fetch('/api/public/data?t=' + Date.now(), { cache: 'no-store' })
         .then((r) => r.json())
         .then((data) => {
-          if (data && data.success && data.footerSocial) {
-            setLiveFooter(data.footerSocial);
+          if (data && data.success) {
+            if (data.footerSocial) setLiveFooter(data.footerSocial);
+            if (data.contentTexts) setContentTexts(data.contentTexts);
           }
         })
         .catch(() => {});
@@ -99,19 +105,19 @@ export default function Footer({ customSettings }: FooterProps) {
           </div>
           <div className="foot-links">
             <Link href="/guides" className="foot-link">
-              {lang === 'bn' ? 'গাইড' : 'Guides'}
+              {lang === 'bn' ? (contentTexts.footer?.guides_bn || 'গাইড') : (contentTexts.footer?.guides_en || 'Guides')}
             </Link>
             <span className="foot-sep" aria-hidden="true">·</span>
             <Link href="/faq" className="foot-link">
-              {lang === 'bn' ? 'সাধারণ জিজ্ঞাসা' : 'FAQ'}
+              {lang === 'bn' ? (contentTexts.footer?.faq_bn || 'সাধারণ জিজ্ঞাসা') : (contentTexts.footer?.faq_en || 'FAQ')}
             </Link>
             <span className="foot-sep" aria-hidden="true">·</span>
             <Link href="/terms" className="foot-link">
-              {lang === 'bn' ? 'ব্যবহারের শর্তাবলী' : 'Terms of Service'}
+              {lang === 'bn' ? (contentTexts.footer?.terms_bn || 'ব্যবহারের শর্তাবলী') : (contentTexts.footer?.terms_en || 'Terms of Service')}
             </Link>
             <span className="foot-sep" aria-hidden="true">·</span>
             <Link href="/privacy" className="foot-link">
-              {lang === 'bn' ? 'গোপনীয়তা নীতি' : 'Privacy Policy'}
+              {lang === 'bn' ? (contentTexts.footer?.privacy_bn || 'গোপনীয়তা নীতি') : (contentTexts.footer?.privacy_en || 'Privacy Policy')}
             </Link>
             <span className="foot-sep" aria-hidden="true">·</span>
             <Link
@@ -119,7 +125,7 @@ export default function Footer({ customSettings }: FooterProps) {
               className="foot-link foot-admin"
               title={lang === 'bn' ? 'অ্যাডমিন কনসোল' : 'Admin Console'}
             >
-              {lang === 'bn' ? 'অ্যাডমিন' : 'Admin'}
+              {lang === 'bn' ? (contentTexts.footer?.admin_bn || 'অ্যাডমিন') : (contentTexts.footer?.admin_en || 'Admin')}
             </Link>
           </div>
         </div>
@@ -130,8 +136,8 @@ export default function Footer({ customSettings }: FooterProps) {
         type="button"
         onClick={handleBackToTop}
         className={`to-top-fab ${isWhatsappActive ? 'has-wa' : ''} ${showToTop ? 'show' : ''}`}
-        aria-label={lang === 'bn' ? 'উপরে যান' : 'Back to top'}
-        title={lang === 'bn' ? 'উপরে যান' : 'Back to top'}
+        aria-label={lang === 'bn' ? (contentTexts.footer?.back_to_top_bn || 'উপরে যান') : (contentTexts.footer?.back_to_top_en || 'Back to top')}
+        title={lang === 'bn' ? (contentTexts.footer?.back_to_top_bn || 'উপরে যান') : (contentTexts.footer?.back_to_top_en || 'Back to top')}
         tabIndex={showToTop ? 0 : -1}
         aria-hidden={!showToTop}
       >

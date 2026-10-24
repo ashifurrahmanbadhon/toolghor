@@ -1,4 +1,6 @@
 import { getDb } from '@/lib/db';
+import { unstable_cache } from 'next/cache';
+import { cache } from 'react';
 import { GENERAL_FAQ, FAQ_DATA, FaqItem } from '@/data/seoData';
 
 let cachedFaqMap: Record<string, FaqItem[]> | null = null;
@@ -24,7 +26,7 @@ function fallbackForScope(scope: string): FaqItem[] {
   return FAQ_DATA[scope] || [];
 }
 
-export async function getAllFaqScopes(): Promise<Record<string, FaqItem[]>> {
+async function fetchRawAllFaqScopes(): Promise<Record<string, FaqItem[]>> {
   try {
     const sql = getDb();
     const queryPromise = sql`
@@ -74,40 +76,30 @@ export async function getAllFaqScopes(): Promise<Record<string, FaqItem[]>> {
   }
 }
 
-export async function getFaqByScope(scope: string): Promise<FaqItem[]> {
-  const fallback = fallbackForScope(scope);
+// Next.js Data Cache with tag 'faqs' and 1 hour TTL backstop
+const getCachedAllFaqScopes = unstable_cache(
+  fetchRawAllFaqScopes,
+  ['faqs-all-cache'],
+  { tags: ['faqs'], revalidate: 3600 }
+);
+
+// React cache() wrapper for per-request de-duplication
+export const getAllFaqScopes = cache(async (): Promise<Record<string, FaqItem[]>> => {
   try {
-    const sql = getDb();
-    const queryPromise = sql`
-      SELECT sort_order, enabled, question_en, question_bn, answer_en, answer_bn
-      FROM content_faq_items
-      WHERE scope = ${scope} AND enabled = true
-      ORDER BY sort_order ASC, id ASC;
-    `;
-    const timeoutPromise = new Promise<any[]>((_, reject) =>
-      setTimeout(() => reject(new Error('Scope FAQ Timeout')), 3500)
-    );
-
-    const rows = await Promise.race([queryPromise, timeoutPromise]);
-    if (Array.isArray(rows) && rows.length > 0) {
-      const validItems = rows
-        .filter(isValidRow)
-        .map((r: any) => ({
-          en: { q: r.question_en, a: r.answer_en },
-          bn: { q: r.question_bn, a: r.answer_bn },
-        }));
-      // If all rows were blank, fall back to code defaults for this scope
-      return validItems.length > 0 ? validItems : fallback;
-    }
-  } catch (error) {
-    console.warn(`[getFaqByScope] Fallback for scope "${scope}":`, error);
+    return await getCachedAllFaqScopes();
+  } catch (err) {
+    return cachedFaqMap || buildDefaultMap();
   }
-  return fallback;
-}
+});
 
-export async function getGeneralFaq(): Promise<FaqItem[]> {
+export const getFaqByScope = cache(async (scope: string): Promise<FaqItem[]> => {
+  const map = await getAllFaqScopes();
+  return map[scope] || fallbackForScope(scope);
+});
+
+export const getGeneralFaq = cache(async (): Promise<FaqItem[]> => {
   return getFaqByScope('general');
-}
+});
 
 export function clearFaqCache(): void {
   cachedFaqMap = null;

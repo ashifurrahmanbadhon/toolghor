@@ -5,8 +5,6 @@ import { siteConfig } from '@/data/config';
 import GuideArticle from '@/components/GuideArticle';
 import { getGuideBySlug } from '@/lib/guidesData';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export function generateStaticParams() {
   return GUIDES.map((g) => ({ slug: g.slug }));
@@ -59,9 +57,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+import { getPublicSiteData } from '@/lib/siteData';
+
 export default async function GuidePage({ params }: Props) {
   const { slug } = await params;
-  const guide = (await getGuideBySlug(slug)) || GUIDES_BY_SLUG[slug];
+  const [guide, siteData] = await Promise.all([
+    getGuideBySlug(slug).then((res) => res || GUIDES_BY_SLUG[slug]),
+    getPublicSiteData(),
+  ]);
 
   if (!guide) {
     notFound();
@@ -113,7 +116,7 @@ export default async function GuidePage({ params }: Props) {
           __html: JSON.stringify(faqSchema),
         }}
       />
-      <GuideArticle guide={guide} />
+      <GuideArticle guide={guide} contentTexts={siteData?.contentTexts} />
     </>
   );
 }

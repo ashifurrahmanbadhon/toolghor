@@ -1,4 +1,6 @@
 import { getDb } from '@/lib/db';
+import { unstable_cache } from 'next/cache';
+import { cache } from 'react';
 import {
   DEFAULT_POLICY_SECTIONS,
   POLICY_SECTIONS_LIST,
@@ -7,7 +9,7 @@ import {
 
 let cachedPolicies: Record<string, PolicySection> | null = null;
 
-export async function getAllPolicySections(): Promise<Record<string, PolicySection>> {
+async function fetchRawAllPolicySections(): Promise<Record<string, PolicySection>> {
   try {
     const sql = getDb();
 
@@ -58,35 +60,40 @@ export async function getAllPolicySections(): Promise<Record<string, PolicySecti
   }
 }
 
-export async function getPolicySection(sectionId: string): Promise<PolicySection> {
+// Next.js Data Cache with tag 'policies' and 1 hour TTL backstop
+const getCachedAllPolicySections = unstable_cache(
+  fetchRawAllPolicySections,
+  ['policies-all-cache'],
+  { tags: ['policies'], revalidate: 3600 }
+);
+
+// React cache() wrapper for per-request de-duplication
+export const getAllPolicySections = cache(async (): Promise<Record<string, PolicySection>> => {
+  try {
+    return await getCachedAllPolicySections();
+  } catch (err) {
+    if (cachedPolicies) return cachedPolicies;
+    return DEFAULT_POLICY_SECTIONS;
+  }
+});
+
+export const getPolicySection = cache(async (sectionId: string): Promise<PolicySection> => {
   const defaultSec = DEFAULT_POLICY_SECTIONS[sectionId];
   if (!defaultSec) {
     throw new Error(`Unknown policy section id: ${sectionId}`);
   }
 
   try {
-    const sql = getDb();
-    const rows = await sql.query(
-      `SELECT id, title_en, title_bn, body_en, body_bn, updated_at FROM ${defaultSec.table_name} WHERE id = 1 LIMIT 1`
-    );
-    const row = rows[0];
-    if (row && (row.title_en || row.title_bn || row.body_en || row.body_bn)) {
-      return {
-        id: defaultSec.id,
-        table_name: defaultSec.table_name,
-        title_en: row.title_en || defaultSec.title_en,
-        title_bn: row.title_bn || defaultSec.title_bn,
-        body_en: row.body_en || defaultSec.body_en,
-        body_bn: row.body_bn || defaultSec.body_bn,
-        updated_at: row.updated_at ? new Date(row.updated_at).toISOString() : defaultSec.updated_at,
-      };
+    const all = await getAllPolicySections();
+    if (all && all[sectionId]) {
+      return all[sectionId];
     }
   } catch (err) {
-    console.warn(`[getPolicySection] Error fetching ${defaultSec.table_name}, using default:`, err);
+    console.warn(`[getPolicySection] Error fetching ${sectionId}, using default:`, err);
   }
 
   return defaultSec;
-}
+});
 
 export function clearPoliciesCache() {
   cachedPolicies = null;

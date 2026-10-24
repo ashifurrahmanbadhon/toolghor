@@ -13,12 +13,15 @@ export const metadata: Metadata = {
   },
 };
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+
+import { getPublicSiteData } from '@/lib/siteData';
 
 export default async function TermsPage() {
-  const allPolicies = await getAllPolicySections();
+  const [allPolicies, siteData] = await Promise.all([
+    getAllPolicySections(),
+    getPublicSiteData(),
+  ]);
   const { privacy: _omitted, ...initialPolicies } = allPolicies;
 
-  return <TermsClient initialPolicies={initialPolicies} />;
+  return <TermsClient initialPolicies={initialPolicies} contentTexts={siteData?.contentTexts} />;
 }

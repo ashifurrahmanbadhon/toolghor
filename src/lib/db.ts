@@ -3,6 +3,7 @@ import { CATEGORIES, TOOLS } from '../data/registry';
 import { siteConfig } from '../data/config';
 import { GUIDES } from '../data/guides';
 import { GENERAL_FAQ, FAQ_DATA } from '../data/seoData';
+import { DEFAULT_CONTENT_TEXTS } from '../data/contentTexts';
 
 function getDbUrl() {
   const url =
@@ -575,6 +576,24 @@ export async function initDatabase() {
         `;
       }
     }
+  }
+
+  // 17. Site Settings & Content Texts
+  await sql`
+    CREATE TABLE IF NOT EXISTS site_settings (
+      key TEXT PRIMARY KEY,
+      value JSONB NOT NULL,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+
+  const ctCheck = await sql`SELECT 1 FROM site_settings WHERE key = 'content_texts';`;
+  if (!ctCheck || ctCheck.length === 0) {
+    await sql`
+      INSERT INTO site_settings (key, value)
+      VALUES ('content_texts', ${JSON.stringify(DEFAULT_CONTENT_TEXTS)}::jsonb)
+      ON CONFLICT (key) DO NOTHING;
+    `;
   }
 
   isInitialized = true;
