@@ -225,7 +225,7 @@ export default function FaqEditor({
           background: '#111827',
           border: '1px solid #1f2937',
           borderRadius: '16px',
-          padding: '24px',
+          padding: '20px 16px',
           boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
         }}
       >
@@ -242,19 +242,19 @@ export default function FaqEditor({
             borderBottom: '1px solid #1f2937',
           }}
         >
-          <div>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 4px', color: '#f8fafc' }}>
+          <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 4px', color: '#f8fafc', wordBreak: 'break-word' }}>
               Scope: {selectedScope.toUpperCase()} ({currentItems.length} questions)
             </h2>
-            <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+            <span style={{ fontSize: '13px', color: '#94a3b8', wordBreak: 'break-word' }}>
               {selectedScope === 'general' ? 'Shown on the dedicated /faq page' : `Shown on /tools/${selectedScope} page and FAQPage schema`}
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', flexShrink: 0 }}>
             {/* Status Indicator */}
             {validationError && (
-              <span style={{ color: '#fbbf24', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', maxWidth: '260px' }}>
+              <span style={{ color: '#fbbf24', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', maxWidth: '260px', wordBreak: 'break-word' }}>
                 <AlertTriangle size={16} /> {validationError}
               </span>
             )}
@@ -285,6 +285,7 @@ export default function FaqEditor({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
+                whiteSpace: 'nowrap',
               }}
             >
               <Plus size={15} /> Add Question
@@ -309,6 +310,8 @@ export default function FaqEditor({
                 gap: '6px',
                 opacity: savingScope ? 0.7 : 1,
                 boxShadow: '0 2px 8px rgba(16, 185, 129, 0.35)',
+                whiteSpace: 'normal',
+                wordBreak: 'break-word',
               }}
             >
               {savingScope && <RefreshCw size={14} className="animate-spin" />}
@@ -422,8 +425,8 @@ export default function FaqEditor({
               </div>
 
               {/* Question EN / BN */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px', marginBottom: '12px' }}>
-                <div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '12px', marginBottom: '12px' }}>
+                <div style={{ minWidth: 0 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '4px' }}>
                     Question (English)
                   </label>
@@ -433,6 +436,7 @@ export default function FaqEditor({
                     onChange={(e) => handleUpdateItem(idx, 'question_en', e.target.value)}
                     style={{
                       width: '100%',
+                      boxSizing: 'border-box',
                       padding: '8px 12px',
                       background: '#0f172a',
                       border: '1px solid #334155',
@@ -442,7 +446,7 @@ export default function FaqEditor({
                     }}
                   />
                 </div>
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '4px' }}>
                     Question (বাংলা)
                   </label>
@@ -452,6 +456,7 @@ export default function FaqEditor({
                     onChange={(e) => handleUpdateItem(idx, 'question_bn', e.target.value)}
                     style={{
                       width: '100%',
+                      boxSizing: 'border-box',
                       padding: '8px 12px',
                       background: '#0f172a',
                       border: '1px solid #334155',
@@ -464,8 +469,8 @@ export default function FaqEditor({
               </div>
 
               {/* Answer EN / BN */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
-                <div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '12px' }}>
+                <div style={{ minWidth: 0 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '4px' }}>
                     Answer (English)
                   </label>
@@ -475,6 +480,7 @@ export default function FaqEditor({
                     onChange={(e) => handleUpdateItem(idx, 'answer_en', e.target.value)}
                     style={{
                       width: '100%',
+                      boxSizing: 'border-box',
                       padding: '8px 12px',
                       background: '#0f172a',
                       border: '1px solid #334155',
@@ -485,7 +491,7 @@ export default function FaqEditor({
                     }}
                   />
                 </div>
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '4px' }}>
                     Answer (বাংলা)
                   </label>
@@ -495,6 +501,7 @@ export default function FaqEditor({
                     onChange={(e) => handleUpdateItem(idx, 'answer_bn', e.target.value)}
                     style={{
                       width: '100%',
+                      boxSizing: 'border-box',
                       padding: '8px 12px',
                       background: '#0f172a',
                       border: '1px solid #334155',

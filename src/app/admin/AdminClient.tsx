@@ -1237,9 +1237,10 @@ export default function AdminConsole() {
             WebkitBackdropFilter: 'blur(20px)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
             borderRadius: '20px',
-            padding: '40px 32px',
+            padding: '36px 22px',
             width: '100%',
             maxWidth: '420px',
+            boxSizing: 'border-box',
             boxShadow: '0 25px 60px -12px rgba(0,0,0,0.7), 0 0 0 1px rgba(16, 185, 129, 0.15)',
             textAlign: 'center',
             position: 'relative',
@@ -1261,10 +1262,10 @@ export default function AdminConsole() {
           >
             <Shield size={28} />
           </div>
-          <h1 style={{ fontSize: '22px', fontWeight: 800, margin: '0 0 8px', letterSpacing: '-0.02em', color: '#f8fafc' }}>
+          <h1 style={{ fontSize: '22px', fontWeight: 800, margin: '0 0 8px', letterSpacing: '-0.02em', color: '#f8fafc', wordBreak: 'break-word' }}>
             ToolGhor Admin Console
           </h1>
-          <p style={{ fontSize: '13.5px', color: '#94a3b8', margin: '0 0 24px', lineHeight: 1.5 }}>
+          <p style={{ fontSize: '13.5px', color: '#94a3b8', margin: '0 0 24px', lineHeight: 1.5, wordBreak: 'break-word' }}>
             Enter your admin passcode to access the central management console.
           </p>
 
@@ -1276,6 +1277,7 @@ export default function AdminConsole() {
               onChange={(e) => setPin(e.target.value)}
               style={{
                 width: '100%',
+                boxSizing: 'border-box',
                 padding: '12px 16px',
                 borderRadius: '12px',
                 border: pinError ? '1.5px solid #ef4444' : '1.5px solid #334155',
@@ -1287,7 +1289,7 @@ export default function AdminConsole() {
               }}
             />
             {pinError && (
-              <p style={{ color: '#ef4444', fontSize: '12.5px', margin: '-6px 0 12px', textAlign: 'left' }}>
+              <p style={{ color: '#ef4444', fontSize: '12.5px', margin: '-6px 0 12px', textAlign: 'left', wordBreak: 'break-word' }}>
                 {pinErrorMsg || 'Incorrect passcode. Please try again or use Forgot Password.'}
               </p>
             )}
@@ -1302,13 +1304,14 @@ export default function AdminConsole() {
                   fontSize: '13px',
                   color: '#94a3b8',
                   userSelect: 'none',
+                  wordBreak: 'break-word',
                 }}
               >
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  style={{ accentColor: '#10b981', width: '16px', height: '16px', cursor: 'pointer' }}
+                  style={{ accentColor: '#10b981', width: '16px', height: '16px', cursor: 'pointer', flexShrink: 0 }}
                 />
                 <span>Remember me on this browser</span>
               </label>
@@ -1391,9 +1394,10 @@ export default function AdminConsole() {
                 WebkitBackdropFilter: 'blur(24px)',
                 border: '1px solid rgba(255, 255, 255, 0.12)',
                 borderRadius: '20px',
-                padding: '32px 28px',
+                padding: '28px 20px',
                 width: '100%',
                 maxWidth: '440px',
+                boxSizing: 'border-box',
                 boxShadow: '0 25px 60px rgba(0,0,0,0.75), 0 0 0 1px rgba(16, 185, 129, 0.2)',
                 position: 'relative',
               }}
@@ -1752,7 +1756,7 @@ export default function AdminConsole() {
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {/* Cloud Database Live Badge */}
           <div
             style={{
@@ -1799,6 +1803,7 @@ export default function AdminConsole() {
               fontSize: '13px',
               fontWeight: 600,
               cursor: 'pointer',
+              whiteSpace: 'nowrap',
             }}
           >
             <RefreshCw size={14} className={loadingData ? 'animate-spin' : ''} />
@@ -1822,6 +1827,7 @@ export default function AdminConsole() {
               fontSize: '13px',
               fontWeight: 600,
               textDecoration: 'none',
+              whiteSpace: 'nowrap',
             }}
           >
             <ExternalLink size={14} />
@@ -1994,9 +2000,9 @@ export default function AdminConsole() {
                       textAlign: 'left',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <Icon size={17} />
-                      <span>{item.label}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: '1 1 auto' }}>
+                      <Icon size={17} style={{ flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
                     </div>
                     {item.badge !== undefined && (
                       <span
@@ -2007,6 +2013,8 @@ export default function AdminConsole() {
                           borderRadius: '999px',
                           background: isActive ? 'rgba(255,255,255,0.25)' : '#1f2937',
                           color: isActive ? '#ffffff' : '#64748b',
+                          flexShrink: 0,
+                          marginLeft: '8px',
                         }}
                       >
                         {item.badge}
@@ -2280,14 +2288,17 @@ export default function AdminConsole() {
                       <div
                         title={topTool?.title_en || 'None yet'}
                         style={{
-                          fontSize: '22px',
+                          fontSize: '20px',
                           fontWeight: 800,
                           color: '#38bdf8',
-                          margin: '10px 0 4px',
+                          margin: '8px 0 4px',
                           letterSpacing: '-0.01em',
-                          whiteSpace: 'nowrap',
+                          lineHeight: 1.3,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
                           overflow: 'hidden',
-                          textOverflow: 'ellipsis',
+                          wordBreak: 'break-word',
                         }}
                       >
                         {topTool ? topTool.title_en : 'None yet'}
@@ -2704,9 +2715,12 @@ export default function AdminConsole() {
                             fontSize: '12px',
                             color: '#64748b',
                             margin: '0 0 8px',
-                            whiteSpace: 'nowrap',
+                            lineHeight: 1.4,
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
                             overflow: 'hidden',
-                            textOverflow: 'ellipsis',
+                            wordBreak: 'break-word',
                           }}
                           title={announcement.text_en || announcement.text_bn}
                         >
@@ -2858,17 +2872,17 @@ export default function AdminConsole() {
           {/* TAB 2: HERO SECTION */}
           {activeTab === 'hero' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <div>
-                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
+                <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
                     Hero Section Manager
                   </h1>
-                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>
+                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0, wordBreak: 'break-word' }}>
                     Configure the main website header tagline, search box placeholders, and visibility.
                   </p>
                 </div>
                 {/* Active / Inactive Toggle Switch */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
                   <span style={{ fontSize: '14px', fontWeight: 600, color: hero.is_active ? '#10b981' : '#64748b' }}>
                     {hero.is_active ? 'Section Active' : 'Section Inactive'}
                   </span>
@@ -2912,7 +2926,7 @@ export default function AdminConsole() {
                 previewAnchor="#hero-section"
                 draftData={currentDraftData}
               >
-              <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '28px' }}>
+              <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px' }}>
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -2930,6 +2944,7 @@ export default function AdminConsole() {
                       onChange={(e) => setHero({ ...hero, tagline_en: e.target.value })}
                       style={{
                         width: '100%',
+                        boxSizing: 'border-box',
                         padding: '12px 16px',
                         borderRadius: '10px',
                         background: '#0b0f19',
@@ -2950,6 +2965,7 @@ export default function AdminConsole() {
                       onChange={(e) => setHero({ ...hero, tagline_bn: e.target.value })}
                       style={{
                         width: '100%',
+                        boxSizing: 'border-box',
                         padding: '12px 16px',
                         borderRadius: '10px',
                         background: '#0b0f19',
@@ -2970,6 +2986,7 @@ export default function AdminConsole() {
                       onChange={(e) => setHero({ ...hero, search_placeholder_en: e.target.value })}
                       style={{
                         width: '100%',
+                        boxSizing: 'border-box',
                         padding: '12px 16px',
                         borderRadius: '10px',
                         background: '#0b0f19',
@@ -2990,6 +3007,7 @@ export default function AdminConsole() {
                       onChange={(e) => setHero({ ...hero, search_placeholder_bn: e.target.value })}
                       style={{
                         width: '100%',
+                        boxSizing: 'border-box',
                         padding: '12px 16px',
                         borderRadius: '10px',
                         background: '#0b0f19',
@@ -3105,17 +3123,17 @@ export default function AdminConsole() {
           {/* TAB 3: ANNOUNCEMENT BANNER */}
           {activeTab === 'announcement' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <div>
-                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
+                <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
                     Announcement Banner
                   </h1>
-                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>
+                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0, wordBreak: 'break-word' }}>
                     Show a top notification banner across the website for important notices or announcements.
                   </p>
                 </div>
                 {/* Active / Inactive Toggle Switch */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
                   <span style={{ fontSize: '14px', fontWeight: 600, color: announcement.is_active ? '#10b981' : '#64748b' }}>
                     {announcement.is_active ? 'Banner Active' : 'Banner Inactive'}
                   </span>
@@ -3159,7 +3177,7 @@ export default function AdminConsole() {
                 previewAnchor="#announcement-bar"
                 draftData={currentDraftData}
               >
-              <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '28px' }}>
+              <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px' }}>
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -3167,7 +3185,7 @@ export default function AdminConsole() {
                   }}
                   style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
                 >
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '20px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
                         Banner Type
@@ -3177,6 +3195,7 @@ export default function AdminConsole() {
                         onChange={(e) => setAnnouncement({ ...announcement, type: e.target.value })}
                         style={{
                           width: '100%',
+                          boxSizing: 'border-box',
                           padding: '12px 16px',
                           borderRadius: '10px',
                           background: '#0b0f19',
@@ -3193,7 +3212,7 @@ export default function AdminConsole() {
                     </div>
 
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
                         <label style={{ fontSize: '13px', fontWeight: 700, color: '#cbd5e1' }}>
                           Display Duration (Auto-Off)
                         </label>
@@ -3203,6 +3222,7 @@ export default function AdminConsole() {
                               fontSize: '11.5px',
                               fontWeight: 700,
                               color: new Date(announcement.expires_at).getTime() > Date.now() ? '#10b981' : '#ef4444',
+                              wordBreak: 'break-word',
                             }}
                           >
                             {new Date(announcement.expires_at).getTime() > Date.now()
@@ -3214,7 +3234,7 @@ export default function AdminConsole() {
                         )}
                       </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(68px, 1fr))', gap: '6px' }}>
                         {[
                           { val: '1', label: '1 Day' },
                           { val: '3', label: '3 Days' },
@@ -3248,7 +3268,7 @@ export default function AdminConsole() {
                           );
                         })}
                       </div>
-                      <p style={{ fontSize: '11.5px', color: '#64748b', margin: '6px 0 0' }}>
+                      <p style={{ fontSize: '11.5px', color: '#64748b', margin: '6px 0 0', wordBreak: 'break-word' }}>
                         টাইম সিলেক্ট করলে নির্ধারিত সময় পর ব্যানার স্বয়ংক্রিয়ভাবে ওয়েবসাইট থেকে অফ হয়ে যাবে।
                       </p>
                     </div>
@@ -3264,6 +3284,7 @@ export default function AdminConsole() {
                       onChange={(e) => setAnnouncement({ ...announcement, text_en: e.target.value })}
                       style={{
                         width: '100%',
+                        boxSizing: 'border-box',
                         padding: '12px 16px',
                         borderRadius: '10px',
                         background: '#0b0f19',
@@ -3284,6 +3305,7 @@ export default function AdminConsole() {
                       onChange={(e) => setAnnouncement({ ...announcement, text_bn: e.target.value })}
                       style={{
                         width: '100%',
+                        boxSizing: 'border-box',
                         padding: '12px 16px',
                         borderRadius: '10px',
                         background: '#0b0f19',
@@ -3294,8 +3316,8 @@ export default function AdminConsole() {
                     />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
+                    <div style={{ minWidth: 0 }}>
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
                         Clickable Link URL (optional)
                       </label>
@@ -3306,6 +3328,7 @@ export default function AdminConsole() {
                         onChange={(e) => setAnnouncement({ ...announcement, link_url: e.target.value })}
                         style={{
                           width: '100%',
+                          boxSizing: 'border-box',
                           padding: '12px 16px',
                           borderRadius: '10px',
                           background: '#0b0f19',
@@ -3315,7 +3338,7 @@ export default function AdminConsole() {
                         }}
                       />
                     </div>
-                    <div>
+                    <div style={{ minWidth: 0 }}>
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
                         Link Button Text (optional)
                       </label>
@@ -3326,6 +3349,7 @@ export default function AdminConsole() {
                         onChange={(e) => setAnnouncement({ ...announcement, link_text: e.target.value })}
                         style={{
                           width: '100%',
+                          boxSizing: 'border-box',
                           padding: '12px 16px',
                           borderRadius: '10px',
                           background: '#0b0f19',
@@ -3419,12 +3443,12 @@ export default function AdminConsole() {
           {/* TAB 4: CATEGORIES MANAGER */}
           {activeTab === 'categories' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <div>
-                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '24px', minWidth: 0 }}>
+                <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
                     Categories Manager ({categories.length})
                   </h1>
-                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>
+                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0, wordBreak: 'break-word' }}>
                     Manage tool categories, icons, titles, and activate or deactivate individual category groups.
                   </p>
                 </div>
@@ -3598,12 +3622,12 @@ export default function AdminConsole() {
           {/* TAB 5: TOOLS MANAGER (FULL EDIT, DELETE, ACTIVE/INACTIVE) */}
           {activeTab === 'tools' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <div>
-                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '24px', minWidth: 0 }}>
+                <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
                     Tools Manager ({totalToolsCount})
                   </h1>
-                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>
+                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0, wordBreak: 'break-word' }}>
                     Control live status, edit titles & descriptions, add new tools, or remove tools from the platform.
                   </p>
                 </div>
@@ -3637,6 +3661,7 @@ export default function AdminConsole() {
                     fontSize: '14px',
                     border: 'none',
                     cursor: 'pointer',
+                    flexShrink: 0,
                   }}
                 >
                   <Plus size={16} /> Add New Tool
@@ -3668,7 +3693,7 @@ export default function AdminConsole() {
                 }}
               >
                 {/* Search */}
-                <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
+                <div style={{ position: 'relative', flex: 1, minWidth: 'min(100%, 220px)' }}>
                   <Search size={15} style={{ position: 'absolute', left: '12px', top: '12px', color: '#64748b' }} />
                   <input
                     type="text"
@@ -3683,6 +3708,7 @@ export default function AdminConsole() {
                       border: '1px solid #334155',
                       color: '#f8fafc',
                       fontSize: '13.5px',
+                      boxSizing: 'border-box',
                     }}
                   />
                 </div>
@@ -3698,6 +3724,9 @@ export default function AdminConsole() {
                     border: '1px solid #334155',
                     color: '#f8fafc',
                     fontSize: '13.5px',
+                    maxWidth: '100%',
+                    flex: '1 1 auto',
+                    boxSizing: 'border-box',
                   }}
                 >
                   <option value="all">All Categories ({tools.length})</option>
@@ -3719,6 +3748,9 @@ export default function AdminConsole() {
                     border: '1px solid #334155',
                     color: '#f8fafc',
                     fontSize: '13.5px',
+                    maxWidth: '100%',
+                    flex: '1 1 auto',
+                    boxSizing: 'border-box',
                   }}
                 >
                   <option value="all">All Statuses</option>
@@ -3904,17 +3936,17 @@ export default function AdminConsole() {
           {/* TAB 6: FOOTER & SOCIAL & WHATSAPP FAB */}
           {activeTab === 'footer' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
-                <div>
-                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px', minWidth: 0 }}>
+                <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
                     Footer & Social Links
                   </h1>
-                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>
+                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0, wordBreak: 'break-word' }}>
                     Granular element controls for floating WhatsApp widget, social profile icons, and footer copyright text.
                   </p>
                 </div>
                 {/* Master Active / Inactive Toggle Switch */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
                   <span style={{ fontSize: '14px', fontWeight: 600, color: footerSocial.is_active ? '#10b981' : '#64748b' }}>
                     {footerSocial.is_active ? 'Master Footer Active' : 'Footer Disabled'}
                   </span>
@@ -3960,13 +3992,13 @@ export default function AdminConsole() {
               >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {/* Element 1: WhatsApp Floating Action Button */}
-                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '24px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', paddingBottom: '14px', borderBottom: '1px solid #1f2937' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '22px' }}>💬</span>
-                      <div>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px' }}>Floating WhatsApp Chat Widget</div>
-                        <div style={{ fontSize: '12.5px', color: '#94a3b8' }}>Pulsing action button in the bottom right corner</div>
+                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', paddingBottom: '14px', borderBottom: '1px solid #1f2937', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: '1 1 auto' }}>
+                      <span style={{ fontSize: '22px', flexShrink: 0 }}>💬</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px', wordBreak: 'break-word' }}>Floating WhatsApp Chat Widget</div>
+                        <div style={{ fontSize: '12.5px', color: '#94a3b8', wordBreak: 'break-word' }}>Pulsing action button in the bottom right corner</div>
                       </div>
                     </div>
                     <button
@@ -3982,13 +4014,14 @@ export default function AdminConsole() {
                         background: footerSocial.whatsapp_active ? '#10b981' : '#374151',
                         color: '#ffffff',
                         transition: 'background 0.2s',
+                        flexShrink: 0,
                       }}
                     >
                       {footerSocial.whatsapp_active ? 'Active on Site' : 'Inactive'}
                     </button>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
                         WhatsApp Phone Number (with Country Code)
@@ -4006,6 +4039,7 @@ export default function AdminConsole() {
                           border: '1px solid #334155',
                           color: '#f8fafc',
                           fontSize: '13.5px',
+                          boxSizing: 'border-box',
                         }}
                       />
                     </div>
@@ -4025,6 +4059,7 @@ export default function AdminConsole() {
                           border: '1px solid #334155',
                           color: '#f8fafc',
                           fontSize: '13.5px',
+                          boxSizing: 'border-box',
                         }}
                       />
                     </div>
@@ -4044,6 +4079,7 @@ export default function AdminConsole() {
                           border: '1px solid #334155',
                           color: '#f8fafc',
                           fontSize: '13.5px',
+                          boxSizing: 'border-box',
                         }}
                       />
                     </div>
@@ -4051,13 +4087,13 @@ export default function AdminConsole() {
                 </div>
 
                 {/* Element 2: Facebook Profile Link */}
-                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '24px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '20px', color: '#3b82f6' }}>🌐</span>
-                      <div>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px' }}>Facebook Link</div>
-                        <div style={{ fontSize: '12.5px', color: '#94a3b8' }}>Footer icon link to Facebook profile or page</div>
+                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: '1 1 auto' }}>
+                      <span style={{ fontSize: '20px', color: '#3b82f6', flexShrink: 0 }}>🌐</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px', wordBreak: 'break-word' }}>Facebook Link</div>
+                        <div style={{ fontSize: '12.5px', color: '#94a3b8', wordBreak: 'break-word' }}>Footer icon link to Facebook profile or page</div>
                       </div>
                     </div>
                     <button
@@ -4072,6 +4108,7 @@ export default function AdminConsole() {
                         cursor: 'pointer',
                         background: footerSocial.facebook_active ? '#10b981' : '#374151',
                         color: '#ffffff',
+                        flexShrink: 0,
                       }}
                     >
                       {footerSocial.facebook_active ? 'Active' : 'Inactive'}
@@ -4094,19 +4131,20 @@ export default function AdminConsole() {
                         border: '1px solid #334155',
                         color: '#f8fafc',
                         fontSize: '13.5px',
+                        boxSizing: 'border-box',
                       }}
                     />
                   </div>
                 </div>
 
                 {/* Element 3: LinkedIn Profile Link */}
-                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '24px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '20px', color: '#0ea5e9' }}>💼</span>
-                      <div>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px' }}>LinkedIn Link</div>
-                        <div style={{ fontSize: '12.5px', color: '#94a3b8' }}>Footer icon link to LinkedIn professional profile</div>
+                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: '1 1 auto' }}>
+                      <span style={{ fontSize: '20px', color: '#0ea5e9', flexShrink: 0 }}>💼</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px', wordBreak: 'break-word' }}>LinkedIn Link</div>
+                        <div style={{ fontSize: '12.5px', color: '#94a3b8', wordBreak: 'break-word' }}>Footer icon link to LinkedIn professional profile</div>
                       </div>
                     </div>
                     <button
@@ -4121,6 +4159,7 @@ export default function AdminConsole() {
                         cursor: 'pointer',
                         background: footerSocial.linkedin_active ? '#10b981' : '#374151',
                         color: '#ffffff',
+                        flexShrink: 0,
                       }}
                     >
                       {footerSocial.linkedin_active ? 'Active' : 'Inactive'}
@@ -4143,19 +4182,20 @@ export default function AdminConsole() {
                         border: '1px solid #334155',
                         color: '#f8fafc',
                         fontSize: '13.5px',
+                        boxSizing: 'border-box',
                       }}
                     />
                   </div>
                 </div>
 
                 {/* Element 4: GitHub Link */}
-                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '24px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '20px', color: '#cbd5e1' }}>🐙</span>
-                      <div>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px' }}>GitHub Link</div>
-                        <div style={{ fontSize: '12.5px', color: '#94a3b8' }}>Footer icon link to open-source repository</div>
+                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: '1 1 auto' }}>
+                      <span style={{ fontSize: '20px', color: '#cbd5e1', flexShrink: 0 }}>🐙</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px', wordBreak: 'break-word' }}>GitHub Link</div>
+                        <div style={{ fontSize: '12.5px', color: '#94a3b8', wordBreak: 'break-word' }}>Footer icon link to open-source repository</div>
                       </div>
                     </div>
                     <button
@@ -4170,6 +4210,7 @@ export default function AdminConsole() {
                         cursor: 'pointer',
                         background: footerSocial.github_active ? '#10b981' : '#374151',
                         color: '#ffffff',
+                        flexShrink: 0,
                       }}
                     >
                       {footerSocial.github_active ? 'Active' : 'Inactive'}
@@ -4192,18 +4233,19 @@ export default function AdminConsole() {
                         border: '1px solid #334155',
                         color: '#f8fafc',
                         fontSize: '13.5px',
+                        boxSizing: 'border-box',
                       }}
                     />
                   </div>
                 </div>
 
                 {/* Element 5: Copyright & Privacy Processing Notice */}
-                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '24px' }}>
+                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
                   <div style={{ marginBottom: '16px' }}>
-                    <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px' }}>Copyright & Processing Notice</div>
-                    <div style={{ fontSize: '12.5px', color: '#94a3b8' }}>Text displayed at the very bottom of the website</div>
+                    <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px', wordBreak: 'break-word' }}>Copyright & Processing Notice</div>
+                    <div style={{ fontSize: '12.5px', color: '#94a3b8', wordBreak: 'break-word' }}>Text displayed at the very bottom of the website</div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
                         English Notice Text
@@ -4220,6 +4262,7 @@ export default function AdminConsole() {
                           border: '1px solid #334155',
                           color: '#f8fafc',
                           fontSize: '13.5px',
+                          boxSizing: 'border-box',
                         }}
                       />
                     </div>
@@ -4239,6 +4282,7 @@ export default function AdminConsole() {
                           border: '1px solid #334155',
                           color: '#f8fafc',
                           fontSize: '13.5px',
+                          boxSizing: 'border-box',
                         }}
                       />
                     </div>
@@ -4263,6 +4307,8 @@ export default function AdminConsole() {
                       alignItems: 'center',
                       gap: '8px',
                       boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
+                      whiteSpace: 'normal',
+                      wordBreak: 'break-word',
                     }}
                   >
                     <Check size={16} /> Save All Footer Settings
@@ -4364,17 +4410,17 @@ export default function AdminConsole() {
           {/* TAB 7: CREATOR PROFILE */}
           {activeTab === 'creator' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
-                <div>
-                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px', minWidth: 0 }}>
+                <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
                     Creator Profile Manager
                   </h1>
-                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>
+                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0, wordBreak: 'break-word' }}>
                     Granular element controls for the creator identity, direct email contact, social links, and bio descriptions.
                   </p>
                 </div>
                 {/* Master Active / Inactive Toggle Switch */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
                   <span style={{ fontSize: '14px', fontWeight: 600, color: creatorAbout.is_active ? '#10b981' : '#64748b' }}>
                     {creatorAbout.is_active ? 'Creator Card Active' : 'Creator Card Disabled'}
                   </span>
@@ -4420,10 +4466,10 @@ export default function AdminConsole() {
               >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {/* Element 0: Creator Profile Photo Box (v44) */}
-                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '24px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(160px, 180px) 1fr', gap: '24px', alignItems: 'start' }}>
+                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '20px', alignItems: 'start' }}>
                     {/* Left: Square preview tile with reposition icon overlay */}
-                    <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1', borderRadius: '16px', overflow: 'hidden', border: '2px solid #334155', background: '#090d16' }}>
+                    <div style={{ position: 'relative', width: '100%', maxWidth: '200px', aspectRatio: '1/1', borderRadius: '16px', overflow: 'hidden', border: '2px solid #334155', background: '#090d16' }}>
                       <img
                         src={creatorAbout.photo_url || '/assets/creator.jpg'}
                         alt="Creator Photo Preview"
@@ -4466,10 +4512,10 @@ export default function AdminConsole() {
                     </div>
 
                     {/* Right: Controls */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', minWidth: 0 }}>
                       <div>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px' }}>Creator Profile Photo</div>
-                        <div style={{ fontSize: '12.5px', color: '#94a3b8' }}>Custom profile photo displayed in the About modal and public creator card.</div>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px', wordBreak: 'break-word' }}>Creator Profile Photo</div>
+                        <div style={{ fontSize: '12.5px', color: '#94a3b8', wordBreak: 'break-word' }}>Custom profile photo displayed in the About modal and public creator card.</div>
                       </div>
 
                       {/* Buttons: UPLOAD FROM DEVICE & RESET TO DEFAULT */}
@@ -4488,6 +4534,7 @@ export default function AdminConsole() {
                             cursor: 'pointer',
                             border: 'none',
                             transition: 'background 0.15s ease',
+                            flexShrink: 0,
                           }}
                         >
                           <Upload size={14} /> UPLOAD FROM DEVICE
@@ -4514,6 +4561,7 @@ export default function AdminConsole() {
                             fontWeight: 700,
                             cursor: 'pointer',
                             border: '1px solid #334155',
+                            flexShrink: 0,
                           }}
                         >
                           <Move size={14} /> Reposition
@@ -4534,6 +4582,7 @@ export default function AdminConsole() {
                             fontWeight: 700,
                             cursor: 'pointer',
                             border: '1px solid #1f2937',
+                            flexShrink: 0,
                           }}
                         >
                           <RotateCcw size={13} /> RESET TO DEFAULT
@@ -4559,6 +4608,7 @@ export default function AdminConsole() {
                             color: '#f8fafc',
                             fontSize: '13px',
                             fontFamily: 'monospace',
+                            boxSizing: 'border-box',
                           }}
                         />
                       </div>
@@ -4566,7 +4616,7 @@ export default function AdminConsole() {
                       {/* Limits and Current lines */}
                       <div style={{ fontSize: '11.5px', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                         <div>Max 10MB • JPG, PNG, WebP, SVG, GIF</div>
-                        <div style={{ wordBreak: 'break-all' }}>
+                        <div style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
                           <span style={{ color: '#94a3b8', fontWeight: 600 }}>Current: </span>
                           {creatorAbout.photo_url
                             ? (creatorAbout.photo_url.startsWith('data:')
@@ -4583,12 +4633,12 @@ export default function AdminConsole() {
                 </div>
 
                 {/* Element 1: Creator Identity & Titles */}
-                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '24px' }}>
+                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
                   <div style={{ marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #1f2937' }}>
-                    <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px' }}>Creator Identity & Titles</div>
-                    <div style={{ fontSize: '12.5px', color: '#94a3b8' }}>Displayed in the "About ToolGhor" modal and creator profile</div>
+                    <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px', wordBreak: 'break-word' }}>Creator Identity & Titles</div>
+                    <div style={{ fontSize: '12.5px', color: '#94a3b8', wordBreak: 'break-word' }}>Displayed in the "About ToolGhor" modal and creator profile</div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
                         Creator Full Name
@@ -4605,6 +4655,7 @@ export default function AdminConsole() {
                           border: '1px solid #334155',
                           color: '#f8fafc',
                           fontSize: '13.5px',
+                          boxSizing: 'border-box',
                         }}
                       />
                     </div>
@@ -4624,6 +4675,7 @@ export default function AdminConsole() {
                           border: '1px solid #334155',
                           color: '#f8fafc',
                           fontSize: '13.5px',
+                          boxSizing: 'border-box',
                         }}
                       />
                     </div>
@@ -4643,6 +4695,7 @@ export default function AdminConsole() {
                           border: '1px solid #334155',
                           color: '#f8fafc',
                           fontSize: '13.5px',
+                          boxSizing: 'border-box',
                         }}
                       />
                     </div>
@@ -4650,13 +4703,13 @@ export default function AdminConsole() {
                 </div>
 
                 {/* Element 2: Direct Email Contact Button */}
-                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '24px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '20px', color: '#10b981' }}>✉️</span>
-                      <div>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px' }}>Direct Email Contact</div>
-                        <div style={{ fontSize: '12.5px', color: '#94a3b8' }}>Contact button inside the creator card</div>
+                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: '1 1 auto' }}>
+                      <span style={{ fontSize: '20px', color: '#10b981', flexShrink: 0 }}>✉️</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px', wordBreak: 'break-word' }}>Direct Email Contact</div>
+                        <div style={{ fontSize: '12.5px', color: '#94a3b8', wordBreak: 'break-word' }}>Contact button inside the creator card</div>
                       </div>
                     </div>
                     <button
@@ -4671,6 +4724,7 @@ export default function AdminConsole() {
                         cursor: 'pointer',
                         background: creatorAbout.email_active ? '#10b981' : '#374151',
                         color: '#ffffff',
+                        flexShrink: 0,
                       }}
                     >
                       {creatorAbout.email_active ? 'Active' : 'Inactive'}
@@ -4693,19 +4747,20 @@ export default function AdminConsole() {
                         border: '1px solid #334155',
                         color: '#f8fafc',
                         fontSize: '13.5px',
+                        boxSizing: 'border-box',
                       }}
                     />
                   </div>
                 </div>
 
                 {/* Element 3: Social Media Connections (Facebook & LinkedIn) */}
-                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '24px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '20px', color: '#38bdf8' }}>🔗</span>
-                      <div>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px' }}>Creator Social Profiles</div>
-                        <div style={{ fontSize: '12.5px', color: '#94a3b8' }}>Facebook and LinkedIn buttons inside the creator card</div>
+                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: '1 1 auto' }}>
+                      <span style={{ fontSize: '20px', color: '#38bdf8', flexShrink: 0 }}>🔗</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px', wordBreak: 'break-word' }}>Creator Social Profiles</div>
+                        <div style={{ fontSize: '12.5px', color: '#94a3b8', wordBreak: 'break-word' }}>Facebook and LinkedIn buttons inside the creator card</div>
                       </div>
                     </div>
                     <button
@@ -4720,12 +4775,13 @@ export default function AdminConsole() {
                         cursor: 'pointer',
                         background: creatorAbout.social_active ? '#10b981' : '#374151',
                         color: '#ffffff',
+                        flexShrink: 0,
                       }}
                     >
                       {creatorAbout.social_active ? 'Active' : 'Inactive'}
                     </button>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
                         Facebook Profile URL
@@ -4742,6 +4798,7 @@ export default function AdminConsole() {
                           border: '1px solid #334155',
                           color: '#f8fafc',
                           fontSize: '13.5px',
+                          boxSizing: 'border-box',
                         }}
                       />
                     </div>
@@ -4762,6 +4819,7 @@ export default function AdminConsole() {
                           border: '1px solid #334155',
                           color: '#f8fafc',
                           fontSize: '13.5px',
+                          boxSizing: 'border-box',
                         }}
                       />
                     </div>
@@ -4769,12 +4827,12 @@ export default function AdminConsole() {
                 </div>
 
                 {/* Element 4: Creator Bio Descriptions */}
-                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '24px' }}>
+                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
                   <div style={{ marginBottom: '16px' }}>
-                    <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px' }}>Bio & Platform Mission</div>
-                    <div style={{ fontSize: '12.5px', color: '#94a3b8' }}>Short mission statement shown in the About dialog</div>
+                    <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px', wordBreak: 'break-word' }}>Bio & Platform Mission</div>
+                    <div style={{ fontSize: '12.5px', color: '#94a3b8', wordBreak: 'break-word' }}>Short mission statement shown in the About dialog</div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
                         English Bio Description
@@ -4791,6 +4849,7 @@ export default function AdminConsole() {
                           border: '1px solid #334155',
                           color: '#f8fafc',
                           fontSize: '13.5px',
+                          boxSizing: 'border-box',
                         }}
                       />
                     </div>
@@ -4810,6 +4869,7 @@ export default function AdminConsole() {
                           border: '1px solid #334155',
                           color: '#f8fafc',
                           fontSize: '13.5px',
+                          boxSizing: 'border-box',
                         }}
                       />
                     </div>
@@ -4834,6 +4894,8 @@ export default function AdminConsole() {
                       alignItems: 'center',
                       gap: '8px',
                       boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
+                      whiteSpace: 'normal',
+                      wordBreak: 'break-word',
                     }}
                   >
                     <Check size={16} /> Save Creator Profile Settings
@@ -4961,14 +5023,15 @@ export default function AdminConsole() {
                       background: '#0f172a',
                       border: '1px solid #334155',
                       borderRadius: '20px',
-                      padding: '24px',
+                      padding: '20px 16px',
                       maxWidth: '420px',
                       width: '100%',
                       boxShadow: '0 25px 50px -12px rgba(0,0,0,0.8)',
+                      boxSizing: 'border-box',
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#f8fafc' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#f8fafc', wordBreak: 'break-word' }}>
                         Reposition Profile Photo
                       </h3>
                       <button
@@ -5060,13 +5123,13 @@ export default function AdminConsole() {
                       </div>
                     </div>
 
-                    <div style={{ fontSize: '11.5px', color: '#94a3b8', textAlign: 'center', margin: '8px 0 16px' }}>
+                    <div style={{ fontSize: '11.5px', color: '#94a3b8', textAlign: 'center', margin: '8px 0 16px', wordBreak: 'break-word' }}>
                       Drag image to pan focus • Current Position: <span style={{ color: '#10b981', fontFamily: 'monospace' }}>{repositionPan.x}% {repositionPan.y}%</span>
                     </div>
 
                     {/* Zoom Slider */}
                     <div style={{ marginBottom: '20px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#cbd5e1', marginBottom: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#cbd5e1', marginBottom: '6px' }}>
                         <span>Zoom Scale</span>
                         <span style={{ fontFamily: 'monospace', color: '#38bdf8' }}>{repositionZoom.toFixed(2)}x</span>
                       </div>
@@ -5082,7 +5145,7 @@ export default function AdminConsole() {
                     </div>
 
                     {/* Modal Buttons */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                       <button
                         type="button"
                         onClick={() => {
@@ -5101,7 +5164,7 @@ export default function AdminConsole() {
                       >
                         Reset Position
                       </button>
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <button
                           type="button"
                           onClick={() => setIsRepositionOpen(false)}
@@ -5150,17 +5213,17 @@ export default function AdminConsole() {
           {/* TAB 8: API INTEGRATIONS */}
           {activeTab === 'apis' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
-                <div>
-                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px', minWidth: 0 }}>
+                <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
                     API Integrations & Keys
                   </h1>
-                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>
+                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0, wordBreak: 'break-word' }}>
                     Control each individual cloud API provider with independent active toggles and encrypted key storage.
                   </p>
                 </div>
                 {/* Master Active / Inactive Toggle Switch */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
                   <span style={{ fontSize: '14px', fontWeight: 600, color: apiKeys.is_active ? '#10b981' : '#64748b' }}>
                     {apiKeys.is_active ? 'All APIs Enabled' : 'APIs Globally Paused'}
                   </span>
@@ -5266,11 +5329,11 @@ export default function AdminConsole() {
                   const isFocused = Boolean(focusedKey[item.key]);
                   const displayValue = isRevealed || isFocused ? rawVal : formatMaskedKey(rawVal);
                   return (
-                    <div key={item.key} style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '24px' }}>
+                    <div key={item.key} style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px' }}>{item.label}</span>
+                        <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px', wordBreak: 'break-word' }}>{item.label}</span>
                             <span
                               style={{
                                 fontSize: '11px',
@@ -5280,15 +5343,16 @@ export default function AdminConsole() {
                                 background: isActive && hasKey ? 'rgba(16,185,129,0.15)' : 'rgba(148,163,184,0.12)',
                                 color: isActive && hasKey ? '#34d399' : '#94a3b8',
                                 border: `1px solid ${isActive && hasKey ? 'rgba(16,185,129,0.3)' : 'rgba(148,163,184,0.2)'}`,
+                                whiteSpace: 'nowrap',
                               }}
                             >
                               {isActive && hasKey ? 'Connected & Ready' : !isActive ? 'Disabled' : 'Key Not Set'}
                             </span>
                           </div>
-                          <div style={{ fontSize: '12.5px', color: '#94a3b8', marginTop: '3px' }}>{item.desc}</div>
+                          <div style={{ fontSize: '12.5px', color: '#94a3b8', marginTop: '3px', wordBreak: 'break-word' }}>{item.desc}</div>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}>
                           {/* Minimal Test Button */}
                           <button
                             type="button"
@@ -5375,6 +5439,7 @@ export default function AdminConsole() {
                                   color: '#f8fafc',
                                   fontSize: '13.5px',
                                   fontFamily: 'monospace',
+                                  boxSizing: 'border-box',
                                 }}
                               />
                               <button
@@ -5435,6 +5500,7 @@ export default function AdminConsole() {
                             color: '#f8fafc',
                             fontSize: '13.5px',
                             fontFamily: 'monospace',
+                            boxSizing: 'border-box',
                           }}
                         />
                         <button
@@ -5469,10 +5535,12 @@ export default function AdminConsole() {
                             background: testResult[item.provider]!.valid ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
                             border: `1px solid ${testResult[item.provider]!.valid ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
                             color: testResult[item.provider]!.valid ? '#34d399' : '#f87171',
+                            wordBreak: 'break-word',
+                            overflowWrap: 'anywhere',
                           }}
                         >
-                          {testResult[item.provider]!.valid ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          {testResult[item.provider]!.valid ? <CheckCircle2 size={16} style={{ flexShrink: 0 }} /> : <AlertTriangle size={16} style={{ flexShrink: 0 }} />}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                             <span style={{ fontWeight: 600 }}>{testResult[item.provider]!.message}</span>
                           </div>
                         </div>
@@ -5499,9 +5567,11 @@ export default function AdminConsole() {
                       alignItems: 'center',
                       gap: '8px',
                       boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
+                      whiteSpace: 'normal',
+                      wordBreak: 'break-word',
                     }}
                   >
-                    <Check size={16} /> Save All API Credentials
+                    <Check size={16} /> Save All API Integrations
                   </button>
                 </div>
               </div>
@@ -5520,18 +5590,19 @@ export default function AdminConsole() {
                   marginBottom: '24px',
                   flexWrap: 'wrap',
                   gap: '14px',
+                  minWidth: 0,
                 }}
               >
-                <div>
-                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc' }}>
+                <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
                     Terms & Policies Manager
                   </h1>
-                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>
+                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0, wordBreak: 'break-word' }}>
                     Every policy section lives in its OWN separate database table. Each section is edited and saved independently without affecting other sections.
                   </p>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flexShrink: 0 }}>
                   <Link
                     href="/terms"
                     target="_blank"
@@ -5758,8 +5829,9 @@ export default function AdminConsole() {
                         background: '#111827',
                         border: '1px solid #1f2937',
                         borderRadius: '16px',
-                        padding: '24px',
+                        padding: '20px 16px',
                         boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                        boxSizing: 'border-box',
                       }}
                     >
                       {/* Card Header */}
@@ -5775,7 +5847,7 @@ export default function AdminConsole() {
                           borderBottom: '1px solid #1f2937',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: '1 1 auto', flexWrap: 'wrap' }}>
                           <span
                             style={{
                               background: '#1e293b',
@@ -5784,16 +5856,18 @@ export default function AdminConsole() {
                               borderRadius: '8px',
                               fontSize: '12px',
                               fontWeight: 700,
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0,
                             }}
                           >
                             Section {index + 1}
                           </span>
-                          <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: '#f8fafc' }}>
+                          <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: '#f8fafc', wordBreak: 'break-word' }}>
                             {sec.title_en} ({sec.title_bn})
                           </h2>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
                           <span
                             style={{
                               fontSize: '11.5px',
@@ -5803,6 +5877,7 @@ export default function AdminConsole() {
                               padding: '3px 8px',
                               borderRadius: '6px',
                               color: '#94a3b8',
+                              whiteSpace: 'nowrap',
                             }}
                           >
                             Table: {item.table_name}
@@ -5813,7 +5888,7 @@ export default function AdminConsole() {
                       {/* Card Form */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                         {/* Titles Row */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '16px' }}>
                           <div>
                             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#e2e8f0', marginBottom: '6px' }}>
                               Title (English)
@@ -5835,6 +5910,7 @@ export default function AdminConsole() {
                                 color: '#f8fafc',
                                 padding: '10px 14px',
                                 fontSize: '14px',
+                                boxSizing: 'border-box',
                               }}
                             />
                           </div>
@@ -5860,15 +5936,16 @@ export default function AdminConsole() {
                                 color: '#f8fafc',
                                 padding: '10px 14px',
                                 fontSize: '14px',
+                                boxSizing: 'border-box',
                               }}
                             />
                           </div>
                         </div>
 
                         {/* Bodies Row (Raw Markdown) */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '16px' }}>
                           <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '4px' }}>
                               <label style={{ fontSize: '13px', fontWeight: 600, color: '#e2e8f0' }}>
                                 Body (English — Markdown)
                               </label>
@@ -5894,12 +5971,13 @@ export default function AdminConsole() {
                                 fontFamily: 'monospace',
                                 lineHeight: 1.6,
                                 resize: 'vertical',
+                                boxSizing: 'border-box',
                               }}
                             />
                           </div>
 
                           <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '4px' }}>
                               <label style={{ fontSize: '13px', fontWeight: 600, color: '#e2e8f0' }}>
                                 Body (বাংলা — Markdown)
                               </label>
@@ -5925,6 +6003,7 @@ export default function AdminConsole() {
                                 fontFamily: 'monospace',
                                 lineHeight: 1.6,
                                 resize: 'vertical',
+                                boxSizing: 'border-box',
                               }}
                             />
                           </div>
@@ -5943,7 +6022,7 @@ export default function AdminConsole() {
                             borderTop: '1px solid #1f2937',
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', minWidth: 0 }}>
                             <span style={{ fontSize: '12px', color: '#64748b' }}>
                               Isolated saving: writes only to <code>{item.table_name}</code>
                             </span>
@@ -5978,6 +6057,8 @@ export default function AdminConsole() {
                               opacity: isSaving ? 0.7 : 1,
                               transition: 'all 0.15s ease',
                               boxShadow: '0 4px 12px rgba(16,185,129,0.25)',
+                              whiteSpace: 'normal',
+                              wordBreak: 'break-word',
                             }}
                           >
                             {isSaving ? (
@@ -6248,12 +6329,12 @@ export default function AdminConsole() {
           {/* TAB 9: USAGE ANALYTICS */}
           {activeTab === 'analytics' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
-                <div>
-                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px', minWidth: 0 }}>
+                <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
                     Usage Analytics & Launch Counts
                   </h1>
-                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>
+                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0, wordBreak: 'break-word' }}>
                     Real-time Postgres database counter tracking every visitor launch with progress visualizers.
                   </p>
                 </div>
@@ -6273,6 +6354,7 @@ export default function AdminConsole() {
                     fontSize: '13.5px',
                     fontWeight: 700,
                     cursor: 'pointer',
+                    flexShrink: 0,
                   }}
                 >
                   <RefreshCw size={15} className={loadingData ? 'animate-spin' : ''} />
@@ -6313,8 +6395,8 @@ export default function AdminConsole() {
                           Most Popular Tool
                         </span>
                         <div style={{ fontSize: '20px', fontWeight: 800, color: '#fbbf24', margin: '10px 0 2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span>🏆</span>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{topTool ? topTool.title_en : 'None'}</span>
+                          <span style={{ flexShrink: 0 }}>🏆</span>
+                          <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word', lineHeight: 1.3 }}>{topTool ? topTool.title_en : 'None'}</span>
                         </div>
                         <span style={{ fontSize: '12px', color: '#64748b' }}>{topTool ? `${topTool.count.toLocaleString()} launches` : '0 launches'}</span>
                       </div>
@@ -6360,11 +6442,11 @@ export default function AdminConsole() {
                                 <td style={{ padding: '14px 18px', fontWeight: 800 }}>
                                   {idx === 0 ? '🥇 #1' : idx === 1 ? '🥈 #2' : idx === 2 ? '🥉 #3' : <span style={{ color: '#64748b' }}>#{idx + 1}</span>}
                                 </td>
-                                <td style={{ padding: '14px 18px', fontWeight: 700, color: '#f8fafc' }}>
+                                <td style={{ padding: '14px 18px', fontWeight: 700, color: '#f8fafc', wordBreak: 'break-word' }}>
                                   {t.title_en}
-                                  <div style={{ fontSize: '11.5px', fontFamily: 'monospace', color: '#64748b', fontWeight: 500 }}>/{t.slug}</div>
+                                  <div style={{ fontSize: '11.5px', fontFamily: 'monospace', color: '#64748b', fontWeight: 500, wordBreak: 'break-all', overflowWrap: 'anywhere' }}>/{t.slug}</div>
                                 </td>
-                                <td style={{ padding: '14px 18px', color: '#94a3b8' }}>
+                                <td style={{ padding: '14px 18px', color: '#94a3b8', wordBreak: 'break-word' }}>
                                   {categories.find((c) => c.slug === t.category_slug)?.title_en || t.category_slug}
                                 </td>
                                 <td style={{ padding: '14px 18px' }}>
@@ -6423,12 +6505,12 @@ export default function AdminConsole() {
           {/* TAB 10: ADMIN PROFILE & SECURITY */}
           {activeTab === 'profile' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <div>
-                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px', minWidth: 0 }}>
+                <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
                     Admin Profile & Security
                   </h1>
-                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>
+                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0, wordBreak: 'break-word' }}>
                     Manage your administrator credentials, recovery email/phone, and securely change your login passcode.
                   </p>
                 </div>
@@ -6448,9 +6530,11 @@ export default function AdminConsole() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere',
                   }}
                 >
-                  {profileMsg.type === 'success' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+                  {profileMsg.type === 'success' ? <CheckCircle2 size={18} style={{ flexShrink: 0 }} /> : <AlertTriangle size={18} style={{ flexShrink: 0 }} />}
                   <span>{profileMsg.text}</span>
                 </div>
               )}
@@ -6464,17 +6548,17 @@ export default function AdminConsole() {
                   isExpanded={openSectionId === 'profile-info-card'}
                   onToggle={() => toggleSection('profile-info-card')}
                 >
-                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '28px' }}>
+                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
                   <div style={{ marginBottom: '20px', borderBottom: '1px solid #1f2937', paddingBottom: '14px' }}>
-                    <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <User size={18} color="#10b981" /> Administrator Details
+                    <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', wordBreak: 'break-word' }}>
+                      <User size={18} color="#10b981" style={{ flexShrink: 0 }} /> Administrator Details
                     </div>
-                    <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px' }}>
+                    <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px', wordBreak: 'break-word' }}>
                       These details are used for administrator notifications and one-time password (OTP) verification.
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '18px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
                         Admin Username
@@ -6492,6 +6576,7 @@ export default function AdminConsole() {
                           color: '#94a3b8',
                           fontSize: '14px',
                           cursor: 'not-allowed',
+                          boxSizing: 'border-box',
                         }}
                       />
                     </div>
@@ -6513,11 +6598,12 @@ export default function AdminConsole() {
                           border: '1px solid #334155',
                           color: '#f8fafc',
                           fontSize: '14px',
+                          boxSizing: 'border-box',
                         }}
                       />
                     </div>
 
-                    <div style={{ gridColumn: 'span 2' }}>
+                    <div style={{ gridColumn: '1 / -1' }}>
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
                         Admin Mobile Phone (for SMS OTP)
                       </label>
@@ -6534,6 +6620,7 @@ export default function AdminConsole() {
                           border: '1px solid #334155',
                           color: '#f8fafc',
                           fontSize: '14px',
+                          boxSizing: 'border-box',
                         }}
                       />
                     </div>
@@ -6550,12 +6637,12 @@ export default function AdminConsole() {
                   isExpanded={openSectionId === 'profile-password-card'}
                   onToggle={() => toggleSection('profile-password-card')}
                 >
-                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '28px' }}>
+                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
                   <div style={{ marginBottom: '20px', borderBottom: '1px solid #1f2937', paddingBottom: '14px' }}>
-                    <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Lock size={18} color="#10b981" /> Change Admin Passcode
+                    <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', wordBreak: 'break-word' }}>
+                      <Lock size={18} color="#10b981" style={{ flexShrink: 0 }} /> Change Admin Passcode
                     </div>
-                    <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px' }}>
+                    <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px', wordBreak: 'break-word' }}>
                       To set a new password, enter your current password followed by your desired new passcode.
                     </div>
                   </div>
@@ -6579,6 +6666,7 @@ export default function AdminConsole() {
                           border: '1px solid #334155',
                           color: '#f8fafc',
                           fontSize: '14px',
+                          boxSizing: 'border-box',
                         }}
                       />
                     </div>
@@ -6600,6 +6688,7 @@ export default function AdminConsole() {
                           border: '1px solid #334155',
                           color: '#f8fafc',
                           fontSize: '14px',
+                          boxSizing: 'border-box',
                         }}
                       />
                     </div>
@@ -6621,6 +6710,7 @@ export default function AdminConsole() {
                           border: '1px solid #334155',
                           color: '#f8fafc',
                           fontSize: '14px',
+                          boxSizing: 'border-box',
                         }}
                       />
                     </div>
@@ -6643,6 +6733,8 @@ export default function AdminConsole() {
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '8px',
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word',
                       }}
                     >
                       {profileSaving ? (
@@ -6673,7 +6765,8 @@ export default function AdminConsole() {
             zIndex: 200,
             display: 'grid',
             placeItems: 'center',
-            padding: '20px',
+            padding: '16px',
+            boxSizing: 'border-box',
           }}
         >
           <div
@@ -6683,18 +6776,19 @@ export default function AdminConsole() {
               borderRadius: '20px',
               width: '100%',
               maxWidth: '600px',
-              padding: '28px',
+              padding: '20px 16px',
               boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+              boxSizing: 'border-box',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#f8fafc' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '8px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#f8fafc', wordBreak: 'break-word' }}>
                 {toolModal.mode === 'create' ? 'Add New Tool' : `Edit Tool: ${toolModal.data.title_en}`}
               </h2>
               <button
                 type="button"
                 onClick={() => setToolModal({ isOpen: false, mode: 'create', data: {} })}
-                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
               >
                 <X size={20} />
               </button>
@@ -6720,6 +6814,7 @@ export default function AdminConsole() {
                     color: '#f8fafc',
                     fontSize: '13.5px',
                     fontFamily: 'monospace',
+                    boxSizing: 'border-box',
                   }}
                 />
               </div>
@@ -6739,6 +6834,7 @@ export default function AdminConsole() {
                     border: '1px solid #334155',
                     color: '#f8fafc',
                     fontSize: '13.5px',
+                    boxSizing: 'border-box',
                   }}
                 >
                   {categories.map((c) => (
@@ -6749,7 +6845,7 @@ export default function AdminConsole() {
                 </select>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '4px', color: '#cbd5e1' }}>
                     Title (English)
@@ -6766,6 +6862,7 @@ export default function AdminConsole() {
                       border: '1px solid #334155',
                       color: '#f8fafc',
                       fontSize: '13.5px',
+                      boxSizing: 'border-box',
                     }}
                   />
                 </div>
@@ -6786,6 +6883,7 @@ export default function AdminConsole() {
                       border: '1px solid #334155',
                       color: '#f8fafc',
                       fontSize: '13.5px',
+                      boxSizing: 'border-box',
                     }}
                   />
                 </div>
@@ -6808,6 +6906,7 @@ export default function AdminConsole() {
                     border: '1px solid #334155',
                     color: '#f8fafc',
                     fontSize: '13.5px',
+                    boxSizing: 'border-box',
                   }}
                 />
               </div>
@@ -6828,6 +6927,7 @@ export default function AdminConsole() {
                     border: '1px solid #334155',
                     color: '#f8fafc',
                     fontSize: '13.5px',
+                    boxSizing: 'border-box',
                   }}
                 />
               </div>
@@ -6848,25 +6948,26 @@ export default function AdminConsole() {
                     border: '1px solid #334155',
                     color: '#f8fafc',
                     fontSize: '13.5px',
+                    boxSizing: 'border-box',
                   }}
                 />
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px', flexWrap: 'wrap' }}>
                 <input
                   type="checkbox"
                   id="tool_active_check"
                   checked={toolModal.data.is_active !== false}
                   onChange={(e) => setToolModal((p) => ({ ...p, data: { ...p.data, is_active: e.target.checked } }))}
-                  style={{ width: '18px', height: '18px', accentColor: '#10b981' }}
+                  style={{ width: '18px', height: '18px', accentColor: '#10b981', flexShrink: 0 }}
                 />
-                <label htmlFor="tool_active_check" style={{ fontSize: '13.5px', fontWeight: 600, color: '#f8fafc', cursor: 'pointer' }}>
+                <label htmlFor="tool_active_check" style={{ fontSize: '13.5px', fontWeight: 600, color: '#f8fafc', cursor: 'pointer', wordBreak: 'break-word' }}>
                   Set Tool as Active immediately
                 </label>
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '22px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '22px', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={() => setToolModal({ isOpen: false, mode: 'create', data: {} })}
@@ -6915,7 +7016,8 @@ export default function AdminConsole() {
             zIndex: 200,
             display: 'grid',
             placeItems: 'center',
-            padding: '20px',
+            padding: '16px',
+            boxSizing: 'border-box',
           }}
         >
           <div
@@ -6925,18 +7027,19 @@ export default function AdminConsole() {
               borderRadius: '20px',
               width: '100%',
               maxWidth: '540px',
-              padding: '28px',
+              padding: '20px 16px',
               boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+              boxSizing: 'border-box',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#f8fafc' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '8px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#f8fafc', wordBreak: 'break-word' }}>
                 {categoryModal.mode === 'create' ? 'Add Category' : `Edit Category: ${categoryModal.data.title_en}`}
               </h2>
               <button
                 type="button"
                 onClick={() => setCategoryModal({ isOpen: false, mode: 'create', data: {} })}
-                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
               >
                 <X size={20} />
               </button>
@@ -6962,6 +7065,7 @@ export default function AdminConsole() {
                     color: '#f8fafc',
                     fontSize: '13.5px',
                     fontFamily: 'monospace',
+                    boxSizing: 'border-box',
                   }}
                 />
               </div>
@@ -6983,11 +7087,12 @@ export default function AdminConsole() {
                     border: '1px solid #334155',
                     color: '#f8fafc',
                     fontSize: '13.5px',
+                    boxSizing: 'border-box',
                   }}
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '4px', color: '#cbd5e1' }}>
                     Title (English)
@@ -7004,6 +7109,7 @@ export default function AdminConsole() {
                       border: '1px solid #334155',
                       color: '#f8fafc',
                       fontSize: '13.5px',
+                      boxSizing: 'border-box',
                     }}
                   />
                 </div>
@@ -7024,6 +7130,7 @@ export default function AdminConsole() {
                       border: '1px solid #334155',
                       color: '#f8fafc',
                       fontSize: '13.5px',
+                      boxSizing: 'border-box',
                     }}
                   />
                 </div>
@@ -7045,12 +7152,13 @@ export default function AdminConsole() {
                     border: '1px solid #334155',
                     color: '#f8fafc',
                     fontSize: '13.5px',
+                    boxSizing: 'border-box',
                   }}
                 />
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '22px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '22px', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={() => setCategoryModal({ isOpen: false, mode: 'create', data: {} })}
@@ -7099,7 +7207,8 @@ export default function AdminConsole() {
             zIndex: 300,
             display: 'grid',
             placeItems: 'center',
-            padding: '20px',
+            padding: '16px',
+            boxSizing: 'border-box',
           }}
         >
           <div
@@ -7109,9 +7218,10 @@ export default function AdminConsole() {
               borderRadius: '20px',
               width: '100%',
               maxWidth: '440px',
-              padding: '28px',
+              padding: '20px 16px',
               boxShadow: '0 20px 40px rgba(0,0,0,0.7)',
               textAlign: 'center',
+              boxSizing: 'border-box',
             }}
           >
             <div
@@ -7124,18 +7234,19 @@ export default function AdminConsole() {
                 display: 'grid',
                 placeItems: 'center',
                 margin: '0 auto 16px',
+                flexShrink: 0,
               }}
             >
               <AlertTriangle size={24} />
             </div>
-            <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 8px', color: '#f8fafc' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 8px', color: '#f8fafc', wordBreak: 'break-word' }}>
               Delete {deleteConfirm.type === 'tool' ? 'Tool' : 'Category'}?
             </h3>
-            <p style={{ fontSize: '13.5px', color: '#94a3b8', margin: '0 0 20px', lineHeight: 1.5 }}>
+            <p style={{ fontSize: '13.5px', color: '#94a3b8', margin: '0 0 20px', lineHeight: 1.5, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
               Are you sure you want to permanently delete <strong>{deleteConfirm.title}</strong> (<code>{deleteConfirm.slug}</code>) from the database? This action cannot be undone.
             </p>
 
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={() => setDeleteConfirm(null)}

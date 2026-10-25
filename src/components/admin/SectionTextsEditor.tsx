@@ -93,8 +93,8 @@ export default function SectionTextsEditor({
           borderBottom: '1px solid #1f2937',
         }}
       >
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+        <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
             <span
               style={{
                 background: '#1e293b',
@@ -105,15 +105,16 @@ export default function SectionTextsEditor({
                 letterSpacing: '0.05em',
                 padding: '3px 8px',
                 borderRadius: '6px',
+                whiteSpace: 'nowrap',
               }}
             >
               {badge}
             </span>
-            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#f8fafc', margin: 0, wordBreak: 'break-word' }}>
               {title}
             </h3>
           </div>
-          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>{description}</p>
+          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, wordBreak: 'break-word' }}>{description}</p>
         </div>
 
         <button
@@ -134,6 +135,8 @@ export default function SectionTextsEditor({
             cursor: saving ? 'wait' : 'pointer',
             opacity: saving ? 0.7 : 1,
             transition: 'all 0.2s',
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
           }}
         >
           {status === 'saved' ? (
@@ -165,13 +168,14 @@ export default function SectionTextsEditor({
                   fontWeight: 600,
                   color: '#e2e8f0',
                   marginBottom: '8px',
+                  wordBreak: 'break-word',
                 }}
               >
                 {f.label}
               </label>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
-                <div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '12px' }}>
+                <div style={{ minWidth: 0 }}>
                   <span style={{ display: 'block', fontSize: '11px', color: '#64748b', marginBottom: '4px' }}>
                     English (EN)
                   </span>
@@ -183,6 +187,7 @@ export default function SectionTextsEditor({
                       onChange={(e) => handleChange(f.key, 'en', e.target.value)}
                       style={{
                         width: '100%',
+                        boxSizing: 'border-box',
                         background: '#0f172a',
                         border: '1px solid #334155',
                         borderRadius: '8px',
@@ -200,6 +205,7 @@ export default function SectionTextsEditor({
                       onChange={(e) => handleChange(f.key, 'en', e.target.value)}
                       style={{
                         width: '100%',
+                        boxSizing: 'border-box',
                         background: '#0f172a',
                         border: '1px solid #334155',
                         borderRadius: '8px',
@@ -211,7 +217,7 @@ export default function SectionTextsEditor({
                   )}
                 </div>
 
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <span style={{ display: 'block', fontSize: '11px', color: '#64748b', marginBottom: '4px' }}>
                     বাংলা (BN)
                   </span>
@@ -223,6 +229,7 @@ export default function SectionTextsEditor({
                       onChange={(e) => handleChange(f.key, 'bn', e.target.value)}
                       style={{
                         width: '100%',
+                        boxSizing: 'border-box',
                         background: '#0f172a',
                         border: '1px solid #334155',
                         borderRadius: '8px',
@@ -240,6 +247,7 @@ export default function SectionTextsEditor({
                       onChange={(e) => handleChange(f.key, 'bn', e.target.value)}
                       style={{
                         width: '100%',
+                        boxSizing: 'border-box',
                         background: '#0f172a',
                         border: '1px solid #334155',
                         borderRadius: '8px',

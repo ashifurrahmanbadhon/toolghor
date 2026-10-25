@@ -279,10 +279,10 @@ export default function LivePreviewPanel({
             fontSize: '11px',
             color: '#cbd5e1',
             letterSpacing: '0.2px',
-            maxWidth: '280px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
+            maxWidth: '100%',
+            overflowWrap: 'anywhere',
+            wordBreak: 'break-all',
+            lineHeight: 1.4,
           }}
           title={displayPath}
         >
@@ -290,7 +290,7 @@ export default function LivePreviewPanel({
         </div>
 
         {/* Right: Desktop / Mobile toggle + Refresh + Open In New Tab */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {/* Desktop (monitor) / Mobile (phone) Toggle */}
           <div
             style={{

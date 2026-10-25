@@ -77,8 +77,8 @@ export default function AccordionSectionCard({
           gap: '12px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: '#f8fafc' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', minWidth: 0, flex: '1 1 auto' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: '#f8fafc', wordBreak: 'break-word' }}>
             {title}
           </h2>
           {badge && (
@@ -91,19 +91,20 @@ export default function AccordionSectionCard({
                 background: badgeStyles.bg,
                 color: badgeStyles.text,
                 border: `1px solid ${badgeStyles.border}`,
+                whiteSpace: 'nowrap',
               }}
             >
               {badge}
             </span>
           )}
           {subtitle && (
-            <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+            <span style={{ fontSize: '13px', color: '#94a3b8', wordBreak: 'break-word' }}>
               — {subtitle}
             </span>
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, flexWrap: 'wrap' }}>
           {actionButton && (
             <div onClick={(e) => e.stopPropagation()}>
               {actionButton}
@@ -150,7 +151,7 @@ export default function AccordionSectionCard({
       <div
         style={{
           display: effectivelyExpanded ? 'block' : 'none',
-          padding: '24px 20px',
+          padding: '20px 16px',
         }}
       >
         {previewUrl ? (

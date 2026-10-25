@@ -165,7 +165,7 @@ export default function GuidesEditor({
             background: '#111827',
             border: '1px solid #1f2937',
             borderRadius: '16px',
-            padding: '24px',
+            padding: '20px 16px',
             boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
           }}
         >
@@ -182,7 +182,7 @@ export default function GuidesEditor({
               borderBottom: '1px solid #1f2937',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', minWidth: 0, flex: '1 1 auto' }}>
               <span
                 style={{
                   background: '#1e293b',
@@ -191,6 +191,8 @@ export default function GuidesEditor({
                   borderRadius: '8px',
                   fontSize: '12px',
                   fontWeight: 700,
+                  overflowWrap: 'anywhere',
+                  wordBreak: 'break-all',
                 }}
               >
                 Slug: {currentGuide.slug}
@@ -205,13 +207,14 @@ export default function GuidesEditor({
                   alignItems: 'center',
                   gap: '4px',
                   textDecoration: 'none',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 <ExternalLink size={13} /> View Live Article
               </Link>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', flexShrink: 0 }}>
               {/* Enabled Toggle */}
               <button
                 type="button"
@@ -228,6 +231,7 @@ export default function GuidesEditor({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {currentGuide.enabled ? <Eye size={14} /> : <EyeOff size={14} />}
@@ -265,6 +269,7 @@ export default function GuidesEditor({
                   gap: '6px',
                   opacity: savingGuide[currentGuide.slug] ? 0.7 : 1,
                   boxShadow: '0 2px 8px rgba(16, 185, 129, 0.35)',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {savingGuide[currentGuide.slug] && <RefreshCw size={14} className="animate-spin" />}
@@ -274,9 +279,9 @@ export default function GuidesEditor({
           </div>
 
           {/* Form Fields Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '16px', marginBottom: '20px' }}>
             {/* Sort Order */}
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px' }}>
                 Sort Order
               </label>
@@ -286,6 +291,7 @@ export default function GuidesEditor({
                 onChange={(e) => updateGuideField(currentGuide.slug, 'sort_order', Number(e.target.value))}
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '9px 12px',
                   background: '#1e293b',
                   border: '1px solid #334155',
@@ -297,7 +303,7 @@ export default function GuidesEditor({
             </div>
 
             {/* Read Minutes */}
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px' }}>
                 Read Minutes
               </label>
@@ -307,6 +313,7 @@ export default function GuidesEditor({
                 onChange={(e) => updateGuideField(currentGuide.slug, 'read_minutes', Number(e.target.value))}
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '9px 12px',
                   background: '#1e293b',
                   border: '1px solid #334155',
@@ -318,7 +325,7 @@ export default function GuidesEditor({
             </div>
 
             {/* Primary Tool Slug CTA */}
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px' }}>
                 Primary Tool Slug (CTA)
               </label>
@@ -329,6 +336,7 @@ export default function GuidesEditor({
                 placeholder="e.g. compress-image"
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '9px 12px',
                   background: '#1e293b',
                   border: '1px solid #334155',
@@ -340,7 +348,7 @@ export default function GuidesEditor({
             </div>
 
             {/* Secondary Tool Slug CTA */}
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px' }}>
                 Secondary Tool Slug (CTA)
               </label>
@@ -351,6 +359,7 @@ export default function GuidesEditor({
                 placeholder="e.g. resize-image"
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '9px 12px',
                   background: '#1e293b',
                   border: '1px solid #334155',
@@ -363,8 +372,8 @@ export default function GuidesEditor({
           </div>
 
           {/* Titles EN / BN */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-            <div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '16px', marginBottom: '20px' }}>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px' }}>
                 Title (English)
               </label>
@@ -374,6 +383,7 @@ export default function GuidesEditor({
                 onChange={(e) => updateGuideField(currentGuide.slug, 'title_en', e.target.value)}
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '9px 12px',
                   background: '#1e293b',
                   border: '1px solid #334155',
@@ -383,7 +393,7 @@ export default function GuidesEditor({
                 }}
               />
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px' }}>
                 Title (বাংলা)
               </label>
@@ -393,6 +403,7 @@ export default function GuidesEditor({
                 onChange={(e) => updateGuideField(currentGuide.slug, 'title_bn', e.target.value)}
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '9px 12px',
                   background: '#1e293b',
                   border: '1px solid #334155',
@@ -405,8 +416,8 @@ export default function GuidesEditor({
           </div>
 
           {/* Excerpt / Description EN / BN */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-            <div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '16px', marginBottom: '20px' }}>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px' }}>
                 Card Description / Excerpt (English)
               </label>
@@ -416,6 +427,7 @@ export default function GuidesEditor({
                 onChange={(e) => updateGuideField(currentGuide.slug, 'description_en', e.target.value)}
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '9px 12px',
                   background: '#1e293b',
                   border: '1px solid #334155',
@@ -426,7 +438,7 @@ export default function GuidesEditor({
                 }}
               />
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px' }}>
                 Card Description / Excerpt (বাংলা)
               </label>
@@ -436,6 +448,7 @@ export default function GuidesEditor({
                 onChange={(e) => updateGuideField(currentGuide.slug, 'description_bn', e.target.value)}
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '9px 12px',
                   background: '#1e293b',
                   border: '1px solid #334155',
@@ -449,9 +462,9 @@ export default function GuidesEditor({
           </div>
 
           {/* Hero Intro EN / BN */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '16px', marginBottom: '20px' }}>
+            <div style={{ minWidth: 0 }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px', wordBreak: 'break-word' }}>
                 Hero Introduction (English - separate paragraphs with blank line)
               </label>
               <textarea
@@ -460,6 +473,7 @@ export default function GuidesEditor({
                 onChange={(e) => updateGuideField(currentGuide.slug, 'hero_en', e.target.value)}
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '9px 12px',
                   background: '#1e293b',
                   border: '1px solid #334155',
@@ -470,8 +484,8 @@ export default function GuidesEditor({
                 }}
               />
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px' }}>
+            <div style={{ minWidth: 0 }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px', wordBreak: 'break-word' }}>
                 Hero Introduction (বাংলা - প্যারাগ্রাফগুলো ফাঁকা লাইন দিয়ে আলাদা করুন)
               </label>
               <textarea
@@ -480,6 +494,7 @@ export default function GuidesEditor({
                 onChange={(e) => updateGuideField(currentGuide.slug, 'hero_bn', e.target.value)}
                 style={{
                   width: '100%',
+                  boxSizing: 'border-box',
                   padding: '9px 12px',
                   background: '#1e293b',
                   border: '1px solid #334155',
@@ -511,6 +526,8 @@ export default function GuidesEditor({
                 alignItems: 'center',
                 gap: '6px',
                 opacity: savingGuide[currentGuide.slug] ? 0.7 : 1,
+                whiteSpace: 'normal',
+                wordBreak: 'break-word',
               }}
             >
               {savingGuide[currentGuide.slug] && <RefreshCw size={14} className="animate-spin" />}
