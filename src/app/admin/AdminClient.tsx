@@ -344,17 +344,82 @@ export default function AdminConsole() {
   const [contentTexts, setContentTexts] = useState<ContentTexts>(DEFAULT_CONTENT_TEXTS);
   const [savingContentTexts, setSavingContentTexts] = useState(false);
 
-  // Accordion Section State (Single-open per tab; starts all-collapsed)
-  const [openSectionId, setOpenSectionId] = useState<string | null>(null);
+  // Accordion Sections State: tracks which subsection cards are open (independent expand/collapse)
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [activeGuideSlug, setActiveGuideSlug] = useState<string>('');
 
-  // Entering a tab starts all-collapsed
+  // Entering a tab starts all-collapsed and resets scroll to top
   useEffect(() => {
-    setOpenSectionId(null);
+    setOpenSections({});
+    if (typeof window !== 'undefined') {
+      const mainViewport = document.querySelector('.admin-main-viewport');
+      if (mainViewport) {
+        mainViewport.scrollTop = 0;
+      }
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
   }, [activeTab]);
 
   const toggleSection = (id: string) => {
-    setOpenSectionId((prev) => (prev === id ? null : id));
+    setOpenSections((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const isSectionExpanded = (id: string) => Boolean(openSections[id]);
+
+  const expandAllSections = (ids: string[]) => {
+    setOpenSections((prev) => {
+      const next = { ...prev };
+      ids.forEach((id) => {
+        next[id] = true;
+      });
+      return next;
+    });
+  };
+
+  const collapseAllSections = (ids: string[]) => {
+    setOpenSections((prev) => {
+      const next = { ...prev };
+      ids.forEach((id) => {
+        next[id] = false;
+      });
+      return next;
+    });
+  };
+
+  const renderAccordionControls = (ids: string[]) => {
+    const allExpanded = ids.length > 0 && ids.every((id) => openSections[id]);
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          if (allExpanded) {
+            collapseAllSections(ids);
+          } else {
+            expandAllSections(ids);
+          }
+        }}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '8px 14px',
+          borderRadius: '8px',
+          background: allExpanded ? 'rgba(239, 68, 68, 0.15)' : '#1e293b',
+          border: `1px solid ${allExpanded ? 'rgba(239, 68, 68, 0.3)' : '#334155'}`,
+          color: allExpanded ? '#f87171' : '#cbd5e1',
+          fontSize: '12.5px',
+          fontWeight: 600,
+          cursor: 'pointer',
+          transition: 'all 0.15s ease',
+          flexShrink: 0,
+        }}
+      >
+        <span>{allExpanded ? 'Collapse All' : 'Expand All'}</span>
+      </button>
+    );
   };
 
   // Creator Photo Reposition & Device Upload State (v44)
@@ -1982,6 +2047,11 @@ export default function AdminConsole() {
                     onClick={() => {
                       setActiveTab(item.id as MenuTab);
                       setMobileMenuOpen(false);
+                      if (typeof window !== 'undefined') {
+                        const vp = document.querySelector('.admin-main-viewport');
+                        if (vp) vp.scrollTop = 0;
+                        window.scrollTo({ top: 0, behavior: 'instant' });
+                      }
                     }}
                     style={{
                       width: '100%',
@@ -2076,7 +2146,14 @@ export default function AdminConsole() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id as MenuTab)}
+                onClick={() => {
+                  setActiveTab(tab.id as MenuTab);
+                  if (typeof window !== 'undefined') {
+                    const vp = document.querySelector('.admin-main-viewport');
+                    if (vp) vp.scrollTop = 0;
+                    window.scrollTo({ top: 0, behavior: 'instant' });
+                  }
+                }}
                 className={`admin-mobile-pill ${activeTab === tab.id ? 'active' : ''}`}
               >
                 {tab.label}
@@ -2188,7 +2265,8 @@ export default function AdminConsole() {
                   id="overview-live-home"
                   title="Platform Key Metrics & Platform Overview"
                   badge="Overview"
-                  isExpanded={openSectionId === 'overview-live-home'}
+                  collapsible={true}
+                  isExpanded={isSectionExpanded('overview-live-home')}
                   onToggle={() => toggleSection('overview-live-home')}
                 >
                 {/* 2 — KPI Card Row (3 Cards: Total Tool Uses, Most Used Tool, Active Tools) */}
@@ -2881,8 +2959,9 @@ export default function AdminConsole() {
                     Configure the main website header tagline, search box placeholders, and visibility.
                   </p>
                 </div>
-                {/* Active / Inactive Toggle Switch */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                {/* Active / Inactive Toggle Switch & Accordion Controls */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, flexWrap: 'wrap' }}>
+                  {renderAccordionControls(['hero-taglines-card', 'hero-controls-card'])}
                   <span style={{ fontSize: '14px', fontWeight: 600, color: hero.is_active ? '#10b981' : '#64748b' }}>
                     {hero.is_active ? 'Section Active' : 'Section Inactive'}
                   </span>
@@ -2920,7 +2999,8 @@ export default function AdminConsole() {
                 id="hero-taglines-card"
                 title="Hero Taglines & Search Box"
                 badge={hero.is_active ? 'Active' : 'Inactive'}
-                isExpanded={openSectionId === 'hero-taglines-card'}
+                collapsible={true}
+                isExpanded={isSectionExpanded('hero-taglines-card')}
                 onToggle={() => toggleSection('hero-taglines-card')}
                 previewUrl="/"
                 previewAnchor="#hero-section"
@@ -3043,7 +3123,8 @@ export default function AdminConsole() {
                 id="hero-controls-card"
                 title="Homepage Section Controls & Search Labels"
                 badge="Homepage Controls"
-                isExpanded={openSectionId === 'hero-controls-card'}
+                collapsible={true}
+                isExpanded={isSectionExpanded('hero-controls-card')}
                 onToggle={() => toggleSection('hero-controls-card')}
                 previewUrl="/"
                 previewAnchor="#hero-section"
@@ -3171,7 +3252,8 @@ export default function AdminConsole() {
                 id="announcement-banner-card"
                 title="Announcement Banner Configuration"
                 badge={announcement.is_active ? 'Active' : 'Inactive'}
-                isExpanded={openSectionId === 'announcement-banner-card'}
+                collapsible={true}
+                isExpanded={isSectionExpanded('announcement-banner-card')}
                 onToggle={() => toggleSection('announcement-banner-card')}
                 previewUrl="/"
                 previewAnchor="#announcement-bar"
@@ -3268,9 +3350,6 @@ export default function AdminConsole() {
                           );
                         })}
                       </div>
-                      <p style={{ fontSize: '11.5px', color: '#64748b', margin: '6px 0 0', wordBreak: 'break-word' }}>
-                        টাইম সিলেক্ট করলে নির্ধারিত সময় পর ব্যানার স্বয়ংক্রিয়ভাবে ওয়েবসাইট থেকে অফ হয়ে যাবে।
-                      </p>
                     </div>
                   </div>
 
@@ -3492,7 +3571,8 @@ export default function AdminConsole() {
                 id="categories-catalog-card"
                 title="Categories Catalog & Reordering"
                 badge={`${categories.length} Categories`}
-                isExpanded={openSectionId === 'categories-catalog-card'}
+                collapsible={true}
+                isExpanded={isSectionExpanded('categories-catalog-card')}
                 onToggle={() => toggleSection('categories-catalog-card')}
                 previewUrl="/"
                 previewAnchor="#main"
@@ -3672,7 +3752,8 @@ export default function AdminConsole() {
                 id="tools-catalog-card"
                 title="Tools Catalog & Configuration"
                 badge={`${tools.length} Tools`}
-                isExpanded={openSectionId === 'tools-catalog-card'}
+                collapsible={true}
+                isExpanded={isSectionExpanded('tools-catalog-card')}
                 onToggle={() => toggleSection('tools-catalog-card')}
                 previewUrl={toolModal.isOpen && toolModal.data?.slug ? `/tools/${toolModal.data.slug}` : '/'}
                 previewAnchor={toolModal.isOpen && toolModal.data?.slug ? undefined : '#main'}
@@ -3945,8 +4026,9 @@ export default function AdminConsole() {
                     Granular element controls for floating WhatsApp widget, social profile icons, and footer copyright text.
                   </p>
                 </div>
-                {/* Master Active / Inactive Toggle Switch */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                {/* Master Active / Inactive Toggle Switch & Accordion Controls */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, flexWrap: 'wrap' }}>
+                  {renderAccordionControls(['footer-social-card', 'footer-nav-card'])}
                   <span style={{ fontSize: '14px', fontWeight: 600, color: footerSocial.is_active ? '#10b981' : '#64748b' }}>
                     {footerSocial.is_active ? 'Master Footer Active' : 'Footer Disabled'}
                   </span>
@@ -3984,7 +4066,8 @@ export default function AdminConsole() {
                 id="footer-social-card"
                 title="Footer & WhatsApp Floating Action Button"
                 badge={footerSocial.is_active ? 'Active' : 'Inactive'}
-                isExpanded={openSectionId === 'footer-social-card'}
+                collapsible={true}
+                isExpanded={isSectionExpanded('footer-social-card')}
                 onToggle={() => toggleSection('footer-social-card')}
                 previewUrl="/"
                 previewAnchor="#footer-section"
@@ -4321,7 +4404,8 @@ export default function AdminConsole() {
                 id="footer-nav-card"
                 title="Footer Navigation Links & Micro-copy"
                 badge="Footer Copy"
-                isExpanded={openSectionId === 'footer-nav-card'}
+                collapsible={true}
+                isExpanded={isSectionExpanded('footer-nav-card')}
                 onToggle={() => toggleSection('footer-nav-card')}
                 previewUrl="/"
                 previewAnchor="#footer-section"
@@ -4419,8 +4503,9 @@ export default function AdminConsole() {
                     Granular element controls for the creator identity, direct email contact, social links, and bio descriptions.
                   </p>
                 </div>
-                {/* Master Active / Inactive Toggle Switch */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                {/* Master Active / Inactive Toggle Switch & Accordion Controls */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, flexWrap: 'wrap' }}>
+                  {renderAccordionControls(['creator-profile-card', 'creator-about-modal-card'])}
                   <span style={{ fontSize: '14px', fontWeight: 600, color: creatorAbout.is_active ? '#10b981' : '#64748b' }}>
                     {creatorAbout.is_active ? 'Creator Card Active' : 'Creator Card Disabled'}
                   </span>
@@ -4458,7 +4543,8 @@ export default function AdminConsole() {
                 id="creator-profile-card"
                 title="Creator Profile Settings & Bio"
                 badge={creatorAbout.is_active ? 'Active' : 'Disabled'}
-                isExpanded={openSectionId === 'creator-profile-card'}
+                collapsible={true}
+                isExpanded={isSectionExpanded('creator-profile-card')}
                 onToggle={() => toggleSection('creator-profile-card')}
                 previewUrl="/"
                 previewAnchor="#creator-section"
@@ -4908,7 +4994,8 @@ export default function AdminConsole() {
                 id="creator-about-modal-card"
                 title="About ToolGhor Modal Texts"
                 badge="Modal Copy"
-                isExpanded={openSectionId === 'creator-about-modal-card'}
+                collapsible={true}
+                isExpanded={isSectionExpanded('creator-about-modal-card')}
                 onToggle={() => toggleSection('creator-about-modal-card')}
                 previewUrl="/"
                 previewAnchor="#creator-section"
@@ -5267,7 +5354,8 @@ export default function AdminConsole() {
                 id="apis-credentials-card"
                 title="API Integrations & Cloud Provider Credentials"
                 badge={apiKeys.is_active ? 'All APIs Active' : 'Paused'}
-                isExpanded={openSectionId === 'apis-credentials-card'}
+                collapsible={true}
+                isExpanded={isSectionExpanded('apis-credentials-card')}
                 onToggle={() => toggleSection('apis-credentials-card')}
               >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -5602,7 +5690,12 @@ export default function AdminConsole() {
                   </p>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flexShrink: 0, alignItems: 'center' }}>
+                  {renderAccordionControls([
+                    'policy-terms-header-card',
+                    'policy-privacy-header-card',
+                    ...POLICY_SECTIONS_LIST.map((item) => `policy-sec-${item.id}`),
+                  ])}
                   <Link
                     href="/terms"
                     target="_blank"
@@ -5649,7 +5742,7 @@ export default function AdminConsole() {
                 title="Terms of Service Page Header & Chrome Labels"
                 badge="Terms Chrome"
                 collapsible={true}
-                isExpanded={openSectionId === 'policy-terms-header-card'}
+                isExpanded={isSectionExpanded('policy-terms-header-card')}
                 onToggle={() => toggleSection('policy-terms-header-card')}
                 previewUrl="/terms"
                 draftData={currentDraftData}
@@ -5728,7 +5821,7 @@ export default function AdminConsole() {
                 title="Privacy Policy Page Header & Chrome Labels"
                 badge="Privacy Chrome"
                 collapsible={true}
-                isExpanded={openSectionId === 'policy-privacy-header-card'}
+                isExpanded={isSectionExpanded('policy-privacy-header-card')}
                 onToggle={() => toggleSection('policy-privacy-header-card')}
                 previewUrl="/privacy"
                 draftData={currentDraftData}
@@ -5817,7 +5910,7 @@ export default function AdminConsole() {
                       title={`Section ${index + 1}: ${sec.title_en || item.id} (${isPrivacy ? 'Privacy Policy' : 'Terms of Service'})`}
                       badge={isPrivacy ? 'Privacy' : 'Terms'}
                       collapsible={true}
-                      isExpanded={openSectionId === `policy-sec-${item.id}`}
+                      isExpanded={isSectionExpanded(`policy-sec-${item.id}`)}
                       onToggle={() => toggleSection(`policy-sec-${item.id}`)}
                       previewUrl={isPrivacy ? '/privacy' : '/terms'}
                       draftData={currentDraftData}
@@ -6086,11 +6179,55 @@ export default function AdminConsole() {
           {/* TAB: GUIDES MANAGER */}
           {activeTab === 'guides' && (
             <div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '24px',
+                  flexWrap: 'wrap',
+                  gap: '14px',
+                  minWidth: 0,
+                }}
+              >
+                <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
+                    Guides Manager
+                  </h1>
+                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0, wordBreak: 'break-word' }}>
+                    Manage how-to guides, tutorials, and practical documentation with rich Markdown and live bilingual preview.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flexShrink: 0, alignItems: 'center' }}>
+                  {renderAccordionControls(['guides-chrome-card', 'guides-articles-card'])}
+                  <Link
+                    href="/guides"
+                    target="_blank"
+                    style={{
+                      background: 'rgba(56, 189, 248, 0.12)',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                      color: '#38bdf8',
+                      padding: '8px 14px',
+                      borderRadius: '10px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <ExternalLink size={14} /> View /guides
+                  </Link>
+                </div>
+              </div>
+
               <AccordionSectionCard
                 id="guides-chrome-card"
                 title="Guides Index & Article Chrome Labels"
                 badge="Guides Chrome"
-                isExpanded={openSectionId === 'guides-chrome-card'}
+                collapsible={true}
+                isExpanded={isSectionExpanded('guides-chrome-card')}
                 onToggle={() => toggleSection('guides-chrome-card')}
                 previewUrl="/guides"
                 draftData={currentDraftData}
@@ -6223,7 +6360,8 @@ export default function AdminConsole() {
                 id="guides-articles-card"
                 title="Guides Content & Markdown Editor"
                 badge={`${guides.length} Articles`}
-                isExpanded={openSectionId === 'guides-articles-card'}
+                collapsible={true}
+                isExpanded={isSectionExpanded('guides-articles-card')}
                 onToggle={() => toggleSection('guides-articles-card')}
                 previewUrl={activeGuideSlug ? `/guides/${activeGuideSlug}` : '/guides'}
                 draftData={currentDraftData}
@@ -6244,11 +6382,55 @@ export default function AdminConsole() {
           {/* TAB: FAQ MANAGER */}
           {activeTab === 'faq' && (
             <div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '24px',
+                  flexWrap: 'wrap',
+                  gap: '14px',
+                  minWidth: 0,
+                }}
+              >
+                <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+                  <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
+                    FAQ Manager
+                  </h1>
+                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0, wordBreak: 'break-word' }}>
+                    Manage general frequently asked questions and tool-specific accordion FAQs in English and Bangla.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flexShrink: 0, alignItems: 'center' }}>
+                  {renderAccordionControls(['faq-header-card', 'faq-items-card'])}
+                  <Link
+                    href="/faq"
+                    target="_blank"
+                    style={{
+                      background: 'rgba(56, 189, 248, 0.12)',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                      color: '#38bdf8',
+                      padding: '8px 14px',
+                      borderRadius: '10px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <ExternalLink size={14} /> View /faq
+                  </Link>
+                </div>
+              </div>
+
               <AccordionSectionCard
                 id="faq-header-card"
                 title="FAQ Page Header & Subtitle"
                 badge="FAQ Header"
-                isExpanded={openSectionId === 'faq-header-card'}
+                collapsible={true}
+                isExpanded={isSectionExpanded('faq-header-card')}
                 onToggle={() => toggleSection('faq-header-card')}
                 previewUrl="/faq"
                 draftData={currentDraftData}
@@ -6306,7 +6488,8 @@ export default function AdminConsole() {
                 id="faq-items-card"
                 title="FAQ Questions & Scopes Manager"
                 badge={`${faqItems.length} FAQs`}
-                isExpanded={openSectionId === 'faq-items-card'}
+                collapsible={true}
+                isExpanded={isSectionExpanded('faq-items-card')}
                 onToggle={() => toggleSection('faq-items-card')}
                 previewUrl={selectedFaqScope && selectedFaqScope !== 'general' ? `/tools/${selectedFaqScope}` : '/faq'}
                 draftData={currentDraftData}
@@ -6338,28 +6521,31 @@ export default function AdminConsole() {
                     Real-time Postgres database counter tracking every visitor launch with progress visualizers.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={fetchAllSections}
-                  disabled={loadingData}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '10px 18px',
-                    borderRadius: '10px',
-                    background: '#1f2937',
-                    border: '1px solid #374151',
-                    color: '#f8fafc',
-                    fontSize: '13.5px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                  }}
-                >
-                  <RefreshCw size={15} className={loadingData ? 'animate-spin' : ''} />
-                  <span>{loadingData ? 'Refreshing...' : 'Refresh Analytics'}</span>
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', flexShrink: 0 }}>
+                  {renderAccordionControls(['analytics-charts-card', 'analytics-table-card'])}
+                  <button
+                    type="button"
+                    onClick={fetchAllSections}
+                    disabled={loadingData}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 18px',
+                      borderRadius: '10px',
+                      background: '#1f2937',
+                      border: '1px solid #374151',
+                      color: '#f8fafc',
+                      fontSize: '13.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <RefreshCw size={15} className={loadingData ? 'animate-spin' : ''} />
+                    <span>{loadingData ? 'Refreshing...' : 'Refresh Analytics'}</span>
+                  </button>
+                </div>
               </div>
 
               {/* KPI Cards */}
@@ -6376,7 +6562,8 @@ export default function AdminConsole() {
                       id="analytics-charts-card"
                       title="Usage Analytics & Platform KPIs"
                       badge="Metrics"
-                      isExpanded={openSectionId === 'analytics-charts-card'}
+                      collapsible={true}
+                      isExpanded={isSectionExpanded('analytics-charts-card')}
                       onToggle={() => toggleSection('analytics-charts-card')}
                     >
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px', marginBottom: '28px' }}>
@@ -6418,7 +6605,8 @@ export default function AdminConsole() {
                       id="analytics-table-card"
                       title="Tool Performance Breakdown Table"
                       badge="Usage Table"
-                      isExpanded={openSectionId === 'analytics-table-card'}
+                      collapsible={true}
+                      isExpanded={isSectionExpanded('analytics-table-card')}
                       onToggle={() => toggleSection('analytics-table-card')}
                     >
                     {/* Table View with Progress Bars */}
@@ -6514,6 +6702,9 @@ export default function AdminConsole() {
                     Manage your administrator credentials, recovery email/phone, and securely change your login passcode.
                   </p>
                 </div>
+                <div style={{ flexShrink: 0 }}>
+                  {renderAccordionControls(['profile-info-card', 'profile-password-card'])}
+                </div>
               </div>
 
               {profileMsg && (
@@ -6545,7 +6736,8 @@ export default function AdminConsole() {
                   id="profile-info-card"
                   title="Admin Credentials & Contact Info"
                   badge="Profile"
-                  isExpanded={openSectionId === 'profile-info-card'}
+                  collapsible={true}
+                  isExpanded={isSectionExpanded('profile-info-card')}
                   onToggle={() => toggleSection('profile-info-card')}
                 >
                 <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
@@ -6634,7 +6826,8 @@ export default function AdminConsole() {
                   id="profile-password-card"
                   title="Change Admin Passcode & Master Password"
                   badge="Security"
-                  isExpanded={openSectionId === 'profile-password-card'}
+                  collapsible={true}
+                  isExpanded={isSectionExpanded('profile-password-card')}
                   onToggle={() => toggleSection('profile-password-card')}
                 >
                 <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>

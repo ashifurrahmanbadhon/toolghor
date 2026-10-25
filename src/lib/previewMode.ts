@@ -26,6 +26,8 @@ let latestPreviewData: CmsPreviewMessage | null = null;
 
 function scrollToTargetAnchor(targetAnchor?: string): void {
   if (hasScrolledToAnchor) return;
+  // Guard: Never execute scrolling on top-level window (strictly iframe only)
+  if (typeof window !== 'undefined' && window === window.top) return;
   const hash = targetAnchor || (typeof window !== 'undefined' ? window.location.hash : '');
   if (!hash) return;
   const targetId = hash.replace(/^#/, '');

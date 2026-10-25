@@ -94,15 +94,12 @@ export default function LivePreviewPanel({
     return `${url}${hash}`;
   }, [url, previewAnchor]);
 
-  // Ensure cms_preview=1 and anchor are attached to iframe src
+  // Ensure cms_preview=1 is attached to iframe src (hash omitted to prevent browser from auto-scrolling parent page)
   const iframeSrc = useMemo(() => {
     const separator = url.includes('?') ? '&' : '?';
     const cleanUrl = url.replace(/#.*$/, '');
-    const hash = previewAnchor
-      ? (previewAnchor.startsWith('#') ? previewAnchor : `#${previewAnchor}`)
-      : (url.includes('#') ? url.substring(url.indexOf('#')) : '');
-    return `${cleanUrl}${separator}cms_preview=1${hash}`;
-  }, [url, previewAnchor]);
+    return `${cleanUrl}${separator}cms_preview=1`;
+  }, [url]);
 
   // Compile safe publicData payload (flags only, strictly zero secret keys)
   const compilePayload = () => {
