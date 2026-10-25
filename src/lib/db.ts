@@ -221,9 +221,15 @@ export async function initDatabase() {
       facebook_url TEXT NOT NULL,
       linkedin_url TEXT NOT NULL,
       github_url TEXT DEFAULT 'https://github.com/ashifurrahmanbadhon',
+      photo_url TEXT,
+      photo_position TEXT DEFAULT '50% 50%',
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `;
+
+  // Idempotent column migrations for photo_url & photo_position (v44)
+  await sql`ALTER TABLE section_creator_about ADD COLUMN IF NOT EXISTS photo_url TEXT;`;
+  await sql`ALTER TABLE section_creator_about ADD COLUMN IF NOT EXISTS photo_position TEXT DEFAULT '50% 50%';`;
 
   // Seed default creator if empty
   await sql`

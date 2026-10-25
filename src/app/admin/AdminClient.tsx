@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import {
   Shield,
@@ -37,6 +37,9 @@ import {
   FileText,
   BookOpen,
   HelpCircle,
+  Upload,
+  Move,
+  RotateCcw,
 } from 'lucide-react';
 import {
   DEFAULT_POLICY_SECTIONS,
@@ -129,6 +132,8 @@ interface CreatorAboutSection {
   facebook_url: string;
   linkedin_url: string;
   github_url: string;
+  photo_url?: string | null;
+  photo_position?: string;
 }
 
 interface ApiKeysSection {
@@ -267,6 +272,8 @@ export default function AdminConsole() {
     facebook_url: 'https://www.facebook.com/ashifurrahmanbadhon',
     linkedin_url: 'https://www.linkedin.com/in/ashifurrahmanbadhon',
     github_url: 'https://github.com/ashifurrahmanbadhon',
+    photo_url: null,
+    photo_position: '50% 50%',
   });
 
   const [apiKeys, setApiKeys] = useState<ApiKeysSection>({
@@ -330,6 +337,92 @@ export default function AdminConsole() {
 
   const toggleSection = (id: string) => {
     setOpenSectionId((prev) => (prev === id ? null : id));
+  };
+
+  // Creator Photo Reposition & Device Upload State (v44)
+  const [isRepositionOpen, setIsRepositionOpen] = useState(false);
+  const [repositionPan, setRepositionPan] = useState({ x: 50, y: 50 });
+  const [repositionZoom, setRepositionZoom] = useState(1);
+  const isDraggingPhoto = useRef(false);
+  const dragStartPos = useRef({ x: 0, y: 0, startPanX: 50, startPanY: 50 });
+
+  const openRepositionEditor = () => {
+    const pos = creatorAbout.photo_position || '50% 50%';
+    const parts = pos.split(/\s+/).map((p) => parseFloat(p.replace('%', '')));
+    setRepositionPan({
+      x: !isNaN(parts[0]) ? parts[0] : 50,
+      y: !isNaN(parts[1]) ? parts[1] : 50,
+    });
+    setRepositionZoom(1);
+    setIsRepositionOpen(true);
+  };
+
+  const handleDevicePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File exceeds 10MB limit. Please select an image under 10MB.');
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (readEvent) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 512;
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, width, height);
+
+        let dataUrl = canvas.toDataURL('image/webp', 0.85);
+        if (!dataUrl.startsWith('data:image/webp')) {
+          dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        }
+
+        const sizeKb = Math.round((dataUrl.length * 3) / 4 / 1024);
+        if (sizeKb > 200) {
+          dataUrl = canvas.toDataURL('image/jpeg', 0.65);
+          const retryKb = Math.round((dataUrl.length * 3) / 4 / 1024);
+          if (retryKb > 200) {
+            alert(`Optimized image size (${retryKb} KB) exceeds the 200 KB limit. Please choose a smaller photo.`);
+            e.target.value = '';
+            return;
+          }
+        }
+
+        setCreatorAbout((prev) => ({
+          ...prev,
+          photo_url: dataUrl,
+        }));
+        e.target.value = '';
+      };
+      img.src = readEvent.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleResetPhoto = () => {
+    setCreatorAbout((prev) => ({
+      ...prev,
+      photo_url: null,
+      photo_position: '50% 50%',
+    }));
   };
 
   // Draft Channel: Mirrored unsaved state assembled in exact public shape
@@ -2800,6 +2893,7 @@ export default function AdminConsole() {
                 isExpanded={openSectionId === 'hero-taglines-card'}
                 onToggle={() => toggleSection('hero-taglines-card')}
                 previewUrl="/"
+                previewAnchor="#hero-section"
                 draftData={currentDraftData}
               >
               <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '28px' }}>
@@ -2918,6 +3012,7 @@ export default function AdminConsole() {
                 isExpanded={openSectionId === 'hero-controls-card'}
                 onToggle={() => toggleSection('hero-controls-card')}
                 previewUrl="/"
+                previewAnchor="#hero-section"
                 draftData={currentDraftData}
               >
               <SectionTextsEditor
@@ -3045,6 +3140,7 @@ export default function AdminConsole() {
                 isExpanded={openSectionId === 'announcement-banner-card'}
                 onToggle={() => toggleSection('announcement-banner-card')}
                 previewUrl="/"
+                previewAnchor="#announcement-bar"
                 draftData={currentDraftData}
               >
               <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '28px' }}>
@@ -3359,18 +3455,19 @@ export default function AdminConsole() {
                 isExpanded={openSectionId === 'categories-catalog-card'}
                 onToggle={() => toggleSection('categories-catalog-card')}
                 previewUrl="/"
+                previewAnchor="#main"
                 draftData={currentDraftData}
               >
-              <div className="admin-table-wrap" style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                <table style={{ width: '100%', minWidth: '650px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
+              <div className="admin-table-wrap" style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', maxWidth: '100%' }}>
+                <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
                   <thead>
                     <tr style={{ background: '#1f2937', borderBottom: '1px solid #374151', color: '#94a3b8' }}>
-                      <th style={{ padding: '14px 18px', fontWeight: 700 }}>Symbol</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700 }}>Slug</th>
+                      <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Symbol</th>
+                      <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Slug</th>
                       <th style={{ padding: '14px 18px', fontWeight: 700 }}>Title (EN / BN)</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700 }}>Tools Count</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700 }}>Status</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700, textAlign: 'right' }}>Actions</th>
+                      <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Tools Count</th>
+                      <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Status</th>
+                      <th style={{ padding: '14px 18px', fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3378,14 +3475,14 @@ export default function AdminConsole() {
                       const toolsInCat = tools.filter((t) => t.category_slug === cat.slug).length;
                       return (
                         <tr key={cat.slug} style={{ borderBottom: '1px solid #1f2937' }}>
-                          <td style={{ padding: '14px 18px', fontSize: '20px' }}>{cat.symbol}</td>
-                          <td style={{ padding: '14px 18px', fontFamily: 'monospace', color: '#38bdf8' }}>{cat.slug}</td>
-                          <td style={{ padding: '14px 18px' }}>
-                            <div style={{ fontWeight: 700, color: '#f8fafc' }}>{cat.title_en}</div>
-                            <div style={{ fontSize: '12px', color: '#94a3b8' }}>{cat.title_bn}</div>
+                          <td style={{ padding: '14px 18px', fontSize: '20px', whiteSpace: 'nowrap' }}>{cat.symbol}</td>
+                          <td style={{ padding: '14px 18px', fontFamily: 'monospace', color: '#38bdf8', whiteSpace: 'nowrap' }}>{cat.slug}</td>
+                          <td style={{ padding: '14px 18px', minWidth: '180px' }}>
+                            <div style={{ fontWeight: 700, color: '#f8fafc', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{cat.title_en}</div>
+                            <div style={{ fontSize: '12px', color: '#94a3b8', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{cat.title_bn}</div>
                           </td>
-                          <td style={{ padding: '14px 18px', color: '#cbd5e1' }}>{toolsInCat} tools</td>
-                          <td style={{ padding: '14px 18px' }}>
+                          <td style={{ padding: '14px 18px', color: '#cbd5e1', whiteSpace: 'nowrap' }}>{toolsInCat} tools</td>
+                          <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
                             <button
                               type="button"
                               onClick={() => toggleCategoryActive(cat.slug, cat.is_active)}
@@ -3401,6 +3498,7 @@ export default function AdminConsole() {
                                 cursor: 'pointer',
                                 background: cat.is_active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
                                 color: cat.is_active ? '#34d399' : '#f87171',
+                                whiteSpace: 'nowrap',
                               }}
                             >
                               <span
@@ -3414,8 +3512,8 @@ export default function AdminConsole() {
                               {cat.is_active ? 'Active' : 'Inactive'}
                             </button>
                           </td>
-                          <td style={{ padding: '14px 18px', textAlign: 'right' }}>
-                            <div style={{ display: 'inline-flex', gap: '8px' }}>
+                          <td style={{ padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'inline-flex', gap: '8px', flexWrap: 'nowrap', alignItems: 'center' }}>
                               <button
                                 type="button"
                                 onClick={() =>
@@ -3432,6 +3530,9 @@ export default function AdminConsole() {
                                   color: '#e2e8f0',
                                   border: '1px solid #374151',
                                   cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
                                 }}
                                 title="Edit Category"
                               >
@@ -3454,6 +3555,9 @@ export default function AdminConsole() {
                                   color: '#f87171',
                                   border: '1px solid rgba(239, 68, 68, 0.3)',
                                   cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
                                 }}
                                 title="Delete Category"
                               >
@@ -3526,6 +3630,7 @@ export default function AdminConsole() {
                 isExpanded={openSectionId === 'tools-catalog-card'}
                 onToggle={() => toggleSection('tools-catalog-card')}
                 previewUrl={toolModal.isOpen && toolModal.data?.slug ? `/tools/${toolModal.data.slug}` : '/'}
+                previewAnchor={toolModal.isOpen && toolModal.data?.slug ? undefined : '#main'}
                 draftData={currentDraftData}
               >
               {/* Filters Bar */}
@@ -3603,16 +3708,16 @@ export default function AdminConsole() {
               </div>
 
               {/* Tools Table */}
-              <div className="admin-table-wrap" style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                <table style={{ width: '100%', minWidth: '780px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
+              <div className="admin-table-wrap" style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', maxWidth: '100%' }}>
+                <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
                   <thead>
                     <tr style={{ background: '#1f2937', borderBottom: '1px solid #374151', color: '#94a3b8' }}>
-                      <th style={{ padding: '14px 18px', fontWeight: 700 }}>Tool Name</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700 }}>Slug & Route</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700 }}>Category</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700 }}>Badge</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700 }}>Status</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700, textAlign: 'right' }}>Actions</th>
+                      <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Tool Name</th>
+                      <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Slug & Route</th>
+                      <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Category</th>
+                      <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Badge</th>
+                      <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Status</th>
+                      <th style={{ padding: '14px 18px', fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3620,11 +3725,11 @@ export default function AdminConsole() {
                       const cat = categories.find((c) => c.slug === tool.category_slug);
                       return (
                         <tr key={tool.slug} style={{ borderBottom: '1px solid #1f2937' }}>
-                          <td style={{ padding: '14px 18px' }}>
-                            <div style={{ fontWeight: 700, color: '#f8fafc' }}>{tool.title_en}</div>
-                            <div style={{ fontSize: '12px', color: '#94a3b8' }}>{tool.title_bn}</div>
+                          <td style={{ padding: '14px 18px', minWidth: '180px' }}>
+                            <div style={{ fontWeight: 700, color: '#f8fafc', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{tool.title_en}</div>
+                            <div style={{ fontSize: '12px', color: '#94a3b8', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{tool.title_bn}</div>
                           </td>
-                          <td style={{ padding: '14px 18px' }}>
+                          <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
                             <Link
                               href={`/tools/${tool.slug}`}
                               target="_blank"
@@ -3635,12 +3740,13 @@ export default function AdminConsole() {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '4px',
+                                whiteSpace: 'nowrap',
                               }}
                             >
                               /{tool.slug} <ExternalLink size={11} />
                             </Link>
                           </td>
-                          <td style={{ padding: '14px 18px' }}>
+                          <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
                             <span
                               style={{
                                 fontSize: '12px',
@@ -3648,12 +3754,16 @@ export default function AdminConsole() {
                                 borderRadius: '6px',
                                 background: '#1e293b',
                                 color: '#cbd5e1',
+                                whiteSpace: 'nowrap',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
                               }}
                             >
                               {cat?.symbol || '📁'} {cat?.title_en || tool.category_slug}
                             </span>
                           </td>
-                          <td style={{ padding: '14px 18px' }}>
+                          <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
                             {tool.badge ? (
                               <span
                                 style={{
@@ -3663,6 +3773,7 @@ export default function AdminConsole() {
                                   borderRadius: '6px',
                                   background: 'rgba(245, 158, 11, 0.15)',
                                   color: '#fbbf24',
+                                  whiteSpace: 'nowrap',
                                 }}
                               >
                                 {tool.badge}
@@ -3671,7 +3782,7 @@ export default function AdminConsole() {
                               <span style={{ color: '#475569', fontSize: '12px' }}>—</span>
                             )}
                           </td>
-                          <td style={{ padding: '14px 18px' }}>
+                          <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
                             <button
                               type="button"
                               onClick={() => toggleToolActive(tool.slug, tool.is_active)}
@@ -3687,6 +3798,7 @@ export default function AdminConsole() {
                                 cursor: 'pointer',
                                 background: tool.is_active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
                                 color: tool.is_active ? '#34d399' : '#f87171',
+                                whiteSpace: 'nowrap',
                               }}
                             >
                               <span
@@ -3700,8 +3812,8 @@ export default function AdminConsole() {
                               {tool.is_active ? 'Active' : 'Inactive'}
                             </button>
                           </td>
-                          <td style={{ padding: '14px 18px', textAlign: 'right' }}>
-                            <div style={{ display: 'inline-flex', gap: '8px' }}>
+                          <td style={{ padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'inline-flex', gap: '8px', flexWrap: 'nowrap', alignItems: 'center' }}>
                               <button
                                 type="button"
                                 onClick={() =>
@@ -3811,6 +3923,7 @@ export default function AdminConsole() {
                 isExpanded={openSectionId === 'footer-social-card'}
                 onToggle={() => toggleSection('footer-social-card')}
                 previewUrl="/"
+                previewAnchor="#footer-section"
                 draftData={currentDraftData}
               >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -4133,6 +4246,7 @@ export default function AdminConsole() {
                 isExpanded={openSectionId === 'footer-nav-card'}
                 onToggle={() => toggleSection('footer-nav-card')}
                 previewUrl="/"
+                previewAnchor="#footer-section"
                 draftData={currentDraftData}
               >
               <SectionTextsEditor
@@ -4269,9 +4383,173 @@ export default function AdminConsole() {
                 isExpanded={openSectionId === 'creator-profile-card'}
                 onToggle={() => toggleSection('creator-profile-card')}
                 previewUrl="/"
+                previewAnchor="#creator-section"
                 draftData={currentDraftData}
               >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {/* Element 0: Creator Profile Photo Box (v44) */}
+                <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '24px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(160px, 180px) 1fr', gap: '24px', alignItems: 'start' }}>
+                    {/* Left: Square preview tile with reposition icon overlay */}
+                    <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1', borderRadius: '16px', overflow: 'hidden', border: '2px solid #334155', background: '#090d16' }}>
+                      <img
+                        src={creatorAbout.photo_url || '/assets/creator.jpg'}
+                        alt="Creator Photo Preview"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          objectPosition: creatorAbout.photo_position || '50% 50%',
+                          display: 'block',
+                        }}
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = '/assets/creator.jpg';
+                        }}
+                      />
+                      {/* Top-right reposition icon button overlay */}
+                      <button
+                        type="button"
+                        onClick={openRepositionEditor}
+                        title="Reposition photo"
+                        style={{
+                          position: 'absolute',
+                          top: '8px',
+                          right: '8px',
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          background: 'rgba(15, 23, 42, 0.85)',
+                          border: '1px solid #475569',
+                          color: '#f8fafc',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          backdropFilter: 'blur(4px)',
+                          transition: 'background 0.15s ease',
+                        }}
+                      >
+                        <Move size={15} />
+                      </button>
+                    </div>
+
+                    {/* Right: Controls */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px' }}>Creator Profile Photo</div>
+                        <div style={{ fontSize: '12.5px', color: '#94a3b8' }}>Custom profile photo displayed in the About modal and public creator card.</div>
+                      </div>
+
+                      {/* Buttons: UPLOAD FROM DEVICE & RESET TO DEFAULT */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '4px' }}>
+                        <label
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '9px 18px',
+                            borderRadius: '10px',
+                            background: '#10b981',
+                            color: '#ffffff',
+                            fontSize: '12.5px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            border: 'none',
+                            transition: 'background 0.15s ease',
+                          }}
+                        >
+                          <Upload size={14} /> UPLOAD FROM DEVICE
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/svg+xml,image/gif"
+                            onChange={handleDevicePhotoUpload}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+
+                        <button
+                          type="button"
+                          onClick={openRepositionEditor}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '9px 16px',
+                            borderRadius: '10px',
+                            background: '#1e293b',
+                            color: '#e2e8f0',
+                            fontSize: '12.5px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            border: '1px solid #334155',
+                          }}
+                        >
+                          <Move size={14} /> Reposition
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleResetPhoto}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '9px 16px',
+                            borderRadius: '10px',
+                            background: '#090d16',
+                            color: '#94a3b8',
+                            fontSize: '12.5px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            border: '1px solid #1f2937',
+                          }}
+                        >
+                          <RotateCcw size={13} /> RESET TO DEFAULT
+                        </button>
+                      </div>
+
+                      {/* URL Entry */}
+                      <div style={{ marginTop: '4px' }}>
+                        <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#94a3b8', marginBottom: '4px', letterSpacing: '0.4px' }}>
+                          OR ENTER IMAGE URL (CDN / LOCAL PATH)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="https://... or /assets/..."
+                          value={creatorAbout.photo_url || ''}
+                          onChange={(e) => setCreatorAbout({ ...creatorAbout, photo_url: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '9px 12px',
+                            borderRadius: '8px',
+                            background: '#0b0f19',
+                            border: '1px solid #334155',
+                            color: '#f8fafc',
+                            fontSize: '13px',
+                            fontFamily: 'monospace',
+                          }}
+                        />
+                      </div>
+
+                      {/* Limits and Current lines */}
+                      <div style={{ fontSize: '11.5px', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <div>Max 10MB • JPG, PNG, WebP, SVG, GIF</div>
+                        <div style={{ wordBreak: 'break-all' }}>
+                          <span style={{ color: '#94a3b8', fontWeight: 600 }}>Current: </span>
+                          {creatorAbout.photo_url
+                            ? (creatorAbout.photo_url.startsWith('data:')
+                                ? `Custom uploaded image (data URI: ${creatorAbout.photo_url.substring(0, 42)}...)`
+                                : (creatorAbout.photo_url.length > 60 ? `${creatorAbout.photo_url.substring(0, 60)}...` : creatorAbout.photo_url))
+                            : 'Default photo (/assets/creator.jpg)'}
+                          <span style={{ color: '#10b981', marginLeft: '8px', fontFamily: 'monospace' }}>
+                            [{creatorAbout.photo_position || '50% 50%'}]
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Element 1: Creator Identity & Titles */}
                 <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '24px' }}>
                   <div style={{ marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #1f2937' }}>
@@ -4539,6 +4817,7 @@ export default function AdminConsole() {
                 isExpanded={openSectionId === 'creator-about-modal-card'}
                 onToggle={() => toggleSection('creator-about-modal-card')}
                 previewUrl="/"
+                previewAnchor="#creator-section"
                 draftData={currentDraftData}
               >
               <SectionTextsEditor
@@ -4629,6 +4908,210 @@ export default function AdminConsole() {
                 }}
               />
               </AccordionSectionCard>
+
+              {/* Creator Photo Reposition Modal (v44) */}
+              {isRepositionOpen && (
+                <div
+                  style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 9999,
+                    background: 'rgba(0, 0, 0, 0.75)',
+                    backdropFilter: 'blur(6px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '20px',
+                  }}
+                >
+                  <div
+                    style={{
+                      background: '#0f172a',
+                      border: '1px solid #334155',
+                      borderRadius: '20px',
+                      padding: '24px',
+                      maxWidth: '420px',
+                      width: '100%',
+                      boxShadow: '0 25px 50px -12px rgba(0,0,0,0.8)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#f8fafc' }}>
+                        Reposition Profile Photo
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setIsRepositionOpen(false)}
+                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+
+                    {/* Square Reposition Frame with Drag Pan */}
+                    <div
+                      onMouseDown={(e) => {
+                        isDraggingPhoto.current = true;
+                        dragStartPos.current = {
+                          x: e.clientX,
+                          y: e.clientY,
+                          startPanX: repositionPan.x,
+                          startPanY: repositionPan.y,
+                        };
+                      }}
+                      onMouseMove={(e) => {
+                        if (!isDraggingPhoto.current) return;
+                        const dx = e.clientX - dragStartPos.current.x;
+                        const dy = e.clientY - dragStartPos.current.y;
+                        const nextX = Math.max(0, Math.min(100, dragStartPos.current.startPanX - (dx / 2.8)));
+                        const nextY = Math.max(0, Math.min(100, dragStartPos.current.startPanY - (dy / 2.8)));
+                        setRepositionPan({ x: Math.round(nextX), y: Math.round(nextY) });
+                      }}
+                      onMouseUp={() => { isDraggingPhoto.current = false; }}
+                      onMouseLeave={() => { isDraggingPhoto.current = false; }}
+                      onTouchStart={(e) => {
+                        if (e.touches.length === 1) {
+                          isDraggingPhoto.current = true;
+                          dragStartPos.current = {
+                            x: e.touches[0].clientX,
+                            y: e.touches[0].clientY,
+                            startPanX: repositionPan.x,
+                            startPanY: repositionPan.y,
+                          };
+                        }
+                      }}
+                      onTouchMove={(e) => {
+                        if (!isDraggingPhoto.current || e.touches.length !== 1) return;
+                        const dx = e.touches[0].clientX - dragStartPos.current.x;
+                        const dy = e.touches[0].clientY - dragStartPos.current.y;
+                        const nextX = Math.max(0, Math.min(100, dragStartPos.current.startPanX - (dx / 2.8)));
+                        const nextY = Math.max(0, Math.min(100, dragStartPos.current.startPanY - (dy / 2.8)));
+                        setRepositionPan({ x: Math.round(nextX), y: Math.round(nextY) });
+                      }}
+                      onTouchEnd={() => { isDraggingPhoto.current = false; }}
+                      style={{
+                        position: 'relative',
+                        width: '100%',
+                        height: '280px',
+                        borderRadius: '16px',
+                        border: '2px dashed #475569',
+                        overflow: 'hidden',
+                        cursor: 'grab',
+                        background: '#090d16',
+                        userSelect: 'none',
+                        touchAction: 'none',
+                      }}
+                    >
+                      <img
+                        src={creatorAbout.photo_url || '/assets/creator.jpg'}
+                        alt="Reposition Preview"
+                        draggable={false}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          objectPosition: `${repositionPan.x}% ${repositionPan.y}%`,
+                          transform: `scale(${repositionZoom})`,
+                          transformOrigin: `${repositionPan.x}% ${repositionPan.y}%`,
+                          pointerEvents: 'none',
+                          transition: isDraggingPhoto.current ? 'none' : 'object-position 0.1s ease',
+                        }}
+                      />
+                      {/* Rule of thirds grid overlay */}
+                      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', border: '1px solid rgba(255,255,255,0.08)', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gridTemplateRows: '1fr 1fr 1fr' }}>
+                        <div style={{ borderRight: '1px dashed rgba(255,255,255,0.15)', borderBottom: '1px dashed rgba(255,255,255,0.15)' }} />
+                        <div style={{ borderRight: '1px dashed rgba(255,255,255,0.15)', borderBottom: '1px dashed rgba(255,255,255,0.15)' }} />
+                        <div style={{ borderBottom: '1px dashed rgba(255,255,255,0.15)' }} />
+                        <div style={{ borderRight: '1px dashed rgba(255,255,255,0.15)', borderBottom: '1px dashed rgba(255,255,255,0.15)' }} />
+                        <div style={{ borderRight: '1px dashed rgba(255,255,255,0.15)', borderBottom: '1px dashed rgba(255,255,255,0.15)' }} />
+                        <div style={{ borderBottom: '1px dashed rgba(255,255,255,0.15)' }} />
+                      </div>
+                    </div>
+
+                    <div style={{ fontSize: '11.5px', color: '#94a3b8', textAlign: 'center', margin: '8px 0 16px' }}>
+                      Drag image to pan focus • Current Position: <span style={{ color: '#10b981', fontFamily: 'monospace' }}>{repositionPan.x}% {repositionPan.y}%</span>
+                    </div>
+
+                    {/* Zoom Slider */}
+                    <div style={{ marginBottom: '20px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#cbd5e1', marginBottom: '6px' }}>
+                        <span>Zoom Scale</span>
+                        <span style={{ fontFamily: 'monospace', color: '#38bdf8' }}>{repositionZoom.toFixed(2)}x</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="1"
+                        max="3"
+                        step="0.05"
+                        value={repositionZoom}
+                        onChange={(e) => setRepositionZoom(parseFloat(e.target.value))}
+                        style={{ width: '100%', accentColor: '#10b981', cursor: 'pointer' }}
+                      />
+                    </div>
+
+                    {/* Modal Buttons */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRepositionPan({ x: 50, y: 50 });
+                          setRepositionZoom(1);
+                        }}
+                        style={{
+                          padding: '8px 14px',
+                          borderRadius: '8px',
+                          background: '#1e293b',
+                          border: '1px solid #334155',
+                          color: '#94a3b8',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Reset Position
+                      </button>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setIsRepositionOpen(false)}
+                          style={{
+                            padding: '8px 14px',
+                            borderRadius: '8px',
+                            background: '#1f2937',
+                            border: 'none',
+                            color: '#cbd5e1',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCreatorAbout((prev) => ({
+                              ...prev,
+                              photo_position: `${repositionPan.x}% ${repositionPan.y}%`,
+                            }));
+                            setIsRepositionOpen(false);
+                          }}
+                          style={{
+                            padding: '8px 16px',
+                            borderRadius: '8px',
+                            background: '#10b981',
+                            border: 'none',
+                            color: '#ffffff',
+                            fontWeight: 700,
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -5062,6 +5545,7 @@ export default function AdminConsole() {
                 id="policy-terms-header-card"
                 title="Terms of Service Page Header & Chrome Labels"
                 badge="Terms Chrome"
+                collapsible={true}
                 isExpanded={openSectionId === 'policy-terms-header-card'}
                 onToggle={() => toggleSection('policy-terms-header-card')}
                 previewUrl="/terms"
@@ -5140,6 +5624,7 @@ export default function AdminConsole() {
                 id="policy-privacy-header-card"
                 title="Privacy Policy Page Header & Chrome Labels"
                 badge="Privacy Chrome"
+                collapsible={true}
                 isExpanded={openSectionId === 'policy-privacy-header-card'}
                 onToggle={() => toggleSection('policy-privacy-header-card')}
                 previewUrl="/privacy"
@@ -5228,6 +5713,7 @@ export default function AdminConsole() {
                       id={`policy-sec-${item.id}`}
                       title={`Section ${index + 1}: ${sec.title_en || item.id} (${isPrivacy ? 'Privacy Policy' : 'Terms of Service'})`}
                       badge={isPrivacy ? 'Privacy' : 'Terms'}
+                      collapsible={true}
                       isExpanded={openSectionId === `policy-sec-${item.id}`}
                       onToggle={() => toggleSection(`policy-sec-${item.id}`)}
                       previewUrl={isPrivacy ? '/privacy' : '/terms'}

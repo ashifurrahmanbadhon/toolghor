@@ -9,10 +9,12 @@ export interface AccordionSectionCardProps {
   badge?: string;
   badgeColor?: 'green' | 'amber' | 'blue' | 'slate';
   subtitle?: string;
-  isExpanded: boolean;
-  onToggle: () => void;
+  isExpanded?: boolean;
+  onToggle?: () => void;
+  collapsible?: boolean;
   children: React.ReactNode;
   previewUrl?: string;
+  previewAnchor?: string;
   draftData?: any;
   guideDraft?: any;
   faqDraft?: any;
@@ -27,13 +29,18 @@ export default function AccordionSectionCard({
   subtitle,
   isExpanded,
   onToggle,
+  collapsible = false,
   children,
   previewUrl,
+  previewAnchor,
   draftData,
   guideDraft,
   faqDraft,
   actionButton,
 }: AccordionSectionCardProps) {
+  const isCollapsible = Boolean(collapsible);
+  const effectivelyExpanded = isCollapsible ? Boolean(isExpanded) : true;
+
   const badgeStyles = {
     green: { bg: 'rgba(16, 185, 129, 0.15)', text: '#34d399', border: 'rgba(16, 185, 129, 0.3)' },
     amber: { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.3)' },
@@ -46,24 +53,25 @@ export default function AccordionSectionCard({
       id={`section-card-${id}`}
       style={{
         background: '#111827',
-        border: `1px solid ${isExpanded ? '#334155' : '#1f2937'}`,
+        border: `1px solid ${effectivelyExpanded ? '#334155' : '#1f2937'}`,
         borderRadius: '16px',
         marginBottom: '20px',
-        overflow: 'hidden',
+        overflow: 'visible',
         transition: 'border-color 0.2s ease',
       }}
     >
-      {/* Accordion Header Bar */}
+      {/* Header Bar */}
       <div
-        onClick={onToggle}
+        onClick={isCollapsible ? onToggle : undefined}
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           padding: '16px 20px',
-          background: isExpanded ? '#0f172a' : '#111827',
-          borderBottom: isExpanded ? '1px solid #1f2937' : 'none',
-          cursor: 'pointer',
+          background: effectivelyExpanded ? '#0f172a' : '#111827',
+          borderBottom: effectivelyExpanded ? '1px solid #1f2937' : 'none',
+          borderRadius: effectivelyExpanded ? '15px 15px 0 0' : '15px',
+          cursor: isCollapsible ? 'pointer' : 'default',
           userSelect: 'none',
           flexWrap: 'wrap',
           gap: '12px',
@@ -102,55 +110,59 @@ export default function AccordionSectionCard({
             </div>
           )}
 
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '12px',
-              fontWeight: 600,
-              color: isExpanded ? '#10b981' : '#94a3b8',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              background: isExpanded ? 'rgba(16, 185, 129, 0.1)' : '#1e293b',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <span>{isExpanded ? 'Collapse' : 'Expand'}</span>
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
+          {/* Only render collapse/expand toggle button and chevron when collapsible is true */}
+          {isCollapsible && (
+            <div
               style={{
-                transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: effectivelyExpanded ? '#10b981' : '#94a3b8',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: effectivelyExpanded ? 'rgba(16, 185, 129, 0.1)' : '#1e293b',
+                transition: 'all 0.15s ease',
               }}
             >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </div>
+              <span>{effectivelyExpanded ? 'Collapse' : 'Expand'}</span>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                style={{
+                  transform: effectivelyExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s ease',
+                }}
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Accordion Body — kept mounted to preserve uncommitted input state */}
+      {/* Card Body */}
       <div
         style={{
-          display: isExpanded ? 'block' : 'none',
+          display: effectivelyExpanded ? 'block' : 'none',
           padding: '24px 20px',
         }}
       >
         {previewUrl ? (
           <div className="admin-split-layout">
-            <div className="admin-editor-pane" style={{ minWidth: 0 }}>
+            <div className="admin-editor-pane" style={{ minWidth: 0, maxWidth: '100%' }}>
               {children}
             </div>
             <div className="admin-preview-pane" style={{ minWidth: 0, position: 'sticky', top: '16px' }}>
-              {isExpanded && draftData && (
+              {effectivelyExpanded && draftData && (
                 <LivePreviewPanel
                   url={previewUrl}
+                  previewAnchor={previewAnchor}
                   title={`LIVE PREVIEW • ${title.toUpperCase()}`}
                   draftData={draftData}
                   guideDraft={guideDraft}

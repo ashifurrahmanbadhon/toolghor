@@ -112,7 +112,7 @@ export default function Footer({ customSettings, contentTexts: initialContentTex
 
   return (
     <>
-      <footer className="foot">
+      <footer className="foot" id="footer-section">
         <div className="wrap foot-row">
           <div className="foot-left">
             © 2026 <span>{siteConfig.name}</span>. {copyrightText}

@@ -1,11 +1,12 @@
 /**
- * Shared helper for CMS Live Simulation / Preview Mode (ToolGhor v43).
+ * Shared helper for CMS Live Simulation / Preview Mode (ToolGhor v44).
  * Fully inert when cms_preview is not present in URL search params.
  */
 
 export interface CmsPreviewMessage {
   type: 'cms-preview';
   publicData?: any;
+  previewAnchor?: string;
   guideDraft?: {
     slug: string;
     guide: any;
@@ -19,8 +20,42 @@ export interface CmsPreviewMessage {
 type PreviewListener = (msg: CmsPreviewMessage) => void;
 
 let isInitialized = false;
+let hasScrolledToAnchor = false;
 const listeners: Set<PreviewListener> = new Set();
 let latestPreviewData: CmsPreviewMessage | null = null;
+
+function scrollToTargetAnchor(targetAnchor?: string): void {
+  if (hasScrolledToAnchor) return;
+  const hash = targetAnchor || (typeof window !== 'undefined' ? window.location.hash : '');
+  if (!hash) return;
+  const targetId = hash.replace(/^#/, '');
+  if (!targetId) return;
+
+  if (targetId === 'creator-section' || targetId === 'about-modal') {
+    hasScrolledToAnchor = true;
+    setTimeout(() => {
+      const w = window as any;
+      if (w.UI && typeof w.UI.openAboutModal === 'function') {
+        if (!document.getElementById('about-modal')) {
+          w.UI.openAboutModal();
+        }
+      }
+      const el = document.getElementById(targetId) || document.getElementById('about-modal');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 200);
+    return;
+  }
+
+  const el = document.getElementById(targetId);
+  if (el) {
+    hasScrolledToAnchor = true;
+    setTimeout(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+  }
+}
 
 /**
  * Returns true if the current page is being rendered inside the CMS Live Preview iframe.
@@ -57,7 +92,21 @@ export function initPreviewMode(): void {
         console.error('[cms-preview error]:', err);
       }
     });
+
+    // Auto-scroll to section anchor once after initial draft is applied
+    if (event.data.previewAnchor) {
+      scrollToTargetAnchor(event.data.previewAnchor);
+    } else if (typeof window !== 'undefined' && window.location.hash) {
+      scrollToTargetAnchor(window.location.hash);
+    }
   });
+
+  // Also attempt scroll if loaded directly with hash in preview iframe
+  if (typeof window !== 'undefined' && window.location.hash) {
+    setTimeout(() => {
+      scrollToTargetAnchor(window.location.hash);
+    }, 300);
+  }
 
   // 2. Suppress /api/analytics/track and block mutating writes
   if (typeof window.fetch === 'function') {

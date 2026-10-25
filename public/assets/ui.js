@@ -1496,18 +1496,26 @@
     );
 
     var root = UI.getRoot ? UI.getRoot() : (UI.ROOT || '');
+    var defaultPhoto = root + 'assets/creator.jpg';
+    var photoSrc = (creatorCfg.photo_url && creatorCfg.photo_url.trim()) ? creatorCfg.photo_url : defaultPhoto;
+    var photoPos = creatorCfg.photo_position || '50% 50%';
     var creatorImg = UI.el('img', {
-      src: root + 'assets/creator.jpg',
+      src: photoSrc,
       alt: creatorName,
       class: 'about-creator-photo',
       loading: 'eager',
+      style: 'object-position: ' + photoPos + '; object-fit: cover;',
       onerror: function () {
-        this.style.display = 'none';
-        if (this.parentNode) this.parentNode.textContent = 'AR';
+        if (this.src !== defaultPhoto) {
+          this.src = defaultPhoto;
+        } else {
+          this.style.display = 'none';
+          if (this.parentNode) this.parentNode.textContent = 'AR';
+        }
       }
     });
 
-    var creatorProfile = UI.el('div', { class: 'about-creator-profile' },
+    var creatorProfile = UI.el('div', { class: 'about-creator-profile', id: 'creator-section' },
       UI.el('div', { class: 'about-creator-avatar', 'aria-hidden': 'true' }, creatorImg),
       UI.el('div', { class: 'about-creator-info' },
         UI.el('h3', { class: 'about-creator-name' }, creatorName),

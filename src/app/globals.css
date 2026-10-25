@@ -1059,7 +1059,7 @@ input[type="submit"],
   100% { background-position: -200% 0; }
 }
 
-/* Admin Per-Section Live Preview Split (ToolGhor v43) */
+/* Admin Per-Section Live Preview Split (ToolGhor v44) */
 .admin-split-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
@@ -1073,5 +1073,19 @@ input[type="submit"],
     gap: 20px;
   }
 }
+
+/* Admin Manager Tables Layout (ToolGhor v44) */
+.admin-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-editor-pane {
+  min-width: 0;
+  max-width: 100%;
+}
+
 
 

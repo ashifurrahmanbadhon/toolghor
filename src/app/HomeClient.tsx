@@ -147,6 +147,14 @@ export default function HomeClient({ initialData }: HomeClientProps) {
         if (msg.publicData) {
           setPublicData(msg.publicData);
           syncGlobals(msg.publicData);
+          if (typeof document !== 'undefined') {
+            const photoEl = document.querySelector('.about-creator-photo') as HTMLImageElement;
+            if (photoEl && msg.publicData.creatorAbout) {
+              const ca = msg.publicData.creatorAbout;
+              if (ca.photo_url) photoEl.src = ca.photo_url;
+              if (ca.photo_position) photoEl.style.objectPosition = ca.photo_position;
+            }
+          }
         }
       });
     }
@@ -466,6 +474,7 @@ export default function HomeClient({ initialData }: HomeClientProps) {
       {/* 1. Dynamic Live Announcement Banner (Controllable from Admin with dynamic Banner Type) */}
       {isAnnouncementActive && announcementText && !bannerDismissed && (
         <aside
+          id="announcement-bar"
           role="region"
           aria-label="Notice banner"
           className="announcement-banner"
@@ -508,7 +517,7 @@ export default function HomeClient({ initialData }: HomeClientProps) {
 
       {/* 2. Hero Section (Controllable from Admin) */}
       {isHeroActive && (
-        <section className="hero">
+        <section id="hero-section" className="hero">
           <div className="wrap hero-wrap">
             <h1 className="hero-tag" data-cfg="tagline">
               {heroTagline}

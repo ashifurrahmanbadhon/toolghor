@@ -393,7 +393,22 @@ export async function POST(req: NextRequest) {
 
     // 6. Update Creator & About section independently
     if (action === 'update_creator_about') {
-      const { is_active, name, role_bn, role_en, email_active, email, bio_bn, bio_en, social_active, facebook_url, linkedin_url, github_url } = payload;
+      const {
+        is_active,
+        name,
+        role_bn,
+        role_en,
+        email_active,
+        email,
+        bio_bn,
+        bio_en,
+        social_active,
+        facebook_url,
+        linkedin_url,
+        github_url,
+        photo_url,
+        photo_position,
+      } = payload;
       await sql`
         UPDATE section_creator_about
         SET
@@ -409,6 +424,8 @@ export async function POST(req: NextRequest) {
           facebook_url = COALESCE(${facebook_url}, facebook_url),
           linkedin_url = COALESCE(${linkedin_url}, linkedin_url),
           github_url = COALESCE(${github_url}, github_url),
+          photo_url = CASE WHEN ${photo_url !== undefined} THEN ${photo_url || null} ELSE photo_url END,
+          photo_position = COALESCE(${photo_position}, photo_position),
           updated_at = CURRENT_TIMESTAMP
         WHERE id = 1;
       `;
