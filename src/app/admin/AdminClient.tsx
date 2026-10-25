@@ -344,13 +344,19 @@ export default function AdminConsole() {
   const [contentTexts, setContentTexts] = useState<ContentTexts>(DEFAULT_CONTENT_TEXTS);
   const [savingContentTexts, setSavingContentTexts] = useState(false);
 
-  // Accordion Sections State: tracks which subsection cards are open (independent expand/collapse)
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  // Accordion Sections State: tracks the currently open card per tab (single-open mutual exclusion)
+  const [activeAccordionCard, setActiveAccordionCard] = useState<Record<string, string | null>>({
+    hero: 'hero-taglines-card',
+    footer: 'footer-social-card',
+    creator: 'creator-profile-card',
+    policies: 'policy-terms-header-card',
+    guides: 'guides-chrome-card',
+    faq: 'faq-header-card',
+  });
   const [activeGuideSlug, setActiveGuideSlug] = useState<string>('');
 
-  // Entering a tab starts all-collapsed and resets scroll to top
+  // Reset scroll to top when changing tab
   useEffect(() => {
-    setOpenSections({});
     if (typeof window !== 'undefined') {
       const mainViewport = document.querySelector('.admin-main-viewport');
       if (mainViewport) {
@@ -361,66 +367,13 @@ export default function AdminConsole() {
   }, [activeTab]);
 
   const toggleSection = (id: string) => {
-    setOpenSections((prev) => ({
+    setActiveAccordionCard((prev) => ({
       ...prev,
-      [id]: !prev[id],
+      [activeTab]: prev[activeTab] === id ? null : id,
     }));
   };
 
-  const isSectionExpanded = (id: string) => Boolean(openSections[id]);
-
-  const expandAllSections = (ids: string[]) => {
-    setOpenSections((prev) => {
-      const next = { ...prev };
-      ids.forEach((id) => {
-        next[id] = true;
-      });
-      return next;
-    });
-  };
-
-  const collapseAllSections = (ids: string[]) => {
-    setOpenSections((prev) => {
-      const next = { ...prev };
-      ids.forEach((id) => {
-        next[id] = false;
-      });
-      return next;
-    });
-  };
-
-  const renderAccordionControls = (ids: string[]) => {
-    const allExpanded = ids.length > 0 && ids.every((id) => openSections[id]);
-    return (
-      <button
-        type="button"
-        onClick={() => {
-          if (allExpanded) {
-            collapseAllSections(ids);
-          } else {
-            expandAllSections(ids);
-          }
-        }}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '8px 14px',
-          borderRadius: '8px',
-          background: allExpanded ? 'rgba(239, 68, 68, 0.15)' : '#1e293b',
-          border: `1px solid ${allExpanded ? 'rgba(239, 68, 68, 0.3)' : '#334155'}`,
-          color: allExpanded ? '#f87171' : '#cbd5e1',
-          fontSize: '12.5px',
-          fontWeight: 600,
-          cursor: 'pointer',
-          transition: 'all 0.15s ease',
-          flexShrink: 0,
-        }}
-      >
-        <span>{allExpanded ? 'Collapse All' : 'Expand All'}</span>
-      </button>
-    );
-  };
+  const isSectionExpanded = (id: string) => activeAccordionCard[activeTab] === id;
 
   // Creator Photo Reposition & Device Upload State (v44)
   const [isRepositionOpen, setIsRepositionOpen] = useState(false);
@@ -2265,9 +2218,7 @@ export default function AdminConsole() {
                   id="overview-live-home"
                   title="Platform Key Metrics & Platform Overview"
                   badge="Overview"
-                  collapsible={true}
-                  isExpanded={isSectionExpanded('overview-live-home')}
-                  onToggle={() => toggleSection('overview-live-home')}
+                  collapsible={false}
                 >
                 {/* 2 — KPI Card Row (3 Cards: Total Tool Uses, Most Used Tool, Active Tools) */}
                 <div
@@ -2959,9 +2910,8 @@ export default function AdminConsole() {
                     Configure the main website header tagline, search box placeholders, and visibility.
                   </p>
                 </div>
-                {/* Active / Inactive Toggle Switch & Accordion Controls */}
+                {/* Active / Inactive Toggle Switch */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, flexWrap: 'wrap' }}>
-                  {renderAccordionControls(['hero-taglines-card', 'hero-controls-card'])}
                   <span style={{ fontSize: '14px', fontWeight: 600, color: hero.is_active ? '#10b981' : '#64748b' }}>
                     {hero.is_active ? 'Section Active' : 'Section Inactive'}
                   </span>
@@ -3252,9 +3202,7 @@ export default function AdminConsole() {
                 id="announcement-banner-card"
                 title="Announcement Banner Configuration"
                 badge={announcement.is_active ? 'Active' : 'Inactive'}
-                collapsible={true}
-                isExpanded={isSectionExpanded('announcement-banner-card')}
-                onToggle={() => toggleSection('announcement-banner-card')}
+                collapsible={false}
                 previewUrl="/"
                 previewAnchor="#announcement-bar"
                 draftData={currentDraftData}
@@ -3571,9 +3519,7 @@ export default function AdminConsole() {
                 id="categories-catalog-card"
                 title="Categories Catalog & Reordering"
                 badge={`${categories.length} Categories`}
-                collapsible={true}
-                isExpanded={isSectionExpanded('categories-catalog-card')}
-                onToggle={() => toggleSection('categories-catalog-card')}
+                collapsible={false}
                 previewUrl="/"
                 previewAnchor="#main"
                 draftData={currentDraftData}
@@ -3752,9 +3698,7 @@ export default function AdminConsole() {
                 id="tools-catalog-card"
                 title="Tools Catalog & Configuration"
                 badge={`${tools.length} Tools`}
-                collapsible={true}
-                isExpanded={isSectionExpanded('tools-catalog-card')}
-                onToggle={() => toggleSection('tools-catalog-card')}
+                collapsible={false}
                 previewUrl={toolModal.isOpen && toolModal.data?.slug ? `/tools/${toolModal.data.slug}` : '/'}
                 previewAnchor={toolModal.isOpen && toolModal.data?.slug ? undefined : '#main'}
                 draftData={currentDraftData}
@@ -4026,9 +3970,8 @@ export default function AdminConsole() {
                     Granular element controls for floating WhatsApp widget, social profile icons, and footer copyright text.
                   </p>
                 </div>
-                {/* Master Active / Inactive Toggle Switch & Accordion Controls */}
+                {/* Master Active / Inactive Toggle Switch */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, flexWrap: 'wrap' }}>
-                  {renderAccordionControls(['footer-social-card', 'footer-nav-card'])}
                   <span style={{ fontSize: '14px', fontWeight: 600, color: footerSocial.is_active ? '#10b981' : '#64748b' }}>
                     {footerSocial.is_active ? 'Master Footer Active' : 'Footer Disabled'}
                   </span>
@@ -4503,9 +4446,8 @@ export default function AdminConsole() {
                     Granular element controls for the creator identity, direct email contact, social links, and bio descriptions.
                   </p>
                 </div>
-                {/* Master Active / Inactive Toggle Switch & Accordion Controls */}
+                {/* Master Active / Inactive Toggle Switch */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, flexWrap: 'wrap' }}>
-                  {renderAccordionControls(['creator-profile-card', 'creator-about-modal-card'])}
                   <span style={{ fontSize: '14px', fontWeight: 600, color: creatorAbout.is_active ? '#10b981' : '#64748b' }}>
                     {creatorAbout.is_active ? 'Creator Card Active' : 'Creator Card Disabled'}
                   </span>
@@ -5354,9 +5296,7 @@ export default function AdminConsole() {
                 id="apis-credentials-card"
                 title="API Integrations & Cloud Provider Credentials"
                 badge={apiKeys.is_active ? 'All APIs Active' : 'Paused'}
-                collapsible={true}
-                isExpanded={isSectionExpanded('apis-credentials-card')}
-                onToggle={() => toggleSection('apis-credentials-card')}
+                collapsible={false}
               >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {[
@@ -5691,11 +5631,6 @@ export default function AdminConsole() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flexShrink: 0, alignItems: 'center' }}>
-                  {renderAccordionControls([
-                    'policy-terms-header-card',
-                    'policy-privacy-header-card',
-                    ...POLICY_SECTIONS_LIST.map((item) => `policy-sec-${item.id}`),
-                  ])}
                   <Link
                     href="/terms"
                     target="_blank"
@@ -6199,7 +6134,6 @@ export default function AdminConsole() {
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flexShrink: 0, alignItems: 'center' }}>
-                  {renderAccordionControls(['guides-chrome-card', 'guides-articles-card'])}
                   <Link
                     href="/guides"
                     target="_blank"
@@ -6402,7 +6336,6 @@ export default function AdminConsole() {
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flexShrink: 0, alignItems: 'center' }}>
-                  {renderAccordionControls(['faq-header-card', 'faq-items-card'])}
                   <Link
                     href="/faq"
                     target="_blank"
@@ -6522,7 +6455,6 @@ export default function AdminConsole() {
                   </p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', flexShrink: 0 }}>
-                  {renderAccordionControls(['analytics-charts-card', 'analytics-table-card'])}
                   <button
                     type="button"
                     onClick={fetchAllSections}
@@ -6562,9 +6494,7 @@ export default function AdminConsole() {
                       id="analytics-charts-card"
                       title="Usage Analytics & Platform KPIs"
                       badge="Metrics"
-                      collapsible={true}
-                      isExpanded={isSectionExpanded('analytics-charts-card')}
-                      onToggle={() => toggleSection('analytics-charts-card')}
+                      collapsible={false}
                     >
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px', marginBottom: '28px' }}>
                       <div style={{ background: '#111827', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '16px', padding: '22px' }}>
@@ -6605,9 +6535,7 @@ export default function AdminConsole() {
                       id="analytics-table-card"
                       title="Tool Performance Breakdown Table"
                       badge="Usage Table"
-                      collapsible={true}
-                      isExpanded={isSectionExpanded('analytics-table-card')}
-                      onToggle={() => toggleSection('analytics-table-card')}
+                      collapsible={false}
                     >
                     {/* Table View with Progress Bars */}
                     <div className="admin-table-wrap" style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
@@ -6702,9 +6630,6 @@ export default function AdminConsole() {
                     Manage your administrator credentials, recovery email/phone, and securely change your login passcode.
                   </p>
                 </div>
-                <div style={{ flexShrink: 0 }}>
-                  {renderAccordionControls(['profile-info-card', 'profile-password-card'])}
-                </div>
               </div>
 
               {profileMsg && (
@@ -6736,9 +6661,7 @@ export default function AdminConsole() {
                   id="profile-info-card"
                   title="Admin Credentials & Contact Info"
                   badge="Profile"
-                  collapsible={true}
-                  isExpanded={isSectionExpanded('profile-info-card')}
-                  onToggle={() => toggleSection('profile-info-card')}
+                  collapsible={false}
                 >
                 <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
                   <div style={{ marginBottom: '20px', borderBottom: '1px solid #1f2937', paddingBottom: '14px' }}>
@@ -6826,9 +6749,7 @@ export default function AdminConsole() {
                   id="profile-password-card"
                   title="Change Admin Passcode & Master Password"
                   badge="Security"
-                  collapsible={true}
-                  isExpanded={isSectionExpanded('profile-password-card')}
-                  onToggle={() => toggleSection('profile-password-card')}
+                  collapsible={false}
                 >
                 <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
                   <div style={{ marginBottom: '20px', borderBottom: '1px solid #1f2937', paddingBottom: '14px' }}>
