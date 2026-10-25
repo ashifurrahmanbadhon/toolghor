@@ -7,6 +7,7 @@ import Footer from '@/components/Footer';
 import { useApp } from '@/context/AppContext';
 import { GUIDES, Guide } from '@/data/guides';
 import { ContentTexts, DEFAULT_CONTENT_TEXTS } from '@/data/contentTexts';
+import { isPreviewMode, initPreviewMode, subscribePreview } from '@/lib/previewMode';
 
 interface GuideIndexProps {
   guides?: Guide[];
@@ -23,6 +24,17 @@ export default function GuideIndex({
   );
 
   useEffect(() => {
+    // CMS Preview Mode subscription
+    let unsubPreview: (() => void) | null = null;
+    if (isPreviewMode()) {
+      initPreviewMode();
+      unsubPreview = subscribePreview((msg) => {
+        if (msg.publicData?.contentTexts) {
+          setContentTexts(msg.publicData.contentTexts);
+        }
+      });
+    }
+
     const fetchLatest = () => {
       fetch('/api/public/data?t=' + Date.now(), { cache: 'no-store' })
         .then((r) => r.json())
@@ -46,6 +58,7 @@ export default function GuideIndex({
 
     return () => {
       if (channel) channel.close();
+      if (unsubPreview) unsubPreview();
     };
   }, []);
 

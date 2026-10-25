@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Shield,
@@ -47,6 +47,7 @@ import GuidesEditor, { GuideRow } from '@/components/admin/GuidesEditor';
 import FaqEditor, { FaqItemRow } from '@/components/admin/FaqEditor';
 import { ContentTexts, DEFAULT_CONTENT_TEXTS } from '@/data/contentTexts';
 import SectionTextsEditor from '@/components/admin/SectionTextsEditor';
+import AccordionSectionCard from '@/components/admin/AccordionSectionCard';
 
 interface HeroSection {
   is_active: boolean;
@@ -317,6 +318,68 @@ export default function AdminConsole() {
   const [savingRemoveAiLabel, setSavingRemoveAiLabel] = useState(false);
   const [contentTexts, setContentTexts] = useState<ContentTexts>(DEFAULT_CONTENT_TEXTS);
   const [savingContentTexts, setSavingContentTexts] = useState(false);
+
+  // Accordion Section State (Single-open per tab; starts all-collapsed)
+  const [openSectionId, setOpenSectionId] = useState<string | null>(null);
+  const [activeGuideSlug, setActiveGuideSlug] = useState<string>('');
+
+  // Entering a tab starts all-collapsed
+  useEffect(() => {
+    setOpenSectionId(null);
+  }, [activeTab]);
+
+  const toggleSection = (id: string) => {
+    setOpenSectionId((prev) => (prev === id ? null : id));
+  };
+
+  // Draft Channel: Mirrored unsaved state assembled in exact public shape
+  // Never exposes real API key values — flags only, as already exposed publicly
+  const currentDraftData = useMemo(() => {
+    return {
+      hero,
+      announcement,
+      categories,
+      tools,
+      footerSocial,
+      creatorAbout,
+      apiKeys: {
+        is_active: Boolean(apiKeys.is_active),
+        gemini_active: Boolean(apiKeys.gemini_active),
+        openai_active: Boolean(apiKeys.openai_active),
+        convertapi_active: Boolean(apiKeys.convertapi_active),
+        removebg_active: Boolean(apiKeys.removebg_active),
+      },
+      uiSettings: null,
+      policies,
+      removeAiLabel,
+      contentTexts,
+    };
+  }, [
+    hero,
+    announcement,
+    categories,
+    tools,
+    footerSocial,
+    creatorAbout,
+    apiKeys,
+    policies,
+    removeAiLabel,
+    contentTexts,
+  ]);
+
+  const currentGuideDraft = useMemo(() => {
+    if (!activeGuideSlug) return undefined;
+    const found = guides.find((g) => g.slug === activeGuideSlug);
+    if (!found) return undefined;
+    return { slug: activeGuideSlug, guide: found };
+  }, [activeGuideSlug, guides]);
+
+  const currentFaqDraft = useMemo(() => {
+    return {
+      scope: selectedFaqScope,
+      items: faqItems.filter((f) => f.scope === selectedFaqScope),
+    };
+  }, [selectedFaqScope, faqItems]);
 
   // Tool Filters & Search
   const [toolSearch, setToolSearch] = useState('');
@@ -1780,15 +1843,15 @@ export default function AdminConsole() {
             <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {[
                 { id: 'overview', label: 'Dashboard Overview', icon: BarChart3 },
-                { id: 'hero', label: 'Hero Section', icon: Sliders },
                 { id: 'announcement', label: 'Announcement Banner', icon: Bell },
+                { id: 'hero', label: 'Hero Section', icon: Sliders },
                 { id: 'categories', label: 'Categories Manager', icon: Layers, badge: categories.length },
                 { id: 'tools', label: 'Tools Manager', icon: Wrench, badge: tools.length },
+                { id: 'creator', label: 'Creator Profile', icon: User },
+                { id: 'footer', label: 'Footer & WhatsApp', icon: MessageSquare },
                 { id: 'guides', label: 'Guides Manager', icon: BookOpen, badge: guides.length },
                 { id: 'faq', label: 'FAQ Manager', icon: HelpCircle, badge: faqItems.length },
-                { id: 'footer', label: 'Footer & WhatsApp', icon: MessageSquare },
                 { id: 'policies', label: 'Terms & Policies', icon: FileText, badge: '9' },
-                { id: 'creator', label: 'Creator Profile', icon: User },
                 { id: 'apis', label: 'API Integrations', icon: Key },
                 { id: 'analytics', label: 'Usage Analytics', icon: BarChart3 },
                 { id: 'profile', label: 'Admin Profile & Security', icon: Shield },
@@ -1878,15 +1941,15 @@ export default function AdminConsole() {
           <div className="admin-mobile-tab-scroller">
             {[
               { id: 'overview', label: 'Overview' },
-              { id: 'hero', label: 'Hero' },
               { id: 'announcement', label: 'Banner' },
+              { id: 'hero', label: 'Hero' },
               { id: 'categories', label: `Categories (${categories.length})` },
               { id: 'tools', label: `Tools (${tools.length})` },
+              { id: 'creator', label: 'Creator' },
+              { id: 'footer', label: 'Footer & WhatsApp' },
               { id: 'guides', label: `Guides (${guides.length})` },
               { id: 'faq', label: `FAQ (${faqItems.length})` },
-              { id: 'footer', label: 'Footer & WhatsApp' },
               { id: 'policies', label: 'Policies (9)' },
-              { id: 'creator', label: 'Creator' },
               { id: 'apis', label: 'APIs' },
               { id: 'analytics', label: 'Analytics' },
               { id: 'profile', label: 'Security' },
@@ -2002,6 +2065,15 @@ export default function AdminConsole() {
                   </div>
                 </div>
 
+                <AccordionSectionCard
+                  id="overview-live-home"
+                  title="Homepage Simulation & Platform Key Metrics"
+                  badge="Home Preview"
+                  isExpanded={openSectionId === 'overview-live-home'}
+                  onToggle={() => toggleSection('overview-live-home')}
+                  previewUrl="/"
+                  draftData={currentDraftData}
+                >
                 {/* 2 — KPI Card Row (3 Cards: Total Tool Uses, Most Used Tool, Active Tools) */}
                 <div
                   style={{
@@ -2669,6 +2741,7 @@ export default function AdminConsole() {
                     </div>
                   </div>
                 </div>
+                </AccordionSectionCard>
               </div>
             );
           })()}
@@ -2720,6 +2793,15 @@ export default function AdminConsole() {
                 </div>
               </div>
 
+              <AccordionSectionCard
+                id="hero-taglines-card"
+                title="Hero Taglines & Search Box"
+                badge={hero.is_active ? 'Active' : 'Inactive'}
+                isExpanded={openSectionId === 'hero-taglines-card'}
+                onToggle={() => toggleSection('hero-taglines-card')}
+                previewUrl="/"
+                draftData={currentDraftData}
+              >
               <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '28px' }}>
                 <form
                   onSubmit={(e) => {
@@ -2827,7 +2909,17 @@ export default function AdminConsole() {
                   </div>
                 </form>
               </div>
+              </AccordionSectionCard>
 
+              <AccordionSectionCard
+                id="hero-controls-card"
+                title="Homepage Section Controls & Search Labels"
+                badge="Homepage Controls"
+                isExpanded={openSectionId === 'hero-controls-card'}
+                onToggle={() => toggleSection('hero-controls-card')}
+                previewUrl="/"
+                draftData={currentDraftData}
+              >
               <SectionTextsEditor
                 title="Homepage Section Controls & Search Labels"
                 description="Edit the filter buttons, category header, expand/collapse toggles, and empty search message on the homepage."
@@ -2895,6 +2987,7 @@ export default function AdminConsole() {
                   await saveContentTexts(updated, 'Homepage Section Controls');
                 }}
               />
+              </AccordionSectionCard>
             </div>
           )}
 
@@ -2945,6 +3038,15 @@ export default function AdminConsole() {
                 </div>
               </div>
 
+              <AccordionSectionCard
+                id="announcement-banner-card"
+                title="Announcement Banner Configuration"
+                badge={announcement.is_active ? 'Active' : 'Inactive'}
+                isExpanded={openSectionId === 'announcement-banner-card'}
+                onToggle={() => toggleSection('announcement-banner-card')}
+                previewUrl="/"
+                draftData={currentDraftData}
+              >
               <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '28px' }}>
                 <form
                   onSubmit={(e) => {
@@ -3198,6 +3300,7 @@ export default function AdminConsole() {
                   </div>
                 </form>
               </div>
+              </AccordionSectionCard>
             </div>
           )}
 
@@ -3249,6 +3352,15 @@ export default function AdminConsole() {
               </div>
 
               {/* Categories Table */}
+              <AccordionSectionCard
+                id="categories-catalog-card"
+                title="Categories Catalog & Reordering"
+                badge={`${categories.length} Categories`}
+                isExpanded={openSectionId === 'categories-catalog-card'}
+                onToggle={() => toggleSection('categories-catalog-card')}
+                previewUrl="/"
+                draftData={currentDraftData}
+              >
               <div className="admin-table-wrap" style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <table style={{ width: '100%', minWidth: '650px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
                   <thead>
@@ -3355,6 +3467,7 @@ export default function AdminConsole() {
                   </tbody>
                 </table>
               </div>
+              </AccordionSectionCard>
             </div>
           )}
 
@@ -3406,6 +3519,15 @@ export default function AdminConsole() {
                 </button>
               </div>
 
+              <AccordionSectionCard
+                id="tools-catalog-card"
+                title="Tools Catalog & Configuration"
+                badge={`${tools.length} Tools`}
+                isExpanded={openSectionId === 'tools-catalog-card'}
+                onToggle={() => toggleSection('tools-catalog-card')}
+                previewUrl={toolModal.isOpen && toolModal.data?.slug ? `/tools/${toolModal.data.slug}` : '/'}
+                draftData={currentDraftData}
+              >
               {/* Filters Bar */}
               <div
                 style={{
@@ -3631,6 +3753,7 @@ export default function AdminConsole() {
                   </tbody>
                 </table>
               </div>
+              </AccordionSectionCard>
             </div>
           )}
 
@@ -3681,6 +3804,15 @@ export default function AdminConsole() {
                 </div>
               </div>
 
+              <AccordionSectionCard
+                id="footer-social-card"
+                title="Footer & WhatsApp Floating Action Button"
+                badge={footerSocial.is_active ? 'Active' : 'Inactive'}
+                isExpanded={openSectionId === 'footer-social-card'}
+                onToggle={() => toggleSection('footer-social-card')}
+                previewUrl="/"
+                draftData={currentDraftData}
+              >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {/* Element 1: WhatsApp Floating Action Button */}
                 <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '24px' }}>
@@ -3992,7 +4124,17 @@ export default function AdminConsole() {
                   </button>
                 </div>
               </div>
+              </AccordionSectionCard>
 
+              <AccordionSectionCard
+                id="footer-nav-card"
+                title="Footer Navigation Links & Micro-copy"
+                badge="Footer Copy"
+                isExpanded={openSectionId === 'footer-nav-card'}
+                onToggle={() => toggleSection('footer-nav-card')}
+                previewUrl="/"
+                draftData={currentDraftData}
+              >
               <SectionTextsEditor
                 title="Footer Navigation Links & Labels"
                 description="Edit the labels for the standard navigation links and back-to-top button in the website footer."
@@ -4069,6 +4211,7 @@ export default function AdminConsole() {
                   await saveContentTexts(updated, 'Footer Links & Labels');
                 }}
               />
+              </AccordionSectionCard>
             </div>
           )}
 
@@ -4119,6 +4262,15 @@ export default function AdminConsole() {
                 </div>
               </div>
 
+              <AccordionSectionCard
+                id="creator-profile-card"
+                title="Creator Profile Settings & Bio"
+                badge={creatorAbout.is_active ? 'Active' : 'Disabled'}
+                isExpanded={openSectionId === 'creator-profile-card'}
+                onToggle={() => toggleSection('creator-profile-card')}
+                previewUrl="/"
+                draftData={currentDraftData}
+              >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {/* Element 1: Creator Identity & Titles */}
                 <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '24px' }}>
@@ -4378,7 +4530,17 @@ export default function AdminConsole() {
                   </button>
                 </div>
               </div>
+              </AccordionSectionCard>
 
+              <AccordionSectionCard
+                id="creator-about-modal-card"
+                title="About ToolGhor Modal Texts"
+                badge="Modal Copy"
+                isExpanded={openSectionId === 'creator-about-modal-card'}
+                onToggle={() => toggleSection('creator-about-modal-card')}
+                previewUrl="/"
+                draftData={currentDraftData}
+              >
               <SectionTextsEditor
                 title="About ToolGhor Modal Content"
                 description="Edit the tagline badge, description, feature highlights, and 'Built by' label shown in the 'About ToolGhor' modal."
@@ -4466,6 +4628,7 @@ export default function AdminConsole() {
                   await saveContentTexts(updated, 'About Modal Content');
                 }}
               />
+              </AccordionSectionCard>
             </div>
           )}
 
@@ -4522,6 +4685,13 @@ export default function AdminConsole() {
                 <input type="password" name="decoy_password_prevent_autofill" tabIndex={-1} autoComplete="current-password" />
               </div>
 
+              <AccordionSectionCard
+                id="apis-credentials-card"
+                title="API Integrations & Cloud Provider Credentials"
+                badge={apiKeys.is_active ? 'All APIs Active' : 'Paused'}
+                isExpanded={openSectionId === 'apis-credentials-card'}
+                onToggle={() => toggleSection('apis-credentials-card')}
+              >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {[
                   {
@@ -4820,6 +4990,7 @@ export default function AdminConsole() {
                   </button>
                 </div>
               </div>
+              </AccordionSectionCard>
             </div>
           )}
 
@@ -4887,6 +5058,15 @@ export default function AdminConsole() {
                 </div>
               </div>
 
+              <AccordionSectionCard
+                id="policy-terms-header-card"
+                title="Terms of Service Page Header & Chrome Labels"
+                badge="Terms Chrome"
+                isExpanded={openSectionId === 'policy-terms-header-card'}
+                onToggle={() => toggleSection('policy-terms-header-card')}
+                previewUrl="/terms"
+                draftData={currentDraftData}
+              >
               <SectionTextsEditor
                 title="Terms of Service Page Header & Intro"
                 description="Edit the header texts, last updated badge, and welcome intro on the public /terms page."
@@ -4954,7 +5134,17 @@ export default function AdminConsole() {
                   await saveContentTexts(updated, 'Terms Page Header');
                 }}
               />
+              </AccordionSectionCard>
 
+              <AccordionSectionCard
+                id="policy-privacy-header-card"
+                title="Privacy Policy Page Header & Chrome Labels"
+                badge="Privacy Chrome"
+                isExpanded={openSectionId === 'policy-privacy-header-card'}
+                onToggle={() => toggleSection('policy-privacy-header-card')}
+                previewUrl="/privacy"
+                draftData={currentDraftData}
+              >
               <SectionTextsEditor
                 title="Privacy Policy Page Header & Intro"
                 description="Edit the header texts, last updated badge, and welcome intro on the public /privacy page."
@@ -5022,6 +5212,7 @@ export default function AdminConsole() {
                   await saveContentTexts(updated, 'Privacy Page Header');
                 }}
               />
+              </AccordionSectionCard>
 
               {/* 9 Separate Editor Cards */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -5029,8 +5220,19 @@ export default function AdminConsole() {
                   const sec = policies[item.id] || DEFAULT_POLICY_SECTIONS[item.id];
                   const isSaving = Boolean(savingPolicies[item.id]);
                   const status = policySaveStatus[item.id];
+                  const isPrivacy = item.id === 'privacy';
 
                   return (
+                    <AccordionSectionCard
+                      key={item.id}
+                      id={`policy-sec-${item.id}`}
+                      title={`Section ${index + 1}: ${sec.title_en || item.id} (${isPrivacy ? 'Privacy Policy' : 'Terms of Service'})`}
+                      badge={isPrivacy ? 'Privacy' : 'Terms'}
+                      isExpanded={openSectionId === `policy-sec-${item.id}`}
+                      onToggle={() => toggleSection(`policy-sec-${item.id}`)}
+                      previewUrl={isPrivacy ? '/privacy' : '/terms'}
+                      draftData={currentDraftData}
+                    >
                     <div
                       key={item.id}
                       id={`editor-${item.id}`}
@@ -5275,6 +5477,7 @@ export default function AdminConsole() {
                         </div>
                       </div>
                     </div>
+                    </AccordionSectionCard>
                   );
                 })}
               </div>
@@ -5284,6 +5487,15 @@ export default function AdminConsole() {
           {/* TAB: GUIDES MANAGER */}
           {activeTab === 'guides' && (
             <div>
+              <AccordionSectionCard
+                id="guides-chrome-card"
+                title="Guides Index & Article Chrome Labels"
+                badge="Guides Chrome"
+                isExpanded={openSectionId === 'guides-chrome-card'}
+                onToggle={() => toggleSection('guides-chrome-card')}
+                previewUrl="/guides"
+                draftData={currentDraftData}
+              >
               <SectionTextsEditor
                 title="Guides Index & Article Chrome Labels"
                 description="Edit the header texts on /guides and the recurring chrome labels around guide articles."
@@ -5406,19 +5618,42 @@ export default function AdminConsole() {
                   await saveContentTexts(updated, 'Guides Page Labels');
                 }}
               />
+              </AccordionSectionCard>
+
+              <AccordionSectionCard
+                id="guides-articles-card"
+                title="Guides Content & Markdown Editor"
+                badge={`${guides.length} Articles`}
+                isExpanded={openSectionId === 'guides-articles-card'}
+                onToggle={() => toggleSection('guides-articles-card')}
+                previewUrl={activeGuideSlug ? `/guides/${activeGuideSlug}` : '/guides'}
+                draftData={currentDraftData}
+                guideDraft={currentGuideDraft}
+              >
               <GuidesEditor
+                onActiveGuideChange={setActiveGuideSlug}
                 guides={guides}
                 setGuides={setGuides}
                 onSaveGuide={saveGuide}
                 savingGuide={savingGuide}
                 guideSaveStatus={guideSaveStatus}
               />
+              </AccordionSectionCard>
             </div>
           )}
 
           {/* TAB: FAQ MANAGER */}
           {activeTab === 'faq' && (
             <div>
+              <AccordionSectionCard
+                id="faq-header-card"
+                title="FAQ Page Header & Subtitle"
+                badge="FAQ Header"
+                isExpanded={openSectionId === 'faq-header-card'}
+                onToggle={() => toggleSection('faq-header-card')}
+                previewUrl="/faq"
+                draftData={currentDraftData}
+              >
               <SectionTextsEditor
                 title="FAQ Page Header & Subtitle"
                 description="Edit the top badge, heading, and description displayed on the public /faq page."
@@ -5466,6 +5701,18 @@ export default function AdminConsole() {
                   await saveContentTexts(updated, 'FAQ Page Header');
                 }}
               />
+              </AccordionSectionCard>
+
+              <AccordionSectionCard
+                id="faq-items-card"
+                title="FAQ Questions & Scopes Manager"
+                badge={`${faqItems.length} FAQs`}
+                isExpanded={openSectionId === 'faq-items-card'}
+                onToggle={() => toggleSection('faq-items-card')}
+                previewUrl={selectedFaqScope && selectedFaqScope !== 'general' ? `/tools/${selectedFaqScope}` : '/faq'}
+                draftData={currentDraftData}
+                faqDraft={currentFaqDraft}
+              >
               <FaqEditor
                 faqItems={faqItems}
                 setFaqItems={setFaqItems}
@@ -5476,6 +5723,7 @@ export default function AdminConsole() {
                 saveStatus={faqScopeSaveStatus}
                 toolList={tools}
               />
+              </AccordionSectionCard>
             </div>
           )}
 
@@ -5524,6 +5772,13 @@ export default function AdminConsole() {
 
                 return (
                   <>
+                    <AccordionSectionCard
+                      id="analytics-charts-card"
+                      title="Usage Analytics & Platform KPIs"
+                      badge="Metrics"
+                      isExpanded={openSectionId === 'analytics-charts-card'}
+                      onToggle={() => toggleSection('analytics-charts-card')}
+                    >
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px', marginBottom: '28px' }}>
                       <div style={{ background: '#111827', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '16px', padding: '22px' }}>
                         <span style={{ fontSize: '12.5px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -5557,6 +5812,15 @@ export default function AdminConsole() {
                       </div>
                     </div>
 
+                    </AccordionSectionCard>
+
+                    <AccordionSectionCard
+                      id="analytics-table-card"
+                      title="Tool Performance Breakdown Table"
+                      badge="Usage Table"
+                      isExpanded={openSectionId === 'analytics-table-card'}
+                      onToggle={() => toggleSection('analytics-table-card')}
+                    >
                     {/* Table View with Progress Bars */}
                     <div className="admin-table-wrap" style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                       <table style={{ width: '100%', minWidth: '680px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
@@ -5631,6 +5895,7 @@ export default function AdminConsole() {
                         </tbody>
                       </table>
                     </div>
+                    </AccordionSectionCard>
                   </>
                 );
               })()}
@@ -5674,6 +5939,13 @@ export default function AdminConsole() {
 
               <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                 {/* Section 1: Account & Contact */}
+                <AccordionSectionCard
+                  id="profile-info-card"
+                  title="Admin Credentials & Contact Info"
+                  badge="Profile"
+                  isExpanded={openSectionId === 'profile-info-card'}
+                  onToggle={() => toggleSection('profile-info-card')}
+                >
                 <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '28px' }}>
                   <div style={{ marginBottom: '20px', borderBottom: '1px solid #1f2937', paddingBottom: '14px' }}>
                     <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -5750,7 +6022,16 @@ export default function AdminConsole() {
                   </div>
                 </div>
 
+                </AccordionSectionCard>
+
                 {/* Section 2: Change Password */}
+                <AccordionSectionCard
+                  id="profile-password-card"
+                  title="Change Admin Passcode & Master Password"
+                  badge="Security"
+                  isExpanded={openSectionId === 'profile-password-card'}
+                  onToggle={() => toggleSection('profile-password-card')}
+                >
                 <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '28px' }}>
                   <div style={{ marginBottom: '20px', borderBottom: '1px solid #1f2937', paddingBottom: '14px' }}>
                     <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -5856,6 +6137,7 @@ export default function AdminConsole() {
                     </button>
                   </div>
                 </div>
+                </AccordionSectionCard>
               </form>
             </div>
           )}

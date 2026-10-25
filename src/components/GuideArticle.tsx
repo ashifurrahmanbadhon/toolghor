@@ -9,6 +9,7 @@ import { useApp } from '@/context/AppContext';
 import { Guide } from '@/data/guides';
 import { TOOLS_BY_SLUG } from '@/data/registry';
 import { ContentTexts, DEFAULT_CONTENT_TEXTS } from '@/data/contentTexts';
+import { isPreviewMode, initPreviewMode, subscribePreview } from '@/lib/previewMode';
 
 interface GuideArticleProps {
   guide: Guide;
@@ -16,15 +17,41 @@ interface GuideArticleProps {
 }
 
 export default function GuideArticle({
-  guide,
+  guide: initialGuide,
   contentTexts: initialContentTexts,
 }: GuideArticleProps) {
   const { lang } = useApp();
+  const [guide, setGuide] = useState<Guide>(initialGuide);
   const [contentTexts, setContentTexts] = useState<ContentTexts>(
     initialContentTexts || DEFAULT_CONTENT_TEXTS
   );
 
   useEffect(() => {
+    // CMS Preview Mode subscription
+    let unsubPreview: (() => void) | null = null;
+    if (isPreviewMode()) {
+      initPreviewMode();
+      unsubPreview = subscribePreview((msg) => {
+        if (msg.publicData?.contentTexts) {
+          setContentTexts(msg.publicData.contentTexts);
+        }
+        if (msg.guideDraft && msg.guideDraft.slug === initialGuide.slug) {
+          const g = msg.guideDraft.guide;
+          setGuide((prev) => ({
+            ...prev,
+            title: {
+              bn: g.title_bn || prev.title.bn,
+              en: g.title_en || prev.title.en,
+            },
+            excerpt: {
+              bn: g.description_bn || prev.excerpt.bn,
+              en: g.description_en || prev.excerpt.en,
+            },
+          }));
+        }
+      });
+    }
+
     const fetchLatest = () => {
       fetch('/api/public/data?t=' + Date.now(), { cache: 'no-store' })
         .then((r) => r.json())
@@ -48,8 +75,9 @@ export default function GuideArticle({
 
     return () => {
       if (channel) channel.close();
+      if (unsubPreview) unsubPreview();
     };
-  }, []);
+  }, [initialGuide.slug]);
 
   const isBn = lang === 'bn';
   const gaTexts = contentTexts?.guide_article || DEFAULT_CONTENT_TEXTS.guide_article;

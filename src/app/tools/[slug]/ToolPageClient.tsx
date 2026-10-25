@@ -10,6 +10,7 @@ import ToolRunner from '@/components/ToolRunner';
 import ToolCard from '@/components/ToolCard';
 import ToolFaq from '@/components/ToolFaq';
 import { FaqItem } from '@/data/seoData';
+import { isPreviewMode, initPreviewMode, subscribePreview } from '@/lib/previewMode';
 
 interface ToolPageClientProps {
   tool: ToolItem;
@@ -28,8 +29,39 @@ const CAT_NAMES: Record<string, { bn: string; en: string }> = {
   resume: { bn: 'রেজুমি ও সিভি', en: 'Resume' },
 };
 
-export default function ToolPageClient({ tool, relatedTools, apiKeys, faqs, seoTitle }: ToolPageClientProps) {
+export default function ToolPageClient({ tool: initialTool, relatedTools, apiKeys, faqs: initialFaqs, seoTitle }: ToolPageClientProps) {
   const { lang } = useApp();
+  const [tool, setTool] = React.useState<ToolItem>(initialTool);
+  const [faqs, setFaqs] = React.useState<FaqItem[] | undefined>(initialFaqs);
+
+  React.useEffect(() => {
+    if (!isPreviewMode()) return;
+    initPreviewMode();
+    const unsub = subscribePreview((msg) => {
+      if (msg.publicData?.tools) {
+        const found = msg.publicData.tools.find((t: any) => t.slug === initialTool.slug);
+        if (found) {
+          setTool((prev) => ({
+            ...prev,
+            bn: found.title_bn ?? prev.bn,
+            en: found.title_en ?? prev.en,
+            desc: found.desc_bn ?? prev.desc,
+            descEn: found.desc_en ?? prev.descEn,
+          }));
+        }
+      }
+      if (msg.faqDraft && msg.faqDraft.scope === initialTool.slug) {
+        const formatted = (msg.faqDraft.items || [])
+          .filter((i: any) => i.enabled !== false)
+          .map((i: any) => ({
+            en: { q: i.question_en, a: i.answer_en },
+            bn: { q: i.question_bn, a: i.answer_bn },
+          }));
+        setFaqs(formatted);
+      }
+    });
+    return unsub;
+  }, [initialTool.slug]);
 
   const title = lang === 'bn' ? tool.bn : tool.en;
   const leadText = lang === 'bn' ? tool.intro : tool.introEn;

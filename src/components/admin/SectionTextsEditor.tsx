@@ -20,6 +20,7 @@ interface SectionTextsEditorProps {
   fields: TextEditorField[];
   onSave: (values: Record<string, { en: string; bn: string }>) => Promise<void>;
   saving?: boolean;
+  onDraftChange?: (values: Record<string, { en: string; bn: string }>) => void;
 }
 
 export default function SectionTextsEditor({
@@ -29,6 +30,7 @@ export default function SectionTextsEditor({
   fields,
   onSave,
   saving = false,
+  onDraftChange,
 }: SectionTextsEditorProps) {
   const [formState, setFormState] = useState<Record<string, { en: string; bn: string }>>({});
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
@@ -42,13 +44,19 @@ export default function SectionTextsEditor({
   }, [fields]);
 
   const handleChange = (key: string, lang: 'en' | 'bn', val: string) => {
-    setFormState((prev) => ({
-      ...prev,
-      [key]: {
-        en: lang === 'en' ? val : prev[key]?.en || '',
-        bn: lang === 'bn' ? val : prev[key]?.bn || '',
-      },
-    }));
+    setFormState((prev) => {
+      const next = {
+        ...prev,
+        [key]: {
+          en: lang === 'en' ? val : prev[key]?.en || '',
+          bn: lang === 'bn' ? val : prev[key]?.bn || '',
+        },
+      };
+      if (onDraftChange) {
+        onDraftChange(next);
+      }
+      return next;
+    });
   };
 
   const handleSave = async () => {

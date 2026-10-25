@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ASSET_VERSION as BUILT_VERSION } from '@/data/config';
-// Version marker: 20261024_v42
+// Version marker: 20261025_v43
 import { useApp } from '@/context/AppContext';
+import { isPreviewMode } from '@/lib/previewMode';
 
 export default function VersionUpdateChecker() {
   const { lang } = useApp();
@@ -13,6 +14,9 @@ export default function VersionUpdateChecker() {
   const isChecking = useRef<boolean>(false);
 
   const checkVersion = async () => {
+    // Disable in CMS preview mode
+    if (isPreviewMode()) return;
+
     // Guard: check at most once per minute
     const now = Date.now();
     if (now - lastCheckTime.current < 60000 || isChecking.current) {

@@ -1059,3 +1059,19 @@ input[type="submit"],
   100% { background-position: -200% 0; }
 }
 
+/* Admin Per-Section Live Preview Split (ToolGhor v43) */
+.admin-split-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1240px) {
+  .admin-split-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+

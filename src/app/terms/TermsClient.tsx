@@ -8,6 +8,7 @@ import { useApp } from '@/context/AppContext';
 import { PolicySection, TERMS_SECTIONS_LIST, DEFAULT_POLICY_SECTIONS } from '@/data/policiesDefaults';
 
 import { ContentTexts, DEFAULT_CONTENT_TEXTS } from '@/data/contentTexts';
+import { isPreviewMode, initPreviewMode, subscribePreview } from '@/lib/previewMode';
 
 interface TermsClientProps {
   initialPolicies: Record<string, PolicySection>;
@@ -34,6 +35,21 @@ export default function TermsClient({
 
   // Sync listener: refresh policies if admin edits in another tab
   useEffect(() => {
+    // CMS Preview Mode subscription
+    let unsubPreview: (() => void) | null = null;
+    if (isPreviewMode()) {
+      initPreviewMode();
+      unsubPreview = subscribePreview((msg) => {
+        if (msg.publicData?.contentTexts) {
+          setContentTexts(msg.publicData.contentTexts);
+        }
+        if (msg.publicData?.policies) {
+          const { privacy: _omitted, ...termsPolicies } = msg.publicData.policies;
+          setPolicies(termsPolicies);
+        }
+      });
+    }
+
     const fetchLatest = () => {
       fetch('/api/policies?t=' + Date.now(), { cache: 'no-store' })
         .then((res) => res.json())
@@ -66,6 +82,7 @@ export default function TermsClient({
 
     return () => {
       if (channel) channel.close();
+      if (unsubPreview) unsubPreview();
     };
   }, []);
 

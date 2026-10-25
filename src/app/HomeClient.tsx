@@ -10,6 +10,7 @@ import { CATEGORIES as DEFAULT_CATEGORIES, TOOLS as DEFAULT_TOOLS, ToolItem, Cat
 import { useApp } from '@/context/AppContext';
 import { ASSET_VERSION } from '@/data/config';
 import { DEFAULT_CONTENT_TEXTS } from '@/data/contentTexts';
+import { isPreviewMode, initPreviewMode, subscribePreview } from '@/lib/previewMode';
 
 interface HomeClientProps {
   initialData: any;
@@ -138,6 +139,18 @@ export default function HomeClient({ initialData }: HomeClientProps) {
     }
     syncData();
 
+    // CMS Preview Mode subscription
+    let unsubPreview: (() => void) | null = null;
+    if (isPreviewMode()) {
+      initPreviewMode();
+      unsubPreview = subscribePreview((msg) => {
+        if (msg.publicData) {
+          setPublicData(msg.publicData);
+          syncGlobals(msg.publicData);
+        }
+      });
+    }
+
     let channel: BroadcastChannel | null = null;
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       try {
@@ -155,6 +168,7 @@ export default function HomeClient({ initialData }: HomeClientProps) {
       return () => {
         window.removeEventListener('focus', syncData);
         if (channel) channel.close();
+        if (unsubPreview) unsubPreview();
       };
     }
   }, []);

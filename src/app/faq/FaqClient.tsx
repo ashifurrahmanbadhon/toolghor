@@ -7,6 +7,7 @@ import FaqAccordion from '@/components/FaqAccordion';
 import { useApp } from '@/context/AppContext';
 import { FaqItem, GENERAL_FAQ } from '@/data/seoData';
 import { ContentTexts, DEFAULT_CONTENT_TEXTS } from '@/data/contentTexts';
+import { isPreviewMode, initPreviewMode, subscribePreview } from '@/lib/previewMode';
 
 interface FaqClientProps {
   faqs?: FaqItem[];
@@ -24,6 +25,26 @@ export default function FaqClient({
   );
 
   useEffect(() => {
+    // CMS Preview Mode subscription
+    let unsubPreview: (() => void) | null = null;
+    if (isPreviewMode()) {
+      initPreviewMode();
+      unsubPreview = subscribePreview((msg) => {
+        if (msg.publicData?.contentTexts) {
+          setContentTexts(msg.publicData.contentTexts);
+        }
+        if (msg.faqDraft && (msg.faqDraft.scope === 'general' || !msg.faqDraft.scope)) {
+          const formatted = (msg.faqDraft.items || [])
+            .filter((i: any) => i.enabled !== false)
+            .map((i: any) => ({
+              en: { q: i.question_en, a: i.answer_en },
+              bn: { q: i.question_bn, a: i.answer_bn },
+            }));
+          setFaqs(formatted);
+        }
+      });
+    }
+
     const fetchLatest = () => {
       fetch('/api/public/data?t=' + Date.now(), { cache: 'no-store' })
         .then((r) => r.json())
@@ -47,6 +68,7 @@ export default function FaqClient({
 
     return () => {
       if (channel) channel.close();
+      if (unsubPreview) unsubPreview();
     };
   }, []);
 

@@ -8,6 +8,7 @@ import { useApp } from '@/context/AppContext';
 import { PolicySection, extractSubheadings } from '@/data/policiesDefaults';
 
 import { ContentTexts, DEFAULT_CONTENT_TEXTS } from '@/data/contentTexts';
+import { isPreviewMode, initPreviewMode, subscribePreview } from '@/lib/previewMode';
 
 interface PrivacyClientProps {
   initialPolicy: PolicySection;
@@ -33,6 +34,20 @@ export default function PrivacyClient({
 
   // Sync listener: refresh policy if admin edits in another tab
   useEffect(() => {
+    // CMS Preview Mode subscription
+    let unsubPreview: (() => void) | null = null;
+    if (isPreviewMode()) {
+      initPreviewMode();
+      unsubPreview = subscribePreview((msg) => {
+        if (msg.publicData?.contentTexts) {
+          setContentTexts(msg.publicData.contentTexts);
+        }
+        if (msg.publicData?.policies?.privacy) {
+          setPolicy(msg.publicData.policies.privacy);
+        }
+      });
+    }
+
     const fetchLatest = () => {
       fetch('/api/policies?section=privacy&t=' + Date.now(), { cache: 'no-store' })
         .then((res) => res.json())
@@ -64,6 +79,7 @@ export default function PrivacyClient({
 
     return () => {
       if (channel) channel.close();
+      if (unsubPreview) unsubPreview();
     };
   }, []);
 

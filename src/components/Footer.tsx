@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { siteConfig } from '@/data/config';
 import { ContentTexts, DEFAULT_CONTENT_TEXTS } from '@/data/contentTexts';
+import { isPreviewMode, initPreviewMode, subscribePreview } from '@/lib/previewMode';
 
 interface FooterProps {
   customSettings?: any;
@@ -19,9 +20,21 @@ export default function Footer({ customSettings, contentTexts: initialContentTex
   );
 
   useEffect(() => {
+    // CMS Preview Mode subscription
+    let unsubPreview: (() => void) | null = null;
+    if (isPreviewMode()) {
+      initPreviewMode();
+      unsubPreview = subscribePreview((msg) => {
+        if (msg.publicData?.footerSocial) setLiveFooter(msg.publicData.footerSocial);
+        if (msg.publicData?.contentTexts) setContentTexts(msg.publicData.contentTexts);
+      });
+    }
+
     if (customSettings) {
       setLiveFooter(customSettings);
-      return;
+      return () => {
+        if (unsubPreview) unsubPreview();
+      };
     }
     const fetchFooter = () => {
       fetch('/api/public/data?t=' + Date.now(), { cache: 'no-store' })
@@ -49,6 +62,7 @@ export default function Footer({ customSettings, contentTexts: initialContentTex
 
     return () => {
       if (channel) channel.close();
+      if (unsubPreview) unsubPreview();
     };
   }, [customSettings]);
 

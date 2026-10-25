@@ -42,6 +42,7 @@ interface GuidesEditorProps {
   onSaveGuide: (slug: string) => Promise<void>;
   savingGuide: Record<string, boolean>;
   guideSaveStatus: Record<string, 'saved' | 'error' | null>;
+  onActiveGuideChange?: (slug: string) => void;
 }
 
 export default function GuidesEditor({
@@ -50,8 +51,15 @@ export default function GuidesEditor({
   onSaveGuide,
   savingGuide,
   guideSaveStatus,
+  onActiveGuideChange,
 }: GuidesEditorProps) {
   const [activeGuideSlug, setActiveGuideSlug] = useState<string>(guides[0]?.slug || '');
+
+  React.useEffect(() => {
+    if (activeGuideSlug && onActiveGuideChange) {
+      onActiveGuideChange(activeGuideSlug);
+    }
+  }, [activeGuideSlug, onActiveGuideChange]);
 
   const updateGuideField = (slug: string, field: keyof GuideRow, value: any) => {
     setGuides((prev) =>
