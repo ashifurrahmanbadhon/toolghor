@@ -73,7 +73,7 @@ export default function HomeClient({ initialData }: HomeClientProps) {
           setActiveChip(catId);
           setTimeout(() => {
             const el = document.getElementById(`cat-${catId}`);
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (el) window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - 10), behavior: 'smooth' });
           }, 150);
         }
       }
@@ -405,7 +405,7 @@ export default function HomeClient({ initialData }: HomeClientProps) {
       setTimeout(() => {
         const el = document.getElementById(`cat-${catId}`);
         if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - 10), behavior: 'smooth' });
         }
       }, 40);
     }

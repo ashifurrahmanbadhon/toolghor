@@ -166,6 +166,24 @@ type MenuTab =
   | 'analytics'
   | 'profile';
 
+function formatDhakaDateTime(dateStr: string): string {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const datePart = d.toLocaleDateString('en-GB', {
+    timeZone: 'Asia/Dhaka',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+  const timePart = d.toLocaleTimeString('en-US', {
+    timeZone: 'Asia/Dhaka',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+  return `${datePart} · ${timePart}`;
+}
+
 export default function AdminConsole() {
   const [mounted, setMounted] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -2160,12 +2178,10 @@ export default function AdminConsole() {
 
                 <AccordionSectionCard
                   id="overview-live-home"
-                  title="Homepage Simulation & Platform Key Metrics"
-                  badge="Home Preview"
+                  title="Platform Key Metrics & Platform Overview"
+                  badge="Overview"
                   isExpanded={openSectionId === 'overview-live-home'}
                   onToggle={() => toggleSection('overview-live-home')}
-                  previewUrl="/"
-                  draftData={currentDraftData}
                 >
                 {/* 2 — KPI Card Row (3 Cards: Total Tool Uses, Most Used Tool, Active Tools) */}
                 <div
@@ -3190,8 +3206,8 @@ export default function AdminConsole() {
                             }}
                           >
                             {new Date(announcement.expires_at).getTime() > Date.now()
-                              ? `Auto-off: ${new Date(announcement.expires_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`
-                              : '⚠️ Expired (Auto-off)'}
+                              ? `Auto-off: ${formatDhakaDateTime(announcement.expires_at)}`
+                              : `Expired: ${formatDhakaDateTime(announcement.expires_at)}`}
                           </span>
                         ) : (
                           <span style={{ fontSize: '11.5px', color: '#64748b' }}>♾️ Unlimited</span>
@@ -3458,16 +3474,16 @@ export default function AdminConsole() {
                 previewAnchor="#main"
                 draftData={currentDraftData}
               >
-              <div className="admin-table-wrap" style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', maxWidth: '100%' }}>
-                <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
+              <div className="admin-table-wrap" style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', overflowX: 'hidden', width: '100%', maxWidth: '100%' }}>
+                <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12.5px' }}>
                   <thead>
                     <tr style={{ background: '#1f2937', borderBottom: '1px solid #374151', color: '#94a3b8' }}>
-                      <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Symbol</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Slug</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700 }}>Title (EN / BN)</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Tools Count</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Status</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
+                      <th style={{ width: '7%', padding: '10px 4px', fontWeight: 700, textAlign: 'center' }}>Symbol</th>
+                      <th style={{ width: '20%', padding: '10px 6px', fontWeight: 700 }}>Slug</th>
+                      <th style={{ width: '31%', padding: '10px 6px', fontWeight: 700 }}>Title (EN / BN)</th>
+                      <th style={{ width: '14%', padding: '10px 4px', fontWeight: 700, whiteSpace: 'nowrap' }}>Tools</th>
+                      <th style={{ width: '14%', padding: '10px 4px', fontWeight: 700 }}>Status</th>
+                      <th style={{ width: '14%', padding: '10px 4px', fontWeight: 700, textAlign: 'right' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3475,24 +3491,24 @@ export default function AdminConsole() {
                       const toolsInCat = tools.filter((t) => t.category_slug === cat.slug).length;
                       return (
                         <tr key={cat.slug} style={{ borderBottom: '1px solid #1f2937' }}>
-                          <td style={{ padding: '14px 18px', fontSize: '20px', whiteSpace: 'nowrap' }}>{cat.symbol}</td>
-                          <td style={{ padding: '14px 18px', fontFamily: 'monospace', color: '#38bdf8', whiteSpace: 'nowrap' }}>{cat.slug}</td>
-                          <td style={{ padding: '14px 18px', minWidth: '180px' }}>
-                            <div style={{ fontWeight: 700, color: '#f8fafc', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{cat.title_en}</div>
-                            <div style={{ fontSize: '12px', color: '#94a3b8', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{cat.title_bn}</div>
+                          <td style={{ width: '7%', padding: '10px 4px', fontSize: '18px', textAlign: 'center' }}>{cat.symbol}</td>
+                          <td style={{ width: '20%', padding: '10px 6px', fontFamily: 'monospace', color: '#38bdf8', fontSize: '12px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{cat.slug}</td>
+                          <td style={{ width: '31%', padding: '10px 6px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                            <div style={{ fontWeight: 700, color: '#f8fafc', lineHeight: '1.3' }}>{cat.title_en}</div>
+                            <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.3', marginTop: '2px' }}>{cat.title_bn}</div>
                           </td>
-                          <td style={{ padding: '14px 18px', color: '#cbd5e1', whiteSpace: 'nowrap' }}>{toolsInCat} tools</td>
-                          <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
+                          <td style={{ width: '14%', padding: '10px 4px', color: '#cbd5e1', fontSize: '12px', whiteSpace: 'nowrap' }}>{toolsInCat} tools</td>
+                          <td style={{ width: '14%', padding: '10px 4px', whiteSpace: 'nowrap' }}>
                             <button
                               type="button"
                               onClick={() => toggleCategoryActive(cat.slug, cat.is_active)}
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '6px',
-                                padding: '4px 10px',
+                                gap: '4px',
+                                padding: '3px 6px',
                                 borderRadius: '999px',
-                                fontSize: '12px',
+                                fontSize: '11px',
                                 fontWeight: 700,
                                 border: 'none',
                                 cursor: 'pointer',
@@ -3503,8 +3519,8 @@ export default function AdminConsole() {
                             >
                               <span
                                 style={{
-                                  width: '6px',
-                                  height: '6px',
+                                  width: '5px',
+                                  height: '5px',
                                   borderRadius: '50%',
                                   background: cat.is_active ? '#10b981' : '#ef4444',
                                 }}
@@ -3512,8 +3528,8 @@ export default function AdminConsole() {
                               {cat.is_active ? 'Active' : 'Inactive'}
                             </button>
                           </td>
-                          <td style={{ padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            <div style={{ display: 'inline-flex', gap: '8px', flexWrap: 'nowrap', alignItems: 'center' }}>
+                          <td style={{ width: '14%', padding: '10px 4px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'inline-flex', gap: '4px', justifyContent: 'flex-end', alignItems: 'center' }}>
                               <button
                                 type="button"
                                 onClick={() =>
@@ -3524,8 +3540,10 @@ export default function AdminConsole() {
                                   })
                                 }
                                 style={{
-                                  padding: '6px 10px',
-                                  borderRadius: '8px',
+                                  width: '28px',
+                                  height: '28px',
+                                  padding: 0,
+                                  borderRadius: '6px',
                                   background: '#1f2937',
                                   color: '#e2e8f0',
                                   border: '1px solid #374151',
@@ -3536,7 +3554,7 @@ export default function AdminConsole() {
                                 }}
                                 title="Edit Category"
                               >
-                                <Edit3 size={14} />
+                                <Edit3 size={13} />
                               </button>
                               <button
                                 type="button"
@@ -3549,8 +3567,10 @@ export default function AdminConsole() {
                                   })
                                 }
                                 style={{
-                                  padding: '6px 10px',
-                                  borderRadius: '8px',
+                                  width: '28px',
+                                  height: '28px',
+                                  padding: 0,
+                                  borderRadius: '6px',
                                   background: 'rgba(239, 68, 68, 0.15)',
                                   color: '#f87171',
                                   border: '1px solid rgba(239, 68, 68, 0.3)',
@@ -3561,7 +3581,7 @@ export default function AdminConsole() {
                                 }}
                                 title="Delete Category"
                               >
-                                <Trash2 size={14} />
+                                <Trash2 size={13} />
                               </button>
                             </div>
                           </td>
@@ -3708,16 +3728,16 @@ export default function AdminConsole() {
               </div>
 
               {/* Tools Table */}
-              <div className="admin-table-wrap" style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', maxWidth: '100%' }}>
-                <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13.5px' }}>
+              <div className="admin-table-wrap" style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', overflowX: 'hidden', width: '100%', maxWidth: '100%' }}>
+                <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12.5px' }}>
                   <thead>
                     <tr style={{ background: '#1f2937', borderBottom: '1px solid #374151', color: '#94a3b8' }}>
-                      <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Tool Name</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Slug & Route</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Category</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Badge</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Status</th>
-                      <th style={{ padding: '14px 18px', fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
+                      <th style={{ width: '27%', padding: '10px 6px', fontWeight: 700 }}>Tool Name</th>
+                      <th style={{ width: '20%', padding: '10px 6px', fontWeight: 700 }}>Slug & Route</th>
+                      <th style={{ width: '18%', padding: '10px 4px', fontWeight: 700 }}>Category</th>
+                      <th style={{ width: '9%', padding: '10px 4px', fontWeight: 700, whiteSpace: 'nowrap' }}>Badge</th>
+                      <th style={{ width: '12%', padding: '10px 4px', fontWeight: 700 }}>Status</th>
+                      <th style={{ width: '14%', padding: '10px 4px', fontWeight: 700, textAlign: 'right' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3725,11 +3745,11 @@ export default function AdminConsole() {
                       const cat = categories.find((c) => c.slug === tool.category_slug);
                       return (
                         <tr key={tool.slug} style={{ borderBottom: '1px solid #1f2937' }}>
-                          <td style={{ padding: '14px 18px', minWidth: '180px' }}>
-                            <div style={{ fontWeight: 700, color: '#f8fafc', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{tool.title_en}</div>
-                            <div style={{ fontSize: '12px', color: '#94a3b8', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{tool.title_bn}</div>
+                          <td style={{ width: '27%', padding: '10px 6px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                            <div style={{ fontWeight: 700, color: '#f8fafc', lineHeight: '1.3' }}>{tool.title_en}</div>
+                            <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.3', marginTop: '2px' }}>{tool.title_bn}</div>
                           </td>
-                          <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
+                          <td style={{ width: '20%', padding: '10px 6px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                             <Link
                               href={`/tools/${tool.slug}`}
                               target="_blank"
@@ -3739,38 +3759,40 @@ export default function AdminConsole() {
                                 textDecoration: 'none',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '4px',
-                                whiteSpace: 'nowrap',
+                                gap: '3px',
+                                fontSize: '12px',
+                                wordBreak: 'break-all',
                               }}
                             >
-                              /{tool.slug} <ExternalLink size={11} />
+                              /{tool.slug} <ExternalLink size={10} style={{ flexShrink: 0 }} />
                             </Link>
                           </td>
-                          <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
+                          <td style={{ width: '18%', padding: '10px 4px', fontSize: '11.5px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                             <span
                               style={{
-                                fontSize: '12px',
-                                padding: '3px 8px',
+                                fontSize: '11.5px',
+                                padding: '2px 6px',
                                 borderRadius: '6px',
                                 background: '#1e293b',
                                 color: '#cbd5e1',
-                                whiteSpace: 'nowrap',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '4px',
+                                gap: '3px',
+                                maxWidth: '100%',
                               }}
                             >
-                              {cat?.symbol || '📁'} {cat?.title_en || tool.category_slug}
+                              <span style={{ flexShrink: 0 }}>{cat?.symbol || '📁'}</span>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat?.title_en || tool.category_slug}</span>
                             </span>
                           </td>
-                          <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
+                          <td style={{ width: '9%', padding: '10px 4px', whiteSpace: 'nowrap' }}>
                             {tool.badge ? (
                               <span
                                 style={{
-                                  fontSize: '11px',
+                                  fontSize: '10.5px',
                                   fontWeight: 700,
-                                  padding: '2px 7px',
-                                  borderRadius: '6px',
+                                  padding: '2px 5px',
+                                  borderRadius: '5px',
                                   background: 'rgba(245, 158, 11, 0.15)',
                                   color: '#fbbf24',
                                   whiteSpace: 'nowrap',
@@ -3779,20 +3801,20 @@ export default function AdminConsole() {
                                 {tool.badge}
                               </span>
                             ) : (
-                              <span style={{ color: '#475569', fontSize: '12px' }}>—</span>
+                              <span style={{ color: '#475569', fontSize: '11px' }}>—</span>
                             )}
                           </td>
-                          <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
+                          <td style={{ width: '12%', padding: '10px 4px', whiteSpace: 'nowrap' }}>
                             <button
                               type="button"
                               onClick={() => toggleToolActive(tool.slug, tool.is_active)}
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '6px',
-                                padding: '4px 10px',
+                                gap: '4px',
+                                padding: '3px 6px',
                                 borderRadius: '999px',
-                                fontSize: '12px',
+                                fontSize: '11px',
                                 fontWeight: 700,
                                 border: 'none',
                                 cursor: 'pointer',
@@ -3803,8 +3825,8 @@ export default function AdminConsole() {
                             >
                               <span
                                 style={{
-                                  width: '6px',
-                                  height: '6px',
+                                  width: '5px',
+                                  height: '5px',
                                   borderRadius: '50%',
                                   background: tool.is_active ? '#10b981' : '#ef4444',
                                 }}
@@ -3812,8 +3834,8 @@ export default function AdminConsole() {
                               {tool.is_active ? 'Active' : 'Inactive'}
                             </button>
                           </td>
-                          <td style={{ padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            <div style={{ display: 'inline-flex', gap: '8px', flexWrap: 'nowrap', alignItems: 'center' }}>
+                          <td style={{ width: '14%', padding: '10px 4px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'inline-flex', gap: '4px', justifyContent: 'flex-end', alignItems: 'center' }}>
                               <button
                                 type="button"
                                 onClick={() =>
@@ -3824,16 +3846,21 @@ export default function AdminConsole() {
                                   })
                                 }
                                 style={{
-                                  padding: '6px 10px',
-                                  borderRadius: '8px',
+                                  width: '28px',
+                                  height: '28px',
+                                  padding: 0,
+                                  borderRadius: '6px',
                                   background: '#1f2937',
                                   color: '#e2e8f0',
                                   border: '1px solid #374151',
                                   cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
                                 }}
                                 title="Edit Tool Details"
                               >
-                                <Edit3 size={14} />
+                                <Edit3 size={13} />
                               </button>
                               <button
                                 type="button"
@@ -3846,16 +3873,21 @@ export default function AdminConsole() {
                                   })
                                 }
                                 style={{
-                                  padding: '6px 10px',
-                                  borderRadius: '8px',
+                                  width: '28px',
+                                  height: '28px',
+                                  padding: 0,
+                                  borderRadius: '6px',
                                   background: 'rgba(239, 68, 68, 0.15)',
                                   color: '#f87171',
                                   border: '1px solid rgba(239, 68, 68, 0.3)',
                                   cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
                                 }}
                                 title="Delete Tool"
                               >
-                                <Trash2 size={14} />
+                                <Trash2 size={13} />
                               </button>
                             </div>
                           </td>

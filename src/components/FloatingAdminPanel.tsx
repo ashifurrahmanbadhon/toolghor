@@ -8,7 +8,6 @@ import {
   Shield,
   LayoutDashboard,
   Wrench,
-  Sliders,
   LogOut,
   X,
   ExternalLink,
@@ -146,11 +145,6 @@ export default function FloatingAdminPanel() {
       label: isBn ? 'টুলস ম্যানেজার (২৭টি)' : 'Tools Manager (27)',
       href: '/admin?tab=tools',
       icon: <Wrench size={15} style={{ color: '#10b981' }} />,
-    },
-    {
-      label: isBn ? 'কনটেন্ট এডিটর' : 'Content Editing',
-      href: '/admin?tab=hero',
-      icon: <Sliders size={15} style={{ color: '#f59e0b' }} />,
     },
   ];
 

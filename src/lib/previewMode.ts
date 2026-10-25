@@ -42,7 +42,9 @@ function scrollToTargetAnchor(targetAnchor?: string): void {
       }
       const el = document.getElementById(targetId) || document.getElementById('about-modal');
       if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Scroll strictly inside iframe window; never call scrollIntoView which scrolls parent admin page
+        const top = Math.max(0, el.getBoundingClientRect().top + window.scrollY - 40);
+        window.scrollTo({ top, behavior: 'smooth' });
       }
     }, 200);
     return;
@@ -52,7 +54,9 @@ function scrollToTargetAnchor(targetAnchor?: string): void {
   if (el) {
     hasScrolledToAnchor = true;
     setTimeout(() => {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Scroll strictly inside iframe window; never call scrollIntoView which scrolls parent admin page
+      const top = Math.max(0, el.getBoundingClientRect().top + window.scrollY - 10);
+      window.scrollTo({ top, behavior: 'smooth' });
     }, 150);
   }
 }
