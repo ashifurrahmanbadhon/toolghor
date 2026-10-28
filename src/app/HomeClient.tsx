@@ -154,6 +154,12 @@ export default function HomeClient({ initialData }: HomeClientProps) {
               if (ca.photo_url) photoEl.src = ca.photo_url;
               if (ca.photo_position) photoEl.style.objectPosition = ca.photo_position;
             }
+            if (document.getElementById('about-modal')) {
+              const w = window as any;
+              if (w.UI && typeof w.UI.openAboutModal === 'function') {
+                w.UI.openAboutModal();
+              }
+            }
           }
         }
       });
