@@ -1705,16 +1705,7 @@
     var activeTab = 'cutout'; // 'cutout' | 'original'
     var activeBg = 'transparent'; // 'transparent' | hex
     var customColorVal = '#ffffff';
-    var sampleColor = null;
     var isProcessing = false;
-
-    var imglyLibPromise = null;
-    function getImglyLib() {
-      if (!imglyLibPromise) {
-        imglyLibPromise = import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm');
-      }
-      return imglyLibPromise;
-    }
 
     /* Backend remove.bg API Connector */
     function getRemoveBgKey() {
@@ -1857,39 +1848,6 @@
     swatchesWrap.appendChild(swatchesLabel);
     swatchesWrap.appendChild(swatchesList);
 
-    // Fine-tune & Eraser Collapsible Section
-    var fineTuneDetails = UI.el('details', { class: 'rbg-finetune' });
-    var fineTuneSummary = UI.el('summary', {},
-      tr('⚙️ সূক্ষ্ম সমন্বয় ও ইরেজার (প্রয়োজনে)', "⚙️ Fine-tune & Eraser (Optional)")
-    );
-    var fineTuneBody = UI.el('div', { class: 'rbg-finetune-body' });
-
-    var tol = UI.el('input', { type: 'range', min: '5', max: '80', value: '25' });
-    var tolV = UI.el('strong', {}, UI.n(25));
-    tol.addEventListener('input', function () {
-      tolV.textContent = UI.n(tol.value);
-    });
-
-    var feather = UI.el('input', { type: 'range', min: '0', max: '6', value: '2' });
-    var featherV = UI.el('strong', {}, UI.n(2) + ' px');
-    feather.addEventListener('input', function () {
-      featherV.textContent = UI.n(feather.value) + ' px';
-    });
-
-    var reapplyBtn = UI.btn(tr('ম্যাটিং পুনরায় চালান', "Re-apply Matting"), function () {
-      reapplyLocalMatting();
-    }, { icon: 'sparkles', variant: 'secondary' });
-    reapplyBtn.style.padding = '6px 14px';
-    reapplyBtn.style.fontSize = '13px';
-
-    fineTuneBody.appendChild(UI.el('div', { class: 'row' },
-      UI.field(tr('সেনসিটিভিটি (সহনশীলতা)', "Sensitivity (Tolerance)"), UI.el('div', {}, tol, tolV)),
-      UI.field(tr('স্মুথনেস (Feather)', "Edge Smoothness (Feather)"), UI.el('div', {}, feather, featherV)),
-      UI.field('', reapplyBtn)
-    ));
-    fineTuneDetails.appendChild(fineTuneSummary);
-    fineTuneDetails.appendChild(fineTuneBody);
-
     // Error Notice Banner with Retry Button (Result area failure handling)
     var errorBox = UI.el('div', {
       class: 'rbg-error-box',
@@ -1984,12 +1942,11 @@
     bottomBar.appendChild(resBadge);
     bottomBar.appendChild(downloadBtn);
 
-    // Assemble Workspace
+    // Assemble Workspace (Clean structure: topBar -> previewWrap -> errorBox -> swatchesWrap -> bottomBar)
     workspace.appendChild(topBar);
     workspace.appendChild(previewWrap);
     workspace.appendChild(errorBox);
     workspace.appendChild(swatchesWrap);
-    workspace.appendChild(fineTuneDetails);
     workspace.appendChild(bottomBar);
 
     // Tab switching handlers
@@ -2016,117 +1973,6 @@
         swatchesWrap.style.opacity = '0.5';
         swatchesWrap.style.pointerEvents = 'none';
       }
-    }
-
-    // Auto detect background from borders
-    function autoDetectBg(data, w, h) {
-      if (sampleColor) return sampleColor;
-      var samples = [
-        0,
-        (w - 1) * 4,
-        ((h - 1) * w) * 4,
-        ((h - 1) * w + (w - 1)) * 4,
-        Math.floor(w / 2) * 4
-      ];
-      var r = 0, g = 0, b = 0, count = 0;
-      samples.forEach(function (idx) {
-        r += data[idx]; g += data[idx + 1]; b += data[idx + 2]; count++;
-      });
-      return [Math.round(r / count), Math.round(g / count), Math.round(b / count)];
-    }
-
-    // Fast Flood Fill Matting
-    function runFloodFillMatting(sourceImg, targetColor, tolerance, featherRadius) {
-      var origW = sourceImg.naturalWidth || sourceImg.width;
-      var origH = sourceImg.naturalHeight || sourceImg.height;
-      var maxDim = 1600;
-      var scale = Math.min(1, maxDim / Math.max(origW, origH));
-      var w = Math.round(origW * scale), h = Math.round(origH * scale);
-
-      var c = UI.canvas(w, h), ctx = c.getContext('2d');
-      ctx.drawImage(sourceImg, 0, 0, w, h);
-      var imgData = ctx.getImageData(0, 0, w, h);
-      var d = imgData.data;
-
-      var bg = targetColor || autoDetectBg(d, w, h);
-      var threshold = tolerance * 3;
-      var tSq = threshold * threshold;
-
-      var visited = new Uint8Array(w * h);
-      var queue = new Int32Array(w * h);
-      var qHead = 0, qTail = 0;
-
-      function push(x, y) {
-        if (x < 0 || x >= w || y < 0 || y >= h) return;
-        var idx = y * w + x;
-        if (visited[idx]) return;
-        visited[idx] = 1;
-        var p = idx * 4;
-        var dr = d[p] - bg[0], dg = d[p + 1] - bg[1], db = d[p + 2] - bg[2];
-        if ((dr * dr + dg * dg + db * db) <= tSq) {
-          queue[qTail++] = idx;
-          d[p + 3] = 0;
-        }
-      }
-
-      for (var x = 0; x < w; x++) { push(x, 0); push(x, h - 1); }
-      for (var y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
-
-      while (qHead < qTail) {
-        var curr = queue[qHead++];
-        var cx = curr % w, cy = (curr / w) | 0;
-        push(cx + 1, cy);
-        push(cx - 1, cy);
-        push(cx, cy + 1);
-        push(cx, cy - 1);
-      }
-
-      if (featherRadius > 0) {
-        for (var y = 1; y < h - 1; y++) {
-          for (var x = 1; x < w - 1; x++) {
-            var i = (y * w + x) * 4;
-            if (d[i + 3] > 0) {
-              var trans = 0;
-              if (d[i - 4 + 3] === 0) trans++;
-              if (d[i + 4 + 3] === 0) trans++;
-              if (d[i - w * 4 + 3] === 0) trans++;
-              if (d[i + w * 4 + 3] === 0) trans++;
-              if (trans > 0) {
-                d[i + 3] = Math.round(255 * (1 - (trans / 4) * (featherRadius / 6)));
-              }
-            }
-          }
-        }
-      }
-
-      ctx.putImageData(imgData, 0, 0);
-
-      // If scaled, restore to original dimensions
-      if (scale < 1) {
-        var fullCanvas = UI.canvas(origW, origH);
-        var fctx = fullCanvas.getContext('2d');
-        fctx.imageSmoothingEnabled = true;
-        fctx.imageSmoothingQuality = 'high';
-        fctx.drawImage(c, 0, 0, origW, origH);
-        return fullCanvas;
-      }
-      return c;
-    }
-
-    function reapplyLocalMatting() {
-      if (!img) return;
-      loadingOverlay.style.display = 'flex';
-      loadingTitle.textContent = tr('✨ ম্যাটিং আপডেট হচ্ছে…', "✨ Updating matting…");
-      loadingSub.textContent = tr('অনুগ্রহ করে অপেক্ষা করুন…', "Please wait…");
-      setTimeout(function () {
-        cutoutCanvas = runFloodFillMatting(img, sampleColor, +tol.value, +feather.value);
-        errorBox.style.display = 'none';
-        activeTab = 'cutout';
-        updateTabsUI();
-        renderPreview();
-        loadingOverlay.style.display = 'none';
-        UI.toast(tr('✓ ম্যাটিং সফলভাবে আপডেট হয়েছে', "✓ Matting updated successfully"));
-      }, 50);
     }
 
     // Render current active tab and background to previewCanvas (native resolution, no fake upscale)
@@ -2181,7 +2027,6 @@
           downloadBtn.removeAttribute('disabled');
           resBadge.textContent = '✓ ' + curW + ' × ' + curH + ' px • ' + (isPng ? 'Transparent PNG' : 'Solid JPG');
         } else {
-          // If no cutout is available yet (e.g. failure state)
           if (originalCanvas) {
             pctx.drawImage(originalCanvas, 0, 0, curW, curH);
           }
@@ -2195,42 +2040,13 @@
       }
     }
 
-    // Input cap helper: Downscale photo to max 2048px on long edge before passing to IMG.LY
-    async function prepareBoundedInput(imageEl, imageFile) {
-      var origW = imageEl.naturalWidth || imageEl.width;
-      var origH = imageEl.naturalHeight || imageEl.height;
-      var maxDim = 2048;
-
-      if (origW > maxDim || origH > maxDim) {
-        var scale = maxDim / Math.max(origW, origH);
-        var w = Math.round(origW * scale);
-        var h = Math.round(origH * scale);
-        var c = UI.canvas(w, h);
-        var ctx = c.getContext('2d');
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(imageEl, 0, 0, w, h);
-        return await UI.toBlob(c, 'image/png', 1.0);
-      }
-
-      if (imageFile instanceof Blob) {
-        return imageFile;
-      }
-
-      var c0 = UI.canvas(origW, origH);
-      c0.getContext('2d').drawImage(imageEl, 0, 0);
-      return await UI.toBlob(c0, 'image/png', 1.0);
-    }
-
-    // ONE ENGINE ONLY Pipeline: Free in-browser IMG.LY with hang-fix tuning
+    // remove.bg ONLY Pipeline: Server proxy (/api/remove-bg) + direct visitor API key fallback
     async function processImagePipeline(imageEl, imageFile) {
       isProcessing = true;
       errorBox.style.display = 'none';
       loadingOverlay.style.display = 'flex';
       loadingTitle.textContent = tr('✨ এআই দিয়ে ব্যাকগ্রাউন্ড রিমুভ হচ্ছে…', "✨ Removing background automatically…");
       loadingSub.textContent = tr('স্টুডিও কোয়ালিটি কাটআউট তৈরি হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন', "Generating studio-quality HD cutout, please wait…");
-
-      var timeoutTimer = null;
 
       try {
         // 1. Prepare original canvas
@@ -2239,54 +2055,53 @@
 
         var resultCanvas = null;
 
-        // 2. Prepare bounded input (capped to max 2048px on the long edge)
-        var inputBlob = await prepareBoundedInput(imageEl, imageFile);
-
-        // 3. Load IMG.LY lazily on demand
-        var imgly = await getImglyLib();
-        var removeBgFn = imgly.removeBackground || imgly.default;
-        if (typeof removeBgFn !== 'function') {
-          throw new Error('IMG_LY_NOT_FOUND');
+        // 2. Prepare upload file or blob
+        var uploadFile = imageFile;
+        if (!uploadFile) {
+          uploadFile = await UI.toBlob(originalCanvas, 'image/png');
         }
 
-        // 4. Race library execution against 90 seconds timeout
-        var timeoutPromise = new Promise(function (_, reject) {
-          timeoutTimer = setTimeout(function () {
-            reject(new Error('IMG_LY_TIMEOUT'));
-          }, 90000);
-        });
+        // 3. remove.bg Studio AI API
+        var rbgKey = getRemoveBgKey();
+        if (uploadFile) {
+          try {
+            var fd = new FormData();
+            fd.append('image_file', uploadFile);
+            fd.append('size', 'auto');
 
-        var removePromise = removeBgFn(inputBlob, {
-          model: 'isnet_fp16',
-          output: {
-            format: 'image/png',
-            quality: 1.0
-          },
-          progress: function (key, current, total) {
-            if (typeof key === 'string' && key.startsWith('fetch:')) {
-              var pct = (total > 0) ? Math.min(100, Math.max(0, Math.round((current / total) * 100))) : 0;
-              loadingTitle.textContent = '✨ ' + tr('এআই মডেল ডাউনলোড হচ্ছে… ' + UI.n(pct) + '%', 'Downloading AI model… ' + pct + '%');
-              loadingSub.textContent = tr('প্রথমবার কিছুটা সময় লাগতে পারে, এরপর ক্যাশে সেভ থাকবে', 'First download may take a moment, cached for instant future runs');
-            } else if (typeof key === 'string' && key.startsWith('compute:')) {
-              loadingTitle.textContent = '✨ ' + tr('এআই দিয়ে ব্যাকগ্রাউন্ড রিমুভ হচ্ছে…', 'Removing background automatically…');
-              loadingSub.textContent = tr('স্টুডিও কোয়ালিটি কাটআউট তৈরি হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন', 'Generating studio-quality HD cutout, please wait…');
+            // 1. Try secure server proxy
+            var res = await fetch('/api/remove-bg', {
+              method: 'POST',
+              body: fd
+            });
+
+            // 2. Direct API call fallback if proxy returned non-200 AND visitor key is available
+            if (!res.ok && rbgKey) {
+              var directFd = new FormData();
+              directFd.append('image_file', uploadFile);
+              directFd.append('size', 'auto');
+              res = await fetch('https://api.remove.bg/v1.0/removebg', {
+                method: 'POST',
+                headers: { 'X-Api-Key': rbgKey },
+                body: directFd
+              });
             }
-          }
-        });
 
-        var outBlob = await Promise.race([removePromise, timeoutPromise]);
-        if (timeoutTimer) clearTimeout(timeoutTimer);
-
-        if (outBlob && outBlob.size > 0) {
-          var aiImg = await UI.readImage(outBlob);
-          if (aiImg && aiImg.naturalWidth > 0 && aiImg.naturalHeight > 0) {
-            resultCanvas = UI.canvas(aiImg.naturalWidth, aiImg.naturalHeight);
-            resultCanvas.getContext('2d').drawImage(aiImg, 0, 0);
+            if (res && res.ok) {
+              var blob = await res.blob();
+              var rbgImg = await UI.readImage(blob);
+              if (rbgImg && rbgImg.naturalWidth > 0 && rbgImg.naturalHeight > 0) {
+                resultCanvas = UI.canvas(rbgImg.naturalWidth, rbgImg.naturalHeight);
+                resultCanvas.getContext('2d').drawImage(rbgImg, 0, 0);
+              }
+            }
+          } catch (e) {
+            console.warn('remove.bg API call error:', e);
           }
         }
 
         if (!resultCanvas) {
-          throw new Error('IMG_LY_EMPTY_RESULT');
+          throw new Error('REMOVE_BG_FAILED');
         }
 
         cutoutCanvas = resultCanvas;
@@ -2295,20 +2110,16 @@
         updateTabsUI();
         await renderPreview();
       } catch (pipelineErr) {
-        if (timeoutTimer) clearTimeout(timeoutTimer);
-        console.warn('IMG.LY processing error or timeout:', pipelineErr);
-
-        // Failure path: stop spinner, NEVER substitute silently, show clear bilingual message + Retry button
+        console.warn('Remove background error:', pipelineErr);
         cutoutCanvas = null;
         errorBox.style.display = 'flex';
         UI.clear(errorText);
-        errorText.textContent = '⚠️ ' + tr('প্রসেসিং সম্পন্ন করা সম্ভব হয়নি — অপেক্ষাকৃত ছোট ছবি ব্যবহার করে দেখুন অথবা পুনরায় চেষ্টা করুন।', 'Processing could not finish — try a smaller photo or press Retry.');
+        errorText.textContent = '⚠️ ' + tr('ছবির ব্যাকগ্রাউন্ড রিমুভ করা সম্ভব হয়নি। অনুগ্রহ করে ছবিটি যাচাই করে পুনরায় চেষ্টা করুন।', 'Could not remove background from image. Please check the photo and try again.');
         resBadge.textContent = '✕ ' + tr('প্রসেসিং ব্যর্থ', 'Processing Failed');
         activeTab = 'original';
         updateTabsUI();
         await renderPreview();
       } finally {
-        if (timeoutTimer) clearTimeout(timeoutTimer);
         loadingOverlay.style.display = 'none';
         isProcessing = false;
       }
@@ -2321,7 +2132,6 @@
         return;
       }
       file = f;
-      sampleColor = null;
       try {
         img = await UI.readImage(file);
       } catch (err) {
@@ -2360,50 +2170,8 @@
     }
     document.addEventListener('paste', onPaste);
 
-    // AI Background & Profile Stylist
-    var bgAiBox = UI.renderAiBox({
-      title: tr('এআই কাটআউট ও প্রোফাইল ব্যাকগ্রাউন্ড স্টাইলিস্ট', 'AI Cutout & Profile Background Stylist'),
-      subtitle: tr('লিংকডইন, সিভি বা ই-কমার্সের জন্য নিখুঁত ব্যাকগ্রাউন্ড কালার ও কনট্রাস্ট নির্বাচন করুন', 'Recommended background styling, edge smoothing, and contrast optimization for profile photos & products'),
-      btnText: tr('✨ এআই স্টাইলিং পরামর্শ দেখুন', '✨ Get AI Background Advice'),
-      onGenerate: async function () {
-        var prompt = (UI.lang === 'bn')
-          ? ('আমি একটি ছবির ব্যাকগ্রাউন্ড পরিবর্তন বা রিমুভ করছি। অনুগ্রহ করে:\n1. পেশাদার লিংকডইন ও সিভি ছবির জন্য সেরা ৩টি ব্যাকগ্রাউন্ড কালার\n2. ফেসবুক/ইনস্টাগ্রাম ডিপির জন্য ট্রেন্ডি ব্যাকগ্রাউন্ড আইডিয়া\n3. দারাজ/অ্যামাজন ই-কমার্স প্রোডাক্ট ছবির জন্য সঠিক ব্যাকগ্রাউন্ড স্ট্যান্ডার্ড\nপয়েন্ট আকারে বাংলায় গুছিয়ে দিন।')
-          : ('I am removing or replacing the background of an image. Please provide:\n1. Top 3 background colors for professional LinkedIn and CV avatars\n2. Trendy modern background ideas for social media DP\n3. Industry standards for eCommerce (Amazon/Daraz) product photos.\nFormat clearly in bullet points.');
-
-        var res = await UI.callAI(prompt, {
-          systemInstruction: (UI.lang === 'bn')
-            ? 'আপনি একজন পেশাদার গ্রাফিক ডিজাইনার ও ব্র্যান্ডিং কনসালট্যান্ট।'
-            : 'You are a professional graphic designer and photo branding consultant.'
-        });
-
-        if (res && res.success && res.text) {
-          return res.text;
-        }
-
-        // Offline fallback
-        if (UI.lang === 'bn') {
-          return '### 🎨 পেশাদার ব্যাকগ্রাউন্ড কালার গাইড\n\n' +
-            '**১. সিভি ও লিংকডইন প্রফেশনাল অ্যাভাটার:**\n' +
-            '- **সফট নেভি বা স্লেট ব্লু (#1e293b / #2563eb):** আত্মবিশ্বাস, স্থায়িত্ব ও করপোরেট প্রফেশনালিজম প্রকাশ করে।\n' +
-            '- **মিনিমাল অফ-হোয়াইট বা হালকা গ্রে (#f8fafc / #e2e8f0):** পরিষ্কার, আকর্ষণীয় ও আধুনিক লুক দেয়।\n\n' +
-            '**২. ই-কমার্স প্রোডাক্ট লিস্টিং (Daraz / Amazon / Shopify):**\n' +
-            '- **১০০% খাঁটি সাদা (#ffffff):** পণ্যের আসল রং স্পষ্ট ফুটে ওঠে এবং প্রধান অনলাইন মার্কেটপ্লেসের বাধ্যতামূলক নিয়ম।\n\n' +
-            '> 💡 *টিপস:* আপনার Google Gemini বা OpenAI API Key কানেক্ট করলে আপনার পণ্যের ক্যাটাগরি বা পেশা অনুযায়ী কাস্টম কালার প্যালেট তৈরি করে দেবে।';
-        } else {
-          return '### 🎨 Professional Background Color Guide\n\n' +
-            '**1. LinkedIn & Resume Headshots:**\n' +
-            '- **Slate Blue / Deep Navy (#1e293b / #2563eb):** Exudes confidence and executive presence.\n' +
-            '- **Neutral Light Grey (#f1f5f9):** Clean, modern, and keeps the focus entirely on your face.\n\n' +
-            '**2. eCommerce Product Listings:**\n' +
-            '- **Pure White (#ffffff):** The official standard for Amazon, Shopify, and Daraz product catalogs.\n\n' +
-            '> 💡 *Tip:* Connect your Google Gemini or OpenAI API Key to get custom color palette recommendations matching your specific brand.';
-        }
-      }
-    });
-
     container.appendChild(dropZone);
     container.appendChild(workspace);
-    container.appendChild(bgAiBox.el);
     root.appendChild(container);
   };
 
