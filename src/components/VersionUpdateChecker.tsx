@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ASSET_VERSION as BUILT_VERSION } from '@/data/config';
-// Version marker: 20261028_v50
+// Version marker: 20261029_v51
 import { useApp } from '@/context/AppContext';
 import { isPreviewMode } from '@/lib/previewMode';
 

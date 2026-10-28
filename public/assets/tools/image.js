@@ -1707,7 +1707,6 @@
     var customColorVal = '#ffffff';
     var sampleColor = null;
     var isProcessing = false;
-    var activeEngine = ''; // 'imgly' | 'removebg' | 'basic'
 
     var imglyLibPromise = null;
     function getImglyLib() {
@@ -1891,18 +1890,47 @@
     fineTuneDetails.appendChild(fineTuneSummary);
     fineTuneDetails.appendChild(fineTuneBody);
 
+    // Error Notice Banner with Retry Button (Result area failure handling)
+    var errorBox = UI.el('div', {
+      class: 'rbg-error-box',
+      style: {
+        display: 'none',
+        padding: '14px 18px',
+        borderRadius: '12px',
+        background: 'rgba(239, 68, 68, 0.08)',
+        border: '1px solid rgba(239, 68, 68, 0.25)',
+        margin: '12px 0',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '12px',
+        flexWrap: 'wrap'
+      }
+    });
+    var errorText = UI.el('div', {
+      style: {
+        fontSize: '13.5px',
+        fontWeight: '600',
+        color: '#ef4444',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        flex: '1 1 260px'
+      }
+    });
+    var retryBtn = UI.btn(tr('পুনরায় চেষ্টা করুন', "Retry"), function () {
+      if (img && file) {
+        processImagePipeline(img, file);
+      }
+    }, { icon: 'sparkles', variant: 'secondary' });
+    retryBtn.style.padding = '7px 16px';
+    retryBtn.style.fontSize = '13px';
+    errorBox.appendChild(errorText);
+    errorBox.appendChild(retryBtn);
+
     // Bottom Actions Bar (Badge + Download Button)
     var bottomBar = UI.el('div', { class: 'rbg-bottom-actions' });
     var resBadge = UI.el('div', { class: 'rbg-status-indicator' },
       '✓ ' + tr('রেডি', "Ready")
-    );
-    var engineNote = UI.el('div', {
-      class: 'rbg-engine-note',
-      style: { fontSize: '12px', color: 'var(--ink-muted, #64748b)', fontWeight: '500' }
-    });
-    var statusWrap = UI.el('div', { style: { display: 'flex', flexDirection: 'column', gap: '2px' } },
-      resBadge,
-      engineNote
     );
 
     var isRenderingBg = false;
@@ -1953,12 +1981,13 @@
     downloadBtn.style.fontSize = '15px';
     downloadBtn.style.fontWeight = '700';
 
-    bottomBar.appendChild(statusWrap);
+    bottomBar.appendChild(resBadge);
     bottomBar.appendChild(downloadBtn);
 
     // Assemble Workspace
     workspace.appendChild(topBar);
     workspace.appendChild(previewWrap);
+    workspace.appendChild(errorBox);
     workspace.appendChild(swatchesWrap);
     workspace.appendChild(fineTuneDetails);
     workspace.appendChild(bottomBar);
@@ -2087,11 +2116,11 @@
     function reapplyLocalMatting() {
       if (!img) return;
       loadingOverlay.style.display = 'flex';
-      loadingTitle.textContent = tr('✨ এআই দিয়ে ব্যাকগ্রাউন্ড রিমুভ হচ্ছে…', "✨ Removing background automatically…");
-      loadingSub.textContent = tr('স্টুডিও কোয়ালিটি কাটআউট তৈরি হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন', "Generating studio-quality HD cutout, please wait…");
+      loadingTitle.textContent = tr('✨ ম্যাটিং আপডেট হচ্ছে…', "✨ Updating matting…");
+      loadingSub.textContent = tr('অনুগ্রহ করে অপেক্ষা করুন…', "Please wait…");
       setTimeout(function () {
         cutoutCanvas = runFloodFillMatting(img, sampleColor, +tol.value, +feather.value);
-        activeEngine = 'basic';
+        errorBox.style.display = 'none';
         activeTab = 'cutout';
         updateTabsUI();
         renderPreview();
@@ -2100,28 +2129,10 @@
       }, 50);
     }
 
-    function updateEngineNote() {
-      if (activeTab === 'original') {
-        engineNote.textContent = '';
-        return;
-      }
-      if (activeEngine === 'imgly') {
-        engineNote.textContent = tr('ব্রাউজার এআই', 'Browser AI');
-      } else if (activeEngine === 'removebg') {
-        engineNote.textContent = tr('remove.bg প্রো', 'remove.bg Pro');
-      } else if (activeEngine === 'basic') {
-        engineNote.textContent = tr('বেসিক মোড', 'Basic mode');
-      } else {
-        engineNote.textContent = '';
-      }
-    }
-
     // Render current active tab and background to previewCanvas (native resolution, no fake upscale)
     async function renderPreview() {
       if (!img) return;
       isRenderingBg = true;
-      downloadBtn.disabled = false;
-      downloadBtn.removeAttribute('disabled');
 
       try {
         var curW = (activeTab === 'cutout' && cutoutCanvas) ? cutoutCanvas.width : img.naturalWidth;
@@ -2136,13 +2147,14 @@
           UI.clear(downloadBtn);
           UI.add(downloadBtn, UI.icon('download', 18));
           UI.add(downloadBtn, ' ' + tr('আসল ছবি ডাউনলোড (JPG)', "Download Original (JPG)"));
+          downloadBtn.disabled = false;
+          downloadBtn.removeAttribute('disabled');
           try {
             processedBlob = await UI.toBlob(previewCanvas, 'image/jpeg', 0.95);
           } catch (e) {
             processedBlob = null;
           }
           resBadge.textContent = '✓ ' + curW + ' × ' + curH + ' px • ' + tr('আসল ছবি', "Original");
-          updateEngineNote();
           return;
         }
 
@@ -2165,26 +2177,60 @@
           UI.clear(downloadBtn);
           UI.add(downloadBtn, UI.icon('download', 18));
           UI.add(downloadBtn, ' ' + (isPng ? tr('ডাউনলোড (PNG)', "Download (PNG)") : tr('ডাউনলোড (JPG)', "Download (JPG)")));
+          downloadBtn.disabled = false;
+          downloadBtn.removeAttribute('disabled');
           resBadge.textContent = '✓ ' + curW + ' × ' + curH + ' px • ' + (isPng ? 'Transparent PNG' : 'Solid JPG');
-          updateEngineNote();
+        } else {
+          // If no cutout is available yet (e.g. failure state)
+          if (originalCanvas) {
+            pctx.drawImage(originalCanvas, 0, 0, curW, curH);
+          }
+          downloadBtn.disabled = true;
+          downloadBtn.setAttribute('disabled', 'true');
         }
       } catch (err) {
         console.error('renderPreview error:', err);
       } finally {
         isRenderingBg = false;
-        downloadBtn.disabled = false;
-        downloadBtn.removeAttribute('disabled');
-        downloadBtn.removeAttribute('aria-disabled');
       }
     }
 
-    // Comprehensive 4-tier cutout pipeline:
-    // 1) IMG.LY in-browser AI -> 2) remove.bg server proxy -> 3) Google MediaPipe -> 4) Adaptive Flood Fill
+    // Input cap helper: Downscale photo to max 2048px on long edge before passing to IMG.LY
+    async function prepareBoundedInput(imageEl, imageFile) {
+      var origW = imageEl.naturalWidth || imageEl.width;
+      var origH = imageEl.naturalHeight || imageEl.height;
+      var maxDim = 2048;
+
+      if (origW > maxDim || origH > maxDim) {
+        var scale = maxDim / Math.max(origW, origH);
+        var w = Math.round(origW * scale);
+        var h = Math.round(origH * scale);
+        var c = UI.canvas(w, h);
+        var ctx = c.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(imageEl, 0, 0, w, h);
+        return await UI.toBlob(c, 'image/png', 1.0);
+      }
+
+      if (imageFile instanceof Blob) {
+        return imageFile;
+      }
+
+      var c0 = UI.canvas(origW, origH);
+      c0.getContext('2d').drawImage(imageEl, 0, 0);
+      return await UI.toBlob(c0, 'image/png', 1.0);
+    }
+
+    // ONE ENGINE ONLY Pipeline: Free in-browser IMG.LY with hang-fix tuning
     async function processImagePipeline(imageEl, imageFile) {
       isProcessing = true;
+      errorBox.style.display = 'none';
       loadingOverlay.style.display = 'flex';
       loadingTitle.textContent = tr('✨ এআই দিয়ে ব্যাকগ্রাউন্ড রিমুভ হচ্ছে…', "✨ Removing background automatically…");
       loadingSub.textContent = tr('স্টুডিও কোয়ালিটি কাটআউট তৈরি হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন', "Generating studio-quality HD cutout, please wait…");
+
+      var timeoutTimer = null;
 
       try {
         // 1. Prepare original canvas
@@ -2192,120 +2238,79 @@
         originalCanvas.getContext('2d').drawImage(imageEl, 0, 0);
 
         var resultCanvas = null;
-        activeEngine = '';
 
-        // Tier 1: In-browser AI (@imgly/background-removal)
-        try {
-          var imgly = await getImglyLib();
-          var removeBgFn = imgly.removeBackground || imgly.default;
-          if (typeof removeBgFn === 'function') {
-            var inputSource = imageFile || imageEl;
-            var outBlob = await removeBgFn(inputSource, {
-              model: 'isnet',
-              output: {
-                format: 'image/png',
-                quality: 1.0
-              },
-              progress: function (key, current, total) {
-                if (typeof key === 'string' && key.startsWith('fetch:')) {
-                  var pct = (total > 0) ? Math.min(100, Math.max(0, Math.round((current / total) * 100))) : 0;
-                  loadingTitle.textContent = '✨ ' + tr('এআই মডেল ডাউনলোড হচ্ছে… ' + UI.n(pct) + '%', 'Downloading AI model… ' + pct + '%');
-                  loadingSub.textContent = tr('প্রথমবার কিছুটা সময় লাগতে পারে, এরপর ক্যাশে সেভ থাকবে', 'First download may take a moment, cached for instant future runs');
-                } else if (typeof key === 'string' && key.startsWith('compute:')) {
-                  loadingTitle.textContent = '✨ ' + tr('এআই দিয়ে ব্যাকগ্রাউন্ড রিমুভ হচ্ছে…', 'Removing background automatically…');
-                  loadingSub.textContent = tr('স্টুডিও কোয়ালিটি কাটআউট তৈরি হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন', 'Generating studio-quality HD cutout, please wait…');
-                }
-              }
-            });
+        // 2. Prepare bounded input (capped to max 2048px on the long edge)
+        var inputBlob = await prepareBoundedInput(imageEl, imageFile);
 
-            if (outBlob && outBlob.size > 0) {
-              var aiImg = await UI.readImage(outBlob);
-              if (aiImg && aiImg.naturalWidth > 0 && aiImg.naturalHeight > 0) {
-                resultCanvas = UI.canvas(aiImg.naturalWidth, aiImg.naturalHeight);
-                resultCanvas.getContext('2d').drawImage(aiImg, 0, 0);
-                activeEngine = 'imgly';
-              }
-            }
-          }
-        } catch (imglyErr) {
-          console.warn('IMG.LY in-browser AI error, falling back to server proxy:', imglyErr);
+        // 3. Load IMG.LY lazily on demand
+        var imgly = await getImglyLib();
+        var removeBgFn = imgly.removeBackground || imgly.default;
+        if (typeof removeBgFn !== 'function') {
+          throw new Error('IMG_LY_NOT_FOUND');
         }
 
-        // Tier 2: remove.bg Studio AI API (Server proxy + client fallback)
-        if (!resultCanvas && imageFile) {
-          var rbgKey = getRemoveBgKey();
-          try {
-            loadingTitle.textContent = tr('✨ এআই দিয়ে ব্যাকগ্রাউন্ড রিমুভ হচ্ছে…', "✨ Removing background automatically…");
-            loadingSub.textContent = tr('স্টুডিও কোয়ালিটি কাটআউট তৈরি হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন', "Generating studio-quality HD cutout, please wait…");
-            var fd = new FormData();
-            fd.append('image_file', imageFile);
-            fd.append('size', 'auto');
+        // 4. Race library execution against 90 seconds timeout
+        var timeoutPromise = new Promise(function (_, reject) {
+          timeoutTimer = setTimeout(function () {
+            reject(new Error('IMG_LY_TIMEOUT'));
+          }, 90000);
+        });
 
-            // 1. Try secure server proxy
-            var res = await fetch('/api/remove-bg', {
-              method: 'POST',
-              body: fd
-            });
-
-            // 2. Direct API call fallback if proxy returned non-200
-            if (!res.ok && rbgKey) {
-              var directFd = new FormData();
-              directFd.append('image_file', imageFile);
-              directFd.append('size', 'auto');
-              res = await fetch('https://api.remove.bg/v1.0/removebg', {
-                method: 'POST',
-                headers: { 'X-Api-Key': rbgKey },
-                body: directFd
-              });
+        var removePromise = removeBgFn(inputBlob, {
+          model: 'isnet_fp16',
+          output: {
+            format: 'image/png',
+            quality: 1.0
+          },
+          progress: function (key, current, total) {
+            if (typeof key === 'string' && key.startsWith('fetch:')) {
+              var pct = (total > 0) ? Math.min(100, Math.max(0, Math.round((current / total) * 100))) : 0;
+              loadingTitle.textContent = '✨ ' + tr('এআই মডেল ডাউনলোড হচ্ছে… ' + UI.n(pct) + '%', 'Downloading AI model… ' + pct + '%');
+              loadingSub.textContent = tr('প্রথমবার কিছুটা সময় লাগতে পারে, এরপর ক্যাশে সেভ থাকবে', 'First download may take a moment, cached for instant future runs');
+            } else if (typeof key === 'string' && key.startsWith('compute:')) {
+              loadingTitle.textContent = '✨ ' + tr('এআই দিয়ে ব্যাকগ্রাউন্ড রিমুভ হচ্ছে…', 'Removing background automatically…');
+              loadingSub.textContent = tr('স্টুডিও কোয়ালিটি কাটআউট তৈরি হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন', 'Generating studio-quality HD cutout, please wait…');
             }
+          }
+        });
 
-            if (res && res.ok) {
-              var blob = await res.blob();
-              var rbgImg = await UI.readImage(blob);
-              if (rbgImg && rbgImg.naturalWidth > 0 && rbgImg.naturalHeight > 0) {
-                resultCanvas = UI.canvas(rbgImg.naturalWidth, rbgImg.naturalHeight);
-                resultCanvas.getContext('2d').drawImage(rbgImg, 0, 0);
-                activeEngine = 'removebg';
-              }
-            }
-          } catch (e) {
-            console.warn('remove.bg API call error, using local AI model:', e);
+        var outBlob = await Promise.race([removePromise, timeoutPromise]);
+        if (timeoutTimer) clearTimeout(timeoutTimer);
+
+        if (outBlob && outBlob.size > 0) {
+          var aiImg = await UI.readImage(outBlob);
+          if (aiImg && aiImg.naturalWidth > 0 && aiImg.naturalHeight > 0) {
+            resultCanvas = UI.canvas(aiImg.naturalWidth, aiImg.naturalHeight);
+            resultCanvas.getContext('2d').drawImage(aiImg, 0, 0);
           }
         }
 
-        // Tier 3: In-browser Deep Neural Network (Google MediaPipe)
         if (!resultCanvas) {
-          try {
-            resultCanvas = await segmentSubjectWithAI(imageEl);
-            if (resultCanvas) {
-              activeEngine = 'basic';
-            }
-          } catch (e) {
-            console.warn('MediaPipe segmentation error:', e);
-          }
-        }
-
-        // Tier 4: Adaptive Flood Fill Matting fallback
-        if (!resultCanvas) {
-          resultCanvas = runFloodFillMatting(imageEl, sampleColor, +tol.value, +feather.value);
-          if (resultCanvas) {
-            activeEngine = 'basic';
-          }
+          throw new Error('IMG_LY_EMPTY_RESULT');
         }
 
         cutoutCanvas = resultCanvas;
-      } catch (pipelineErr) {
-        console.error('Cutout pipeline error:', pipelineErr);
-        if (!cutoutCanvas) {
-          cutoutCanvas = runFloodFillMatting(imageEl, sampleColor, +tol.value, +feather.value);
-          activeEngine = 'basic';
-        }
-      } finally {
-        loadingOverlay.style.display = 'none';
-        isProcessing = false;
+        errorBox.style.display = 'none';
         activeTab = 'cutout';
         updateTabsUI();
         await renderPreview();
+      } catch (pipelineErr) {
+        if (timeoutTimer) clearTimeout(timeoutTimer);
+        console.warn('IMG.LY processing error or timeout:', pipelineErr);
+
+        // Failure path: stop spinner, NEVER substitute silently, show clear bilingual message + Retry button
+        cutoutCanvas = null;
+        errorBox.style.display = 'flex';
+        UI.clear(errorText);
+        errorText.textContent = '⚠️ ' + tr('প্রসেসিং সম্পন্ন করা সম্ভব হয়নি — অপেক্ষাকৃত ছোট ছবি ব্যবহার করে দেখুন অথবা পুনরায় চেষ্টা করুন।', 'Processing could not finish — try a smaller photo or press Retry.');
+        resBadge.textContent = '✕ ' + tr('প্রসেসিং ব্যর্থ', 'Processing Failed');
+        activeTab = 'original';
+        updateTabsUI();
+        await renderPreview();
+      } finally {
+        if (timeoutTimer) clearTimeout(timeoutTimer);
+        loadingOverlay.style.display = 'none';
+        isProcessing = false;
       }
     }
 
