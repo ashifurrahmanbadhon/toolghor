@@ -81,20 +81,44 @@ export async function POST(req: NextRequest) {
         try {
           const sql = getDb();
           const rows = await sql`
-            SELECT gemini_key, convertapi_token, removebg_key, openai_key, ilovepdf_secret_key, ilovepdf_public_key
+            SELECT gemini_key, gemini_keys, convertapi_token, convertapi_keys, removebg_key, removebg_keys, openai_key, openai_keys, ilovepdf_secret_key, ilovepdf_public_key, ilovepdf_keys
             FROM section_api_keys
             WHERE id = 1
             LIMIT 1
           `;
           const row = rows[0];
           if (row) {
-            if (cleanProvider === 'gemini') resolvedKey = (row.gemini_key || '').trim();
-            else if (cleanProvider === 'convertapi') resolvedKey = (row.convertapi_token || '').trim();
-            else if (cleanProvider === 'removebg') resolvedKey = (row.removebg_key || '').trim();
-            else if (cleanProvider === 'openai') resolvedKey = (row.openai_key || '').trim();
+            const getFirst = (listVal: any, singleVal: any) => {
+              if (Array.isArray(listVal) && listVal.length > 0 && typeof listVal[0] === 'string') return listVal[0].trim();
+              if (typeof listVal === 'string' && listVal.trim()) {
+                try {
+                  const arr = JSON.parse(listVal);
+                  if (Array.isArray(arr) && arr.length > 0 && typeof arr[0] === 'string') return arr[0].trim();
+                } catch {}
+              }
+              return (singleVal || '').trim();
+            };
+
+            if (cleanProvider === 'gemini') resolvedKey = getFirst(row.gemini_keys, row.gemini_key);
+            else if (cleanProvider === 'convertapi') resolvedKey = getFirst(row.convertapi_keys, row.convertapi_token);
+            else if (cleanProvider === 'removebg') resolvedKey = getFirst(row.removebg_keys, row.removebg_key);
+            else if (cleanProvider === 'openai') resolvedKey = getFirst(row.openai_keys, row.openai_key);
             else if (cleanProvider === 'ilovepdf') {
-              if (!resolvedKey) resolvedKey = (row.ilovepdf_secret_key || '').trim();
-              if (!resolvedPublicKey) resolvedPublicKey = (row.ilovepdf_public_key || '').trim();
+              let firstPub = '';
+              let firstSec = '';
+              const iloveArr = (() => {
+                if (Array.isArray(row.ilovepdf_keys)) return row.ilovepdf_keys;
+                if (typeof row.ilovepdf_keys === 'string' && row.ilovepdf_keys.trim()) {
+                  try { return JSON.parse(row.ilovepdf_keys); } catch {}
+                }
+                return [];
+              })();
+              if (iloveArr.length > 0) {
+                firstPub = (iloveArr[0]?.public || iloveArr[0]?.publicKey || '').trim();
+                firstSec = (iloveArr[0]?.secret || iloveArr[0]?.secretKey || '').trim();
+              }
+              if (!resolvedPublicKey) resolvedPublicKey = firstPub || (row.ilovepdf_public_key || '').trim();
+              if (!resolvedKey) resolvedKey = firstSec || (row.ilovepdf_secret_key || '').trim();
             }
           }
         } catch {}

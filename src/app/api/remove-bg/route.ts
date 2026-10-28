@@ -1,29 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
 import { getCorsHeaders, handleCorsPreflight, checkPersistentRateLimit } from '@/lib/security';
 import { runConfigCheck } from '@/lib/configCheck';
-
-async function getRemoveBgKey(): Promise<string> {
-  const envKey = (process.env.REMOVE_BG_API_KEY || process.env.REMOVEBG_API_KEY || '').trim();
-  if (envKey && envKey !== 'your_key_here') {
-    return envKey;
-  }
-  try {
-    const sql = getDb();
-    const rows = await sql`
-      SELECT removebg_active, removebg_key
-      FROM section_api_keys
-      WHERE id = 1
-      LIMIT 1
-    `;
-    const row = rows[0];
-    if (row && row.removebg_active && row.removebg_key) {
-      const dbKey = row.removebg_key.trim();
-      if (dbKey) return dbKey;
-    }
-  } catch (e) {}
-  return '';
-}
+import { getRemoveBgKeys, isRotationStatus, logKeyRotation } from '@/lib/apiKeys';
 
 export async function OPTIONS(req: NextRequest) {
   return handleCorsPreflight(req, 'GET, POST, OPTIONS');
@@ -45,8 +23,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const key = await getRemoveBgKey();
-  if (!key) {
+  const keys = await getRemoveBgKeys();
+  if (!keys || keys.length === 0) {
     return NextResponse.json(
       {
         error: 'remove.bg API service is not configured on the server. Please set REMOVE_BG_API_KEY.',
@@ -81,22 +59,53 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const outForm = new FormData();
-    outForm.append('image_file', imageFile);
-    outForm.append('size', 'auto');
+    const imageBuffer = Buffer.from(await imageFile.arrayBuffer());
+    let lastErrorRes: NextResponse | null = null;
 
-    const res = await fetch('https://api.remove.bg/v1.0/removebg', {
-      method: 'POST',
-      headers: {
-        'X-Api-Key': key,
-      },
-      body: outForm,
-      signal: AbortSignal.timeout(15000),
-    });
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      const outForm = new FormData();
+      outForm.append(
+        'image_file',
+        new Blob([imageBuffer], { type: imageFile.type || 'image/png' }),
+        imageFile.name || 'image.png'
+      );
+      outForm.append('size', 'auto');
 
-    if (!res.ok) {
+      const res = await fetch('https://api.remove.bg/v1.0/removebg', {
+        method: 'POST',
+        headers: {
+          'X-Api-Key': key,
+        },
+        body: outForm,
+        signal: AbortSignal.timeout(15000),
+      });
+
+      if (res.ok) {
+        const outBuffer = Buffer.from(await res.arrayBuffer());
+        return new NextResponse(new Uint8Array(outBuffer), {
+          status: 200,
+          headers: {
+            ...getCorsHeaders(req),
+            'Content-Type': 'image/png',
+          },
+        });
+      }
+
       const errJson = await res.json().catch(() => ({}));
-      console.error('[remove.bg API Error]', res.status, errJson);
+      if (isRotationStatus(res.status)) {
+        logKeyRotation('removebg', i, res.status);
+        lastErrorRes = NextResponse.json(
+          {
+            error: (errJson && errJson.errors && errJson.errors[0]?.title) || 'Failed to remove background',
+            error_bn: 'ব্যাকগ্রাউন্ড রিমুভ করা সম্ভব হয়নি।'
+          },
+          { status: res.status, headers: getCorsHeaders(req) }
+        );
+        continue;
+      }
+
+      // Other non-ok status (400 bad image format, 500) returns immediately
       return NextResponse.json(
         {
           error: (errJson && errJson.errors && errJson.errors[0]?.title) || 'Failed to remove background',
@@ -106,15 +115,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const imageBuffer = Buffer.from(await res.arrayBuffer());
-
-    return new NextResponse(new Uint8Array(imageBuffer), {
-      status: 200,
-      headers: {
-        ...getCorsHeaders(req),
-        'Content-Type': 'image/png',
+    if (lastErrorRes) {
+      return lastErrorRes;
+    }
+    return NextResponse.json(
+      {
+        error: 'Failed to remove background',
+        error_bn: 'ব্যাকগ্রাউন্ড রিমুভ করা সম্ভব হয়নি।'
       },
-    });
+      { status: 500, headers: getCorsHeaders(req) }
+    );
   } catch (err: any) {
     console.error('[remove.bg Proxy Exception]', err);
     return NextResponse.json(

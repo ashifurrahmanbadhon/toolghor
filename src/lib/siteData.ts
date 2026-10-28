@@ -21,7 +21,7 @@ async function fetchRawSiteData() {
       sql`SELECT slug, category_slug, is_active, title_bn, title_en, desc_bn, desc_en, badge, updated_at FROM section_tools ORDER BY display_order ASC`,
       sql`SELECT * FROM section_footer_social WHERE id = 1 LIMIT 1`,
       sql`SELECT * FROM section_creator_about WHERE id = 1 LIMIT 1`,
-      sql`SELECT is_active, gemini_active, openai_active, convertapi_active, removebg_active, ilovepdf_active, ilovepdf_public_key FROM section_api_keys WHERE id = 1 LIMIT 1`,
+      sql`SELECT * FROM section_api_keys WHERE id = 1 LIMIT 1`,
       sql`SELECT * FROM section_ui_settings WHERE id = 1 LIMIT 1`,
       sql`SELECT * FROM section_tool_remove_ai_label WHERE id = 1 LIMIT 1`.catch(() => []),
       sql`SELECT key, value FROM site_settings WHERE key = 'content_texts' LIMIT 1`.catch(() => []),
@@ -31,17 +31,71 @@ async function fetchRawSiteData() {
       (await Promise.race([queryPromise, timeoutPromise])) as any;
 
     const rawApi = apiKeysRows[0] || null;
-    const safeApiKeys = rawApi
-      ? {
-          is_active: Boolean(rawApi.is_active),
-          gemini_active: Boolean(rawApi.gemini_active),
-          openai_active: Boolean(rawApi.openai_active),
-          convertapi_active: Boolean(rawApi.convertapi_active),
-          removebg_active: Boolean(rawApi.removebg_active),
-          ilovepdf_active: Boolean(rawApi.ilovepdf_active),
-          ilovepdf_public_key: (rawApi.ilovepdf_public_key || '').trim(),
+    let safeApiKeys = null;
+    if (rawApi) {
+      const parseListCount = (val: any) => {
+        if (Array.isArray(val)) return val.length;
+        if (typeof val === 'string' && val.trim()) {
+          try {
+            const arr = JSON.parse(val);
+            if (Array.isArray(arr)) return arr.filter(Boolean).length;
+          } catch {}
         }
-      : null;
+        return 0;
+      };
+
+      const hasGemini = Boolean(
+        (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim() && !process.env.GEMINI_API_KEY.includes('your_')) ||
+        parseListCount(rawApi.gemini_keys) > 0 ||
+        (rawApi.gemini_key && rawApi.gemini_key.trim())
+      );
+      const hasOpenai = Boolean(
+        (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim() && !process.env.OPENAI_API_KEY.includes('your_')) ||
+        parseListCount(rawApi.openai_keys) > 0 ||
+        (rawApi.openai_key && rawApi.openai_key.trim())
+      );
+      const hasConvertApi = Boolean(
+        (process.env.CONVERTAPI_TOKEN && process.env.CONVERTAPI_TOKEN.trim() && !process.env.CONVERTAPI_TOKEN.includes('your_')) ||
+        (process.env.CONVERTAPI_SECRET && process.env.CONVERTAPI_SECRET.trim() && !process.env.CONVERTAPI_SECRET.includes('your_')) ||
+        parseListCount(rawApi.convertapi_keys) > 0 ||
+        (rawApi.convertapi_token && rawApi.convertapi_token.trim())
+      );
+      const hasRemoveBg = Boolean(
+        (process.env.REMOVE_BG_API_KEY && process.env.REMOVE_BG_API_KEY.trim() && !process.env.REMOVE_BG_API_KEY.includes('your_')) ||
+        (process.env.REMOVEBG_API_KEY && process.env.REMOVEBG_API_KEY.trim() && !process.env.REMOVEBG_API_KEY.includes('your_')) ||
+        parseListCount(rawApi.removebg_keys) > 0 ||
+        (rawApi.removebg_key && rawApi.removebg_key.trim())
+      );
+
+      let firstILovePdfPublicKey = (rawApi.ilovepdf_public_key || process.env.ILOVEPDF_PUBLIC_KEY || '').trim();
+      const iLovePdfList = (() => {
+        if (Array.isArray(rawApi.ilovepdf_keys)) return rawApi.ilovepdf_keys;
+        if (typeof rawApi.ilovepdf_keys === 'string' && rawApi.ilovepdf_keys.trim()) {
+          try { return JSON.parse(rawApi.ilovepdf_keys); } catch {}
+        }
+        return [];
+      })();
+      if (Array.isArray(iLovePdfList) && iLovePdfList.length > 0 && (iLovePdfList[0]?.public || iLovePdfList[0]?.publicKey)) {
+        firstILovePdfPublicKey = (iLovePdfList[0].public || iLovePdfList[0].publicKey || '').trim();
+      }
+
+      const hasILovePdf = Boolean(
+        firstILovePdfPublicKey ||
+        (rawApi.ilovepdf_secret_key && rawApi.ilovepdf_secret_key.trim()) ||
+        (process.env.ILOVEPDF_SECRET_KEY && process.env.ILOVEPDF_SECRET_KEY.trim()) ||
+        (Array.isArray(iLovePdfList) && iLovePdfList.length > 0)
+      );
+
+      safeApiKeys = {
+        is_active: Boolean(rawApi.is_active),
+        gemini_active: Boolean(rawApi.gemini_active && hasGemini),
+        openai_active: Boolean(rawApi.openai_active && hasOpenai),
+        convertapi_active: Boolean(rawApi.convertapi_active && hasConvertApi),
+        removebg_active: Boolean(rawApi.removebg_active && hasRemoveBg),
+        ilovepdf_active: Boolean(rawApi.ilovepdf_active && hasILovePdf),
+        ilovepdf_public_key: firstILovePdfPublicKey,
+      };
+    }
 
     let policySections = null;
     try {

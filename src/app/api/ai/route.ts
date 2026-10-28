@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
 import { getCorsHeaders, handleCorsPreflight, checkPersistentRateLimit } from '@/lib/security';
 import { runConfigCheck } from '@/lib/configCheck';
+import { getGeminiKeys, getOpenAiKeys, isRotationStatus, logKeyRotation } from '@/lib/apiKeys';
 
 const ALLOWED_ORIGINS = new Set([
   'https://toolghor.vercel.app',
@@ -64,55 +64,6 @@ function resolveSystemInstruction(toolSlug?: string, clientInstruction?: string)
   return basePrompt;
 }
 
-async function getServerAiKeys() {
-  const envGemini = (process.env.GEMINI_API_KEY || '').trim();
-  const envOpenai = (process.env.OPENAI_API_KEY || '').trim();
-  const validEnvGemini = envGemini && envGemini !== 'your_gemini_key_here' && envGemini !== 'your_key_here';
-  const validEnvOpenai = envOpenai && envOpenai !== 'your_openai_key_here' && envOpenai !== 'your_key_here';
-
-  let geminiKey = validEnvGemini ? envGemini : '';
-  let openaiKey = validEnvOpenai ? envOpenai : '';
-  let geminiActive = Boolean(geminiKey);
-  let openaiActive = Boolean(openaiKey);
-
-  // If both keys are satisfied by env vars, env var wins unconditionally
-  if (geminiKey && openaiKey) {
-    return { geminiKey, openaiKey, geminiActive: true, openaiActive: true };
-  }
-
-  try {
-    const sql = getDb();
-    const rows = await sql`
-      SELECT is_active, gemini_active, gemini_key, openai_active, openai_key
-      FROM section_api_keys
-      WHERE id = 1
-      LIMIT 1
-    `;
-    const row = rows[0];
-    if (row && row.is_active) {
-      // Env always wins over DB. Only fallback to DB if env var is missing:
-      if (!geminiKey && row.gemini_active && row.gemini_key) {
-        const dbGemini = row.gemini_key.trim();
-        if (dbGemini) {
-          geminiKey = dbGemini;
-          geminiActive = true;
-        }
-      }
-      if (!openaiKey && row.openai_active && row.openai_key) {
-        const dbOpenai = row.openai_key.trim();
-        if (dbOpenai) {
-          openaiKey = dbOpenai;
-          openaiActive = true;
-        }
-      }
-    }
-  } catch (err: any) {
-    console.warn('[AI Proxy Warning]: Failed to fetch DB keys, using environment variables:', err?.message || err);
-  }
-
-  return { geminiKey, openaiKey, geminiActive, openaiActive };
-}
-
 export async function OPTIONS(req: NextRequest) {
   return handleCorsPreflight(req, 'POST, OPTIONS');
 }
@@ -173,10 +124,19 @@ export async function POST(req: NextRequest) {
     const toolSlug = typeof options?.toolSlug === 'string' ? options.toolSlug.trim() : undefined;
     const systemInstruction = resolveSystemInstruction(toolSlug, options?.systemInstruction);
 
-    const { geminiKey, openaiKey, geminiActive, openaiActive } = await getServerAiKeys();
+    const visitorKey = typeof body.apiKey === 'string' && body.apiKey.trim()
+      ? body.apiKey.trim()
+      : typeof options?.apiKey === 'string' && options.apiKey.trim()
+      ? options.apiKey.trim()
+      : typeof options?.geminiKey === 'string' && options.geminiKey.trim()
+      ? options.geminiKey.trim()
+      : '';
 
-    // 1. Try Google Gemini if configured and active
-    if (geminiActive && geminiKey) {
+    // 1. Try Google Gemini with multi-key rotation
+    const serverGeminiKeys = await getGeminiKeys();
+    const geminiKeys = visitorKey ? [visitorKey, ...serverGeminiKeys] : serverGeminiKeys;
+
+    if (geminiKeys.length > 0) {
       const candidateModels = [
         'gemini-3.5-flash-lite',
         'gemini-3.5-flash',
@@ -184,77 +144,115 @@ export async function POST(req: NextRequest) {
         'gemma-4-26b-a4b-it',
         'gemini-3.8-flash',
       ];
-      for (const modelName of candidateModels) {
-        try {
-          const gUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(geminiKey)}`;
-          const payload = {
-            contents: [{ role: 'user', parts: [{ text: (systemInstruction ? (systemInstruction + '\n\n') : '') + cleanPrompt }] }],
-            generationConfig: { temperature, maxOutputTokens: maxTokens },
-          };
 
-          const res = await fetch(gUrl, {
+      for (let kIdx = 0; kIdx < geminiKeys.length; kIdx++) {
+        const geminiKey = geminiKeys[kIdx];
+        let keyRotated = false;
+
+        for (const modelName of candidateModels) {
+          try {
+            const gUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(geminiKey)}`;
+            const payload = {
+              contents: [{ role: 'user', parts: [{ text: (systemInstruction ? (systemInstruction + '\n\n') : '') + cleanPrompt }] }],
+              generationConfig: { temperature, maxOutputTokens: maxTokens },
+            };
+
+            const res = await fetch(gUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+              signal: AbortSignal.timeout(15000),
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              if (data.candidates && data.candidates[0]?.content?.parts) {
+                const text = data.candidates[0].content.parts.map((p: any) => p.text || '').join('').trim();
+                if (text) {
+                  return NextResponse.json(
+                    { success: true, text, provider: 'Google Gemini' },
+                    { headers: corsHeaders }
+                  );
+                }
+              }
+            }
+
+            if (isRotationStatus(res.status)) {
+              logKeyRotation('gemini', kIdx, res.status);
+              keyRotated = true;
+              break; // Rotate to next key immediately
+            }
+
+            console.warn(`[AI Proxy]: Gemini model ${modelName} returned status ${res.status}`);
+          } catch (geminiErr: any) {
+            console.warn(`[AI Proxy]: Gemini request failed on model ${modelName}:`, geminiErr?.message);
+          }
+        }
+
+        if (keyRotated) continue;
+      }
+    }
+
+    // 2. Try OpenAI with multi-key rotation
+    const serverOpenAiKeys = await getOpenAiKeys();
+    const openAiVisitorKey = typeof options?.openaiKey === 'string' && options.openaiKey.trim()
+      ? options.openaiKey.trim()
+      : visitorKey;
+    const openAiKeys = openAiVisitorKey ? [openAiVisitorKey, ...serverOpenAiKeys] : serverOpenAiKeys;
+
+    if (openAiKeys.length > 0) {
+      for (let oIdx = 0; oIdx < openAiKeys.length; oIdx++) {
+        const openaiKey = openAiKeys[oIdx];
+        try {
+          const res = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${openaiKey}`,
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                { role: 'system', content: systemInstruction },
+                { role: 'user', content: cleanPrompt },
+              ],
+              temperature,
+              max_tokens: maxTokens,
+            }),
             signal: AbortSignal.timeout(15000),
           });
 
-          if (!res.ok) {
-            console.warn(`[AI Proxy]: Gemini model ${modelName} returned status ${res.status}`);
-          }
           if (res.ok) {
-            const data = await res.json();
-            if (data.candidates && data.candidates[0]?.content?.parts) {
-              const text = data.candidates[0].content.parts.map((p: any) => p.text || '').join('').trim();
+            const oData = await res.json();
+            if (oData.choices && oData.choices[0]?.message?.content) {
+              const text = oData.choices[0].message.content.trim();
               if (text) {
                 return NextResponse.json(
-                  { success: true, text, provider: 'Google Gemini' },
+                  { success: true, text, provider: 'OpenAI' },
                   { headers: corsHeaders }
                 );
               }
             }
           }
-        } catch (geminiErr: any) {
-          console.warn(`[AI Proxy]: Gemini request failed on model ${modelName}:`, geminiErr?.message);
-        }
-      }
-    }
 
-    // 2. Try OpenAI if configured and active
-    if (openaiActive && openaiKey) {
-      try {
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${openaiKey}`,
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              { role: 'system', content: systemInstruction },
-              { role: 'user', content: cleanPrompt },
-            ],
-            temperature,
-            max_tokens: maxTokens,
-          }),
-          signal: AbortSignal.timeout(15000),
-        });
-
-        if (res.ok) {
-          const oData = await res.json();
-          if (oData.choices && oData.choices[0]?.message?.content) {
-            const text = oData.choices[0].message.content.trim();
-            if (text) {
-              return NextResponse.json(
-                { success: true, text, provider: 'OpenAI' },
-                { headers: corsHeaders }
-              );
-            }
+          if (isRotationStatus(res.status)) {
+            logKeyRotation('openai', oIdx, res.status);
+            continue; // Rotate to next OpenAI key
           }
+
+          // Non-rotation error (e.g. 400 Bad Request, 500) returns immediately
+          const errData = await res.json().catch(() => ({}));
+          return NextResponse.json(
+            {
+              success: false,
+              error: errData?.error?.message || `OpenAI returned status ${res.status}`,
+              error_bn: 'OpenAI সার্ভিস থেকে ত্রুটি পাওয়া গেছে।'
+            },
+            { status: res.status, headers: corsHeaders }
+          );
+        } catch (openAiErr: any) {
+          console.warn('[AI Proxy]: OpenAI request failed:', openAiErr?.message);
         }
-      } catch (openAiErr: any) {
-        console.warn('[AI Proxy]: OpenAI request failed:', openAiErr?.message);
       }
     }
 

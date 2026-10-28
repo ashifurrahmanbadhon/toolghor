@@ -136,19 +136,29 @@ interface CreatorAboutSection {
   photo_position?: string;
 }
 
+interface ILovePdfCredential {
+  public: string;
+  secret: string;
+}
+
 interface ApiKeysSection {
   is_active: boolean;
   gemini_active: boolean;
   gemini_key: string;
+  gemini_keys?: string[];
   convertapi_active: boolean;
   convertapi_token: string;
+  convertapi_keys?: string[];
   removebg_active: boolean;
   removebg_key: string;
+  removebg_keys?: string[];
   openai_active: boolean;
   openai_key: string;
+  openai_keys?: string[];
   ilovepdf_active?: boolean;
   ilovepdf_public_key?: string;
   ilovepdf_secret_key?: string;
+  ilovepdf_keys?: ILovePdfCredential[];
 }
 
 type MenuTab =
@@ -298,16 +308,22 @@ export default function AdminConsole() {
     is_active: true,
     gemini_active: true,
     gemini_key: '',
+    gemini_keys: [],
     convertapi_active: true,
     convertapi_token: '',
+    convertapi_keys: [],
     removebg_active: true,
     removebg_key: '',
+    removebg_keys: [],
     openai_active: true,
     openai_key: '',
+    openai_keys: [],
     ilovepdf_active: true,
     ilovepdf_public_key: '',
     ilovepdf_secret_key: '',
+    ilovepdf_keys: [],
   });
+  const [newKeyInputs, setNewKeyInputs] = useState<Record<string, string>>({});
 
   const [analytics, setAnalytics] = useState<Record<string, number>>({});
   const [periodicAnalytics, setPeriodicAnalytics] = useState<
@@ -554,22 +570,40 @@ export default function AdminConsole() {
   const formatMaskedKey = (val: string) => {
     if (!val) return '';
     const trimmed = val.trim();
-    if (trimmed.length <= 4) return '••••••••';
-    return '••••••••' + trimmed.slice(-4);
+    if (trimmed.length <= 8) return '••••••••';
+    return `${trimmed.slice(0, 4)}...${trimmed.slice(-4)}`;
   };
 
-  const runTestKey = async (provider: string, keyField: string, secondKeyField?: string) => {
+  const runTestKey = async (provider: string, keyField?: string, secondKeyField?: string) => {
     setTestingKey((p) => ({ ...p, [provider]: true }));
     setTestResult((p) => ({ ...p, [provider]: null }));
 
     try {
-      const currentKey = ((apiKeys as any)[keyField] || '').trim();
-      const currentSecond = secondKeyField ? ((apiKeys as any)[secondKeyField] || '').trim() : '';
+      let currentKey = keyField ? ((apiKeys as any)[keyField] || '').trim() : '';
+      let currentSecond = secondKeyField ? ((apiKeys as any)[secondKeyField] || '').trim() : '';
+
+      if (!currentKey) {
+        if (provider === 'gemini' && apiKeys.gemini_keys && apiKeys.gemini_keys[0]) {
+          currentKey = apiKeys.gemini_keys[0];
+        } else if (provider === 'openai' && apiKeys.openai_keys && apiKeys.openai_keys[0]) {
+          currentKey = apiKeys.openai_keys[0];
+        } else if (provider === 'convertapi' && apiKeys.convertapi_keys && apiKeys.convertapi_keys[0]) {
+          currentKey = apiKeys.convertapi_keys[0];
+        } else if (provider === 'removebg' && apiKeys.removebg_keys && apiKeys.removebg_keys[0]) {
+          currentKey = apiKeys.removebg_keys[0];
+        } else if (provider === 'ilovepdf') {
+          if (apiKeys.ilovepdf_keys && apiKeys.ilovepdf_keys[0]) {
+            currentKey = apiKeys.ilovepdf_keys[0].secret || '';
+            currentSecond = apiKeys.ilovepdf_keys[0].public || '';
+          }
+        }
+      }
+
       const payload: any = {
         provider,
         key: currentKey.startsWith('••') ? '' : currentKey,
       };
-      if (secondKeyField) {
+      if (secondKeyField || currentSecond) {
         payload.publicKey = currentSecond.startsWith('••') ? '' : currentSecond;
       }
 
@@ -640,6 +674,51 @@ export default function AdminConsole() {
           if (data.sections.apiKeys) {
             const rawApi = { ...data.sections.apiKeys };
             if (rawApi.gemini_key === '277226@Asif') rawApi.gemini_key = '';
+
+            const parseArr = (v: any) => {
+              if (Array.isArray(v)) return v;
+              if (typeof v === 'string' && v.trim()) {
+                try {
+                  const p = JSON.parse(v);
+                  if (Array.isArray(p)) return p;
+                } catch {}
+              }
+              return [];
+            };
+
+            const geminiList = parseArr(rawApi.gemini_keys);
+            if (geminiList.length === 0 && rawApi.gemini_key) {
+              geminiList.push(rawApi.gemini_key);
+            }
+            rawApi.gemini_keys = geminiList;
+
+            const openaiList = parseArr(rawApi.openai_keys);
+            if (openaiList.length === 0 && rawApi.openai_key) {
+              openaiList.push(rawApi.openai_key);
+            }
+            rawApi.openai_keys = openaiList;
+
+            const convertApiList = parseArr(rawApi.convertapi_keys);
+            if (convertApiList.length === 0 && rawApi.convertapi_token) {
+              convertApiList.push(rawApi.convertapi_token);
+            }
+            rawApi.convertapi_keys = convertApiList;
+
+            const removeBgList = parseArr(rawApi.removebg_keys);
+            if (removeBgList.length === 0 && rawApi.removebg_key) {
+              removeBgList.push(rawApi.removebg_key);
+            }
+            rawApi.removebg_keys = removeBgList;
+
+            const ilovePdfList = parseArr(rawApi.ilovepdf_keys);
+            if (ilovePdfList.length === 0 && (rawApi.ilovepdf_public_key || rawApi.ilovepdf_secret_key)) {
+              ilovePdfList.push({
+                public: rawApi.ilovepdf_public_key || '',
+                secret: rawApi.ilovepdf_secret_key || '',
+              });
+            }
+            rawApi.ilovepdf_keys = ilovePdfList;
+
             setApiKeys(rawApi);
           }
           if (data.sections.removeAiLabel) {
@@ -1126,6 +1205,14 @@ export default function AdminConsole() {
         }
       }
     });
+
+    safePayload.gemini_key = (updated.gemini_keys && updated.gemini_keys[0]) || safePayload.gemini_key || '';
+    safePayload.openai_key = (updated.openai_keys && updated.openai_keys[0]) || safePayload.openai_key || '';
+    safePayload.convertapi_token = (updated.convertapi_keys && updated.convertapi_keys[0]) || safePayload.convertapi_token || '';
+    safePayload.removebg_key = (updated.removebg_keys && updated.removebg_keys[0]) || safePayload.removebg_key || '';
+    safePayload.ilovepdf_public_key = (updated.ilovepdf_keys && updated.ilovepdf_keys[0]?.public) || safePayload.ilovepdf_public_key || '';
+    safePayload.ilovepdf_secret_key = (updated.ilovepdf_keys && updated.ilovepdf_keys[0]?.secret) || safePayload.ilovepdf_secret_key || '';
+
     setApiKeys(safePayload);
     await postApi('update_api_keys', safePayload, 'API Credentials saved!');
   };
@@ -2793,26 +2880,26 @@ export default function AdminConsole() {
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ color: apiKeys.removebg_active && apiKeys.removebg_key ? '#10b981' : '#64748b', fontWeight: 700 }}>
-                            {apiKeys.removebg_active && apiKeys.removebg_key ? '✓' : '—'}
+                          <span style={{ color: apiKeys.removebg_active && (apiKeys.removebg_key || (apiKeys.removebg_keys && apiKeys.removebg_keys.length > 0)) ? '#10b981' : '#64748b', fontWeight: 700 }}>
+                            {apiKeys.removebg_active && (apiKeys.removebg_key || (apiKeys.removebg_keys && apiKeys.removebg_keys.length > 0)) ? '✓' : '—'}
                           </span>
                           <span style={{ color: '#94a3b8' }}>remove.bg</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ color: apiKeys.convertapi_active && apiKeys.convertapi_token ? '#10b981' : '#64748b', fontWeight: 700 }}>
-                            {apiKeys.convertapi_active && apiKeys.convertapi_token ? '✓' : '—'}
+                          <span style={{ color: apiKeys.convertapi_active && (apiKeys.convertapi_token || (apiKeys.convertapi_keys && apiKeys.convertapi_keys.length > 0)) ? '#10b981' : '#64748b', fontWeight: 700 }}>
+                            {apiKeys.convertapi_active && (apiKeys.convertapi_token || (apiKeys.convertapi_keys && apiKeys.convertapi_keys.length > 0)) ? '✓' : '—'}
                           </span>
                           <span style={{ color: '#94a3b8' }}>ConvertAPI</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ color: apiKeys.ilovepdf_active && (apiKeys.ilovepdf_public_key || apiKeys.ilovepdf_secret_key) ? '#10b981' : '#64748b', fontWeight: 700 }}>
-                            {apiKeys.ilovepdf_active && (apiKeys.ilovepdf_public_key || apiKeys.ilovepdf_secret_key) ? '✓' : '—'}
+                          <span style={{ color: apiKeys.ilovepdf_active && (apiKeys.ilovepdf_public_key || apiKeys.ilovepdf_secret_key || (apiKeys.ilovepdf_keys && apiKeys.ilovepdf_keys.length > 0)) ? '#10b981' : '#64748b', fontWeight: 700 }}>
+                            {apiKeys.ilovepdf_active && (apiKeys.ilovepdf_public_key || apiKeys.ilovepdf_secret_key || (apiKeys.ilovepdf_keys && apiKeys.ilovepdf_keys.length > 0)) ? '✓' : '—'}
                           </span>
                           <span style={{ color: '#94a3b8' }}>iLovePDF</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ color: apiKeys.gemini_active && apiKeys.gemini_key ? '#10b981' : '#64748b', fontWeight: 700 }}>
-                            {apiKeys.gemini_active && apiKeys.gemini_key ? '✓' : '—'}
+                          <span style={{ color: (apiKeys.gemini_active && (apiKeys.gemini_key || (apiKeys.gemini_keys && apiKeys.gemini_keys.length > 0))) || (apiKeys.openai_active && (apiKeys.openai_key || (apiKeys.openai_keys && apiKeys.openai_keys.length > 0))) ? '#10b981' : '#64748b', fontWeight: 700 }}>
+                            {(apiKeys.gemini_active && (apiKeys.gemini_key || (apiKeys.gemini_keys && apiKeys.gemini_keys.length > 0))) || (apiKeys.openai_active && (apiKeys.openai_key || (apiKeys.openai_keys && apiKeys.openai_keys.length > 0))) ? '✓' : '—'}
                           </span>
                           <span style={{ color: '#94a3b8' }}>Gemini / OpenAI</span>
                         </div>
@@ -5302,6 +5389,7 @@ export default function AdminConsole() {
                 {[
                   {
                     key: 'gemini_key',
+                    listKey: 'gemini_keys',
                     activeKey: 'gemini_active',
                     provider: 'gemini',
                     label: 'Google Gemini AI API',
@@ -5312,6 +5400,7 @@ export default function AdminConsole() {
                   {
                     key: 'ilovepdf_secret_key',
                     secondKey: 'ilovepdf_public_key',
+                    listKey: 'ilovepdf_keys',
                     activeKey: 'ilovepdf_active',
                     provider: 'ilovepdf',
                     label: 'iLovePDF Cloud Engine',
@@ -5322,6 +5411,7 @@ export default function AdminConsole() {
                   },
                   {
                     key: 'convertapi_token',
+                    listKey: 'convertapi_keys',
                     activeKey: 'convertapi_active',
                     provider: 'convertapi',
                     label: 'ConvertAPI Document Engine',
@@ -5331,6 +5421,7 @@ export default function AdminConsole() {
                   },
                   {
                     key: 'removebg_key',
+                    listKey: 'removebg_keys',
                     activeKey: 'removebg_active',
                     provider: 'removebg',
                     label: 'Remove.bg API',
@@ -5340,6 +5431,7 @@ export default function AdminConsole() {
                   },
                   {
                     key: 'openai_key',
+                    listKey: 'openai_keys',
                     activeKey: 'openai_active',
                     provider: 'openai',
                     label: 'OpenAI API (GPT-4o & Whisper)',
@@ -5349,13 +5441,12 @@ export default function AdminConsole() {
                   },
                 ].map((item) => {
                   const isActive = (apiKeys as any)[item.activeKey];
-                  const rawVal = (apiKeys as any)[item.key] || '';
-                  const hasKey = item.secondKey
-                    ? Boolean(rawVal.trim() || ((apiKeys as any)[item.secondKey] || '').trim())
-                    : Boolean(rawVal.trim());
-                  const isRevealed = Boolean(showKey[item.key]);
-                  const isFocused = Boolean(focusedKey[item.key]);
-                  const displayValue = isRevealed || isFocused ? rawVal : formatMaskedKey(rawVal);
+                  const isILovePdf = item.provider === 'ilovepdf';
+                  const rawList: any[] = Array.isArray((apiKeys as any)[item.listKey])
+                    ? (apiKeys as any)[item.listKey]
+                    : [];
+                  const keysCount = rawList.length;
+
                   return (
                     <div key={item.key} style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
@@ -5368,20 +5459,20 @@ export default function AdminConsole() {
                                 fontWeight: 700,
                                 padding: '2px 8px',
                                 borderRadius: '999px',
-                                background: isActive && hasKey ? 'rgba(16,185,129,0.15)' : 'rgba(148,163,184,0.12)',
-                                color: isActive && hasKey ? '#34d399' : '#94a3b8',
-                                border: `1px solid ${isActive && hasKey ? 'rgba(16,185,129,0.3)' : 'rgba(148,163,184,0.2)'}`,
+                                background: isActive && keysCount > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(148,163,184,0.12)',
+                                color: isActive && keysCount > 0 ? '#34d399' : '#94a3b8',
+                                border: `1px solid ${isActive && keysCount > 0 ? 'rgba(16,185,129,0.3)' : 'rgba(148,163,184,0.2)'}`,
                                 whiteSpace: 'nowrap',
                               }}
                             >
-                              {isActive && hasKey ? 'Connected & Ready' : !isActive ? 'Disabled' : 'Key Not Set'}
+                              {isActive && keysCount > 0 ? `Connected & Ready (${keysCount} ${keysCount === 1 ? 'key' : 'keys'})` : !isActive ? 'Disabled' : 'No Keys Configured'}
                             </span>
                           </div>
                           <div style={{ fontSize: '12.5px', color: '#94a3b8', marginTop: '3px', wordBreak: 'break-word' }}>{item.desc}</div>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}>
-                          {/* Minimal Test Button */}
+                          {/* Test Button */}
                           <button
                             type="button"
                             onClick={() => runTestKey(item.provider, item.key, item.secondKey)}
@@ -5431,129 +5522,255 @@ export default function AdminConsole() {
                         </div>
                       </div>
 
-                      {item.secondKey && (() => {
-                        const rawSecVal = (apiKeys as any)[item.secondKey] || '';
-                        const isSecRevealed = Boolean(showKey[item.secondKey]);
-                        const isSecFocused = Boolean(focusedKey[item.secondKey]);
-                        const secDisplayValue = isSecRevealed || isSecFocused ? rawSecVal : formatMaskedKey(rawSecVal);
-                        return (
-                          <div style={{ marginBottom: '12px' }}>
-                            <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>
-                              Project Public Key (public_key)
-                            </label>
-                            <div style={{ position: 'relative' }}>
+                      {/* Stored Credentials List with Masked display & Delete button */}
+                      <div style={{ marginTop: '14px', marginBottom: '14px' }}>
+                        <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                          Stored Credentials {keysCount > 1 ? `(${keysCount} keys — auto-rotates on quota exhaustion)` : keysCount === 1 ? '(1 key)' : ''}
+                        </div>
+                        {keysCount === 0 ? (
+                          <div style={{ padding: '10px 14px', background: '#0b0f19', border: '1px dashed #334155', borderRadius: '10px', fontSize: '12.5px', color: '#64748b' }}>
+                            No credentials added yet. Add an API key below to enable this service.
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {rawList.map((cred: any, idx: number) => {
+                              const displayMask = isILovePdf
+                                ? `Public: ${formatMaskedKey(cred.public || '')}${cred.secret ? ` | Secret: ${formatMaskedKey(cred.secret)}` : ''}`
+                                : formatMaskedKey(typeof cred === 'string' ? cred : '');
+
+                              return (
+                                <div
+                                  key={idx}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '9px 12px',
+                                    background: '#0b0f19',
+                                    border: '1px solid #1e293b',
+                                    borderRadius: '10px',
+                                    gap: '10px',
+                                    flexWrap: 'wrap',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                                    <span
+                                      style={{
+                                        fontSize: '11px',
+                                        fontWeight: 700,
+                                        padding: '2px 6px',
+                                        background: idx === 0 ? 'rgba(16,185,129,0.2)' : 'rgba(56,189,248,0.15)',
+                                        color: idx === 0 ? '#34d399' : '#38bdf8',
+                                        borderRadius: '6px',
+                                        flexShrink: 0,
+                                      }}
+                                    >
+                                      Key #{idx + 1} {idx === 0 && '(Primary)'}
+                                    </span>
+                                    <span
+                                      style={{
+                                        fontFamily: 'monospace',
+                                        fontSize: '12.5px',
+                                        color: '#f8fafc',
+                                        wordBreak: 'break-all',
+                                      }}
+                                    >
+                                      {displayMask}
+                                    </span>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const nextList = [...rawList];
+                                      nextList.splice(idx, 1);
+                                      const nextApiKeys: any = { ...apiKeys, [item.listKey]: nextList };
+                                      if (isILovePdf) {
+                                        nextApiKeys.ilovepdf_public_key = nextList[0]?.public || '';
+                                        nextApiKeys.ilovepdf_secret_key = nextList[0]?.secret || '';
+                                      } else {
+                                        nextApiKeys[item.key] = nextList[0] || '';
+                                      }
+                                      setApiKeys(nextApiKeys);
+                                    }}
+                                    title="Delete this credential"
+                                    style={{
+                                      background: 'rgba(239, 68, 68, 0.1)',
+                                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                                      color: '#f87171',
+                                      padding: '5px 10px',
+                                      borderRadius: '7px',
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '5px',
+                                      fontSize: '12px',
+                                      fontWeight: 600,
+                                      transition: 'all 0.15s',
+                                    }}
+                                  >
+                                    <Trash2 size={13} />
+                                    Delete
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Add Credential Section */}
+                      <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #1e293b' }}>
+                        <div style={{ fontSize: '11.5px', fontWeight: 600, color: '#94a3b8', marginBottom: '8px' }}>
+                          + Add {keysCount > 0 ? 'Another Key (Automatic Rotation / Fallback)' : 'API Key'}
+                        </div>
+
+                        {isILovePdf ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <input
+                              type="text"
+                              placeholder={item.secondPlaceholder || 'project_public_... (Project Public Key)'}
+                              value={newKeyInputs['ilovepdf_public'] || ''}
+                              onChange={(e) => setNewKeyInputs((p) => ({ ...p, ilovepdf_public: e.target.value }))}
+                              style={{
+                                width: '100%',
+                                padding: '9px 12px',
+                                borderRadius: '8px',
+                                background: '#0b0f19',
+                                border: '1px solid #334155',
+                                color: '#f8fafc',
+                                fontSize: '13px',
+                                fontFamily: 'monospace',
+                                boxSizing: 'border-box',
+                              }}
+                            />
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                               <input
-                                id={`api_key_token_${item.secondKey}`}
-                                name={`api_key_token_${item.secondKey}`}
-                                type={isSecRevealed ? 'text' : isSecFocused ? 'password' : 'text'}
-                                value={secDisplayValue}
-                                onFocus={() => setFocusedKey((p) => ({ ...p, [item.secondKey!]: true }))}
-                                onBlur={() => setFocusedKey((p) => ({ ...p, [item.secondKey!]: false }))}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  if (!isSecRevealed && !isSecFocused && val.startsWith('••••••••')) return;
-                                  if (val.trim() === '277226@Asif') return;
-                                  setApiKeys({ ...apiKeys, [item.secondKey!]: val });
-                                }}
-                                placeholder={item.secondPlaceholder || 'project_public_...'}
-                                autoComplete="new-password"
-                                spellCheck={false}
+                                type="text"
+                                placeholder={item.placeholder || 'secret_key_... (Project Secret Key)'}
+                                value={newKeyInputs['ilovepdf_secret'] || ''}
+                                onChange={(e) => setNewKeyInputs((p) => ({ ...p, ilovepdf_secret: e.target.value }))}
                                 style={{
-                                  width: '100%',
-                                  padding: '11px 44px 11px 14px',
-                                  borderRadius: '10px',
+                                  flex: '1 1 200px',
+                                  padding: '9px 12px',
+                                  borderRadius: '8px',
                                   background: '#0b0f19',
                                   border: '1px solid #334155',
                                   color: '#f8fafc',
-                                  fontSize: '13.5px',
+                                  fontSize: '13px',
                                   fontFamily: 'monospace',
                                   boxSizing: 'border-box',
                                 }}
                               />
                               <button
                                 type="button"
-                                onClick={() => setShowKey((p) => ({ ...p, [item.secondKey!]: !p[item.secondKey!] }))}
-                                title={showKey[item.secondKey] ? 'Hide Key' : 'Reveal Key'}
+                                onClick={() => {
+                                  const pub = (newKeyInputs['ilovepdf_public'] || '').trim();
+                                  const sec = (newKeyInputs['ilovepdf_secret'] || '').trim();
+                                  if (!pub && !sec) return;
+                                  const nextList = [...rawList, { public: pub, secret: sec }];
+                                  const nextApiKeys: any = {
+                                    ...apiKeys,
+                                    ilovepdf_keys: nextList,
+                                    ilovepdf_public_key: nextList[0]?.public || '',
+                                    ilovepdf_secret_key: nextList[0]?.secret || '',
+                                  };
+                                  setApiKeys(nextApiKeys);
+                                  setNewKeyInputs((p) => ({ ...p, ilovepdf_public: '', ilovepdf_secret: '' }));
+                                }}
                                 style={{
-                                  position: 'absolute',
-                                  right: '12px',
-                                  top: '11px',
-                                  background: 'transparent',
+                                  padding: '9px 16px',
+                                  borderRadius: '8px',
+                                  background: '#e11d48',
+                                  color: '#ffffff',
+                                  fontWeight: 700,
+                                  fontSize: '12.5px',
                                   border: 'none',
-                                  color: '#64748b',
                                   cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  whiteSpace: 'nowrap',
                                 }}
                               >
-                                {showKey[item.secondKey] ? <EyeOff size={16} /> : <Eye size={16} />}
+                                <Plus size={14} /> Add Credentials
                               </button>
                             </div>
                           </div>
-                        );
-                      })()}
-
-                      {item.secondKey && (
-                        <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>
-                          Project Secret Key (secret_key)
-                        </label>
-                      )}
-                      <div style={{ position: 'relative' }}>
-                        <input
-                          id={`api_key_token_${item.key}`}
-                          name={`api_key_token_${item.key}`}
-                          type={isRevealed ? 'text' : isFocused ? 'password' : 'text'}
-                          value={displayValue}
-                          onFocus={() => setFocusedKey((p) => ({ ...p, [item.key]: true }))}
-                          onBlur={() => setFocusedKey((p) => ({ ...p, [item.key]: false }))}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (!isRevealed && !isFocused && val.startsWith('••••••••')) return;
-                            if (val.trim() === '277226@Asif') return;
-                            setApiKeys({ ...apiKeys, [item.key]: val });
-                          }}
-                          placeholder={item.placeholder}
-                          autoComplete="new-password"
-                          autoCorrect="off"
-                          autoCapitalize="off"
-                          spellCheck={false}
-                          data-lpignore="true"
-                          data-1p-ignore="true"
-                          data-bwignore="true"
-                          data-form-type="other"
-                          style={{
-                            width: '100%',
-                            padding: '11px 44px 11px 14px',
-                            borderRadius: '10px',
-                            background: '#0b0f19',
-                            border: '1px solid #334155',
-                            color: '#f8fafc',
-                            fontSize: '13.5px',
-                            fontFamily: 'monospace',
-                            boxSizing: 'border-box',
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowKey((p) => ({ ...p, [item.key]: !p[item.key] }))}
-                          title={showKey[item.key] ? 'Hide Key' : 'Reveal Key'}
-                          style={{
-                            position: 'absolute',
-                            right: '12px',
-                            top: '11px',
-                            background: 'transparent',
-                            border: 'none',
-                            color: '#64748b',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          {showKey[item.key] ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
+                        ) : (
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <input
+                              type="text"
+                              placeholder={item.placeholder}
+                              value={newKeyInputs[item.provider] || ''}
+                              onChange={(e) => setNewKeyInputs((p) => ({ ...p, [item.provider]: e.target.value }))}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const val = (newKeyInputs[item.provider] || '').trim();
+                                  if (!val) return;
+                                  const nextList = [...rawList, val];
+                                  const nextApiKeys: any = {
+                                    ...apiKeys,
+                                    [item.listKey]: nextList,
+                                    [item.key]: nextList[0] || '',
+                                  };
+                                  setApiKeys(nextApiKeys);
+                                  setNewKeyInputs((p) => ({ ...p, [item.provider]: '' }));
+                                }
+                              }}
+                              style={{
+                                flex: '1 1 200px',
+                                padding: '9px 12px',
+                                borderRadius: '8px',
+                                background: '#0b0f19',
+                                border: '1px solid #334155',
+                                color: '#f8fafc',
+                                fontSize: '13px',
+                                fontFamily: 'monospace',
+                                boxSizing: 'border-box',
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const val = (newKeyInputs[item.provider] || '').trim();
+                                if (!val) return;
+                                const nextList = [...rawList, val];
+                                const nextApiKeys: any = {
+                                  ...apiKeys,
+                                  [item.listKey]: nextList,
+                                  [item.key]: nextList[0] || '',
+                                };
+                                setApiKeys(nextApiKeys);
+                                setNewKeyInputs((p) => ({ ...p, [item.provider]: '' }));
+                              }}
+                              style={{
+                                padding: '9px 16px',
+                                borderRadius: '8px',
+                                background: item.color || '#10b981',
+                                color: '#ffffff',
+                                fontWeight: 700,
+                                fontSize: '12.5px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              <Plus size={14} /> Add Key
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Bilingual Test Feedback */}
                       {testResult[item.provider] && (
                         <div
                           style={{
-                            marginTop: '10px',
+                            marginTop: '12px',
                             padding: '9px 12px',
                             borderRadius: '8px',
                             fontSize: '12.5px',

@@ -261,18 +261,30 @@ export async function initDatabase() {
       is_active BOOLEAN NOT NULL DEFAULT true,
       gemini_active BOOLEAN NOT NULL DEFAULT true,
       gemini_key TEXT DEFAULT '',
+      gemini_keys TEXT DEFAULT '[]',
       convertapi_active BOOLEAN NOT NULL DEFAULT true,
       convertapi_token TEXT DEFAULT '',
+      convertapi_keys TEXT DEFAULT '[]',
       removebg_active BOOLEAN NOT NULL DEFAULT true,
       removebg_key TEXT DEFAULT '',
+      removebg_keys TEXT DEFAULT '[]',
       openai_active BOOLEAN NOT NULL DEFAULT true,
       openai_key TEXT DEFAULT '',
+      openai_keys TEXT DEFAULT '[]',
       ilovepdf_active BOOLEAN NOT NULL DEFAULT true,
       ilovepdf_public_key TEXT DEFAULT '',
       ilovepdf_secret_key TEXT DEFAULT '',
+      ilovepdf_keys TEXT DEFAULT '[]',
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `;
+
+  // Idempotent column migrations for multi-key rotation (v53)
+  await sql`ALTER TABLE section_api_keys ADD COLUMN IF NOT EXISTS gemini_keys TEXT DEFAULT '[]';`;
+  await sql`ALTER TABLE section_api_keys ADD COLUMN IF NOT EXISTS openai_keys TEXT DEFAULT '[]';`;
+  await sql`ALTER TABLE section_api_keys ADD COLUMN IF NOT EXISTS convertapi_keys TEXT DEFAULT '[]';`;
+  await sql`ALTER TABLE section_api_keys ADD COLUMN IF NOT EXISTS removebg_keys TEXT DEFAULT '[]';`;
+  await sql`ALTER TABLE section_api_keys ADD COLUMN IF NOT EXISTS ilovepdf_keys TEXT DEFAULT '[]';`;
 
   await sql`
     INSERT INTO section_api_keys (id, is_active, gemini_active, gemini_key, convertapi_active, convertapi_token, removebg_active, removebg_key, openai_active, openai_key, ilovepdf_active, ilovepdf_public_key, ilovepdf_secret_key)

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
 import {
   getCorsHeaders,
   handleCorsPreflight,
@@ -7,28 +6,7 @@ import {
   sanitizeContentDisposition,
 } from '@/lib/security';
 import { runConfigCheck } from '@/lib/configCheck';
-
-async function getConvertApiToken(): Promise<string> {
-  const envToken = (process.env.CONVERTAPI_TOKEN || '').trim();
-  if (envToken && envToken !== 'your_token_here' && envToken !== 'your_convertapi_token_here') {
-    return envToken;
-  }
-  try {
-    const sql = getDb();
-    const rows = await sql`
-      SELECT convertapi_active, convertapi_token
-      FROM section_api_keys
-      WHERE id = 1
-      LIMIT 1
-    `;
-    const row = rows[0];
-    if (row && row.convertapi_active && row.convertapi_token) {
-      const dbToken = row.convertapi_token.trim();
-      if (dbToken) return dbToken;
-    }
-  } catch (e) {}
-  return '';
-}
+import { getConvertApiKeys, isRotationStatus, logKeyRotation } from '@/lib/apiKeys';
 
 export async function OPTIONS(req: NextRequest) {
   return handleCorsPreflight(req, 'GET, POST, OPTIONS');
@@ -50,8 +28,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const token = await getConvertApiToken();
-  if (!token) {
+  const tokens = await getConvertApiKeys();
+  if (!tokens || tokens.length === 0) {
     return NextResponse.json(
       {
         error: 'ConvertAPI service is not configured on the server. Please set CONVERTAPI_TOKEN.',
@@ -91,69 +69,91 @@ export async function POST(req: NextRequest) {
       ? 'https://v2.convertapi.com/convert/doc/to/pdf'
       : 'https://v2.convertapi.com/convert/docx/to/pdf';
 
-    const convertForm = new FormData();
-    convertForm.append('File', file);
-    convertForm.append('StoreFile', 'false');
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+    let lastErrorRes: NextResponse | null = null;
 
-    const convertApiResponse = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: convertForm,
-      signal: AbortSignal.timeout(15000),
-    });
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+      const convertForm = new FormData();
+      convertForm.append('File', new Blob([fileBuffer], { type: file.type || 'application/msword' }), file.name || 'document.docx');
+      convertForm.append('StoreFile', 'false');
 
-    if (!convertApiResponse.ok) {
-      const errText = await convertApiResponse.text();
+      const convertApiResponse = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: convertForm,
+        signal: AbortSignal.timeout(15000),
+      });
+
+      if (convertApiResponse.ok) {
+        const data = await convertApiResponse.json();
+        const files = data.Files || [];
+        if (!files.length) {
+          return NextResponse.json(
+            { error: 'ConvertAPI returned an empty result.' },
+            { status: 500, headers: getCorsHeaders(req) }
+          );
+        }
+
+        const first = files[0];
+        let pdfBuffer: Buffer | null = null;
+
+        if (first.FileData) {
+          pdfBuffer = Buffer.from(first.FileData, 'base64');
+        } else if (first.Url) {
+          const dl = await fetch(first.Url, { signal: AbortSignal.timeout(15000) });
+          pdfBuffer = Buffer.from(await dl.arrayBuffer());
+        }
+
+        if (!pdfBuffer) {
+          return NextResponse.json(
+            {
+              error: 'Failed to extract PDF data from conversion response.',
+              error_bn: 'কনভার্সন ফলাফল থেকে PDF ফাইল তৈরি করা সম্ভব হয়নি।'
+            },
+            { status: 500, headers: getCorsHeaders(req) }
+          );
+        }
+
+        const baseName = (file.name || 'document').replace(/\.[^/.]+$/, '');
+        const outName = `${baseName}.pdf`;
+
+        return new NextResponse(new Uint8Array(pdfBuffer), {
+          status: 200,
+          headers: {
+            ...getCorsHeaders(req),
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': sanitizeContentDisposition(outName, 'converted.pdf'),
+            'X-Converted-By': 'ConvertAPI',
+          },
+        });
+      }
+
+      if (isRotationStatus(convertApiResponse.status)) {
+        logKeyRotation('convertapi', i, convertApiResponse.status);
+        lastErrorRes = NextResponse.json(
+          { error: 'Conversion failed due to service quota limit.' },
+          { status: convertApiResponse.status, headers: getCorsHeaders(req) }
+        );
+        continue;
+      }
+
+      // Other non-ok status (400, 500) returns immediately
+      const errText = await convertApiResponse.text().catch(() => '');
       console.error(`[ConvertAPI Word->PDF Error] Status ${convertApiResponse.status}: ${errText}`);
       return NextResponse.json(
         { error: 'Conversion failed on server.' },
-        { status: 500, headers: getCorsHeaders(req) }
+        { status: convertApiResponse.status >= 400 && convertApiResponse.status < 600 ? convertApiResponse.status : 500, headers: getCorsHeaders(req) }
       );
     }
 
-    const data = await convertApiResponse.json();
-    const files = data.Files || [];
-    if (!files.length) {
-      return NextResponse.json(
-        { error: 'ConvertAPI returned an empty result.' },
-        { status: 500, headers: getCorsHeaders(req) }
-      );
-    }
-
-    const first = files[0];
-    let pdfBuffer: Buffer | null = null;
-
-    if (first.FileData) {
-      pdfBuffer = Buffer.from(first.FileData, 'base64');
-    } else if (first.Url) {
-      const dl = await fetch(first.Url, { signal: AbortSignal.timeout(15000) });
-      pdfBuffer = Buffer.from(await dl.arrayBuffer());
-    }
-
-    if (!pdfBuffer) {
-      return NextResponse.json(
-        {
-          error: 'Failed to extract PDF data from conversion response.',
-          error_bn: 'কনভার্সন ফলাফল থেকে পিডিএফ ফাইল তৈরি করা সম্ভব হয়নি।'
-        },
-        { status: 500, headers: getCorsHeaders(req) }
-      );
-    }
-
-    const baseName = (file.name || 'document').replace(/\.[^/.]+$/, '');
-    const outName = `${baseName}.pdf`;
-
-    return new NextResponse(new Uint8Array(pdfBuffer), {
-      status: 200,
-      headers: {
-        ...getCorsHeaders(req),
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': sanitizeContentDisposition(outName, 'converted.pdf'),
-        'X-Converted-By': 'ConvertAPI',
-      },
-    });
+    if (lastErrorRes) return lastErrorRes;
+    return NextResponse.json(
+      { error: 'Conversion failed on server.' },
+      { status: 500, headers: getCorsHeaders(req) }
+    );
   } catch (error: any) {
     console.error('[ConvertAPI Word->PDF Exception]', error);
     return NextResponse.json(

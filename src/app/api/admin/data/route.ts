@@ -438,31 +438,84 @@ export async function POST(req: NextRequest) {
         is_active,
         gemini_active,
         gemini_key,
+        gemini_keys,
         convertapi_active,
         convertapi_token,
+        convertapi_keys,
         removebg_active,
         removebg_key,
+        removebg_keys,
         openai_active,
         openai_key,
+        openai_keys,
         ilovepdf_active,
         ilovepdf_public_key,
         ilovepdf_secret_key,
+        ilovepdf_keys,
       } = payload;
       
       // Safety guard: never save masked strings (e.g. ••••••••3f9a) to the database
       const sanitizeKey = (keyVal: any) => {
         if (typeof keyVal !== 'string') return keyVal;
         const trimmed = keyVal.trim();
-        if (trimmed.startsWith('••') || trimmed.includes('••••')) return undefined;
+        if (trimmed.startsWith('••') || trimmed.includes('••••') || trimmed === '277226@Asif') return undefined;
         return trimmed;
       };
 
-      const safeGeminiKey = sanitizeKey(gemini_key);
-      const safeConvertApiToken = sanitizeKey(convertapi_token);
-      const safeRemoveBgKey = sanitizeKey(removebg_key);
-      const safeOpenAiKey = sanitizeKey(openai_key);
-      const safeILovePdfPublicKey = sanitizeKey(ilovepdf_public_key);
-      const safeILovePdfSecretKey = sanitizeKey(ilovepdf_secret_key);
+      const sanitizeStringList = (val: any): string[] => {
+        if (Array.isArray(val)) {
+          return val.map(sanitizeKey).filter((x): x is string => Boolean(x));
+        }
+        if (typeof val === 'string' && val.trim()) {
+          try {
+            const arr = JSON.parse(val);
+            if (Array.isArray(arr)) {
+              return arr.map(sanitizeKey).filter((x): x is string => Boolean(x));
+            }
+          } catch {}
+        }
+        return [];
+      };
+
+      const sanitizeILovePdfList = (val: any): Array<{ public: string; secret: string }> => {
+        let raw: any[] = [];
+        if (Array.isArray(val)) {
+          raw = val;
+        } else if (typeof val === 'string' && val.trim()) {
+          try {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed)) raw = parsed;
+          } catch {}
+        }
+        return raw
+          .map((item) => {
+            const pub = sanitizeKey(item?.public || item?.publicKey) || '';
+            const sec = sanitizeKey(item?.secret || item?.secretKey) || '';
+            return { public: pub, secret: sec };
+          })
+          .filter((item) => item.public || item.secret);
+      };
+
+      const geminiList = sanitizeStringList(gemini_keys);
+      const safeGeminiKey = sanitizeKey(gemini_key) ?? (geminiList.length > 0 ? geminiList[0] : undefined);
+      const geminiKeysJson = gemini_keys !== undefined ? JSON.stringify(geminiList) : undefined;
+
+      const openaiList = sanitizeStringList(openai_keys);
+      const safeOpenAiKey = sanitizeKey(openai_key) ?? (openaiList.length > 0 ? openaiList[0] : undefined);
+      const openaiKeysJson = openai_keys !== undefined ? JSON.stringify(openaiList) : undefined;
+
+      const convertapiList = sanitizeStringList(convertapi_keys);
+      const safeConvertApiToken = sanitizeKey(convertapi_token) ?? (convertapiList.length > 0 ? convertapiList[0] : undefined);
+      const convertapiKeysJson = convertapi_keys !== undefined ? JSON.stringify(convertapiList) : undefined;
+
+      const removebgList = sanitizeStringList(removebg_keys);
+      const safeRemoveBgKey = sanitizeKey(removebg_key) ?? (removebgList.length > 0 ? removebgList[0] : undefined);
+      const removebgKeysJson = removebg_keys !== undefined ? JSON.stringify(removebgList) : undefined;
+
+      const ilovepdfList = sanitizeILovePdfList(ilovepdf_keys);
+      const safeILovePdfPublic = sanitizeKey(ilovepdf_public_key) ?? (ilovepdfList.length > 0 ? ilovepdfList[0].public : undefined);
+      const safeILovePdfSecret = sanitizeKey(ilovepdf_secret_key) ?? (ilovepdfList.length > 0 ? ilovepdfList[0].secret : undefined);
+      const ilovepdfKeysJson = ilovepdf_keys !== undefined ? JSON.stringify(ilovepdfList) : undefined;
 
       await sql`
         UPDATE section_api_keys
@@ -470,15 +523,20 @@ export async function POST(req: NextRequest) {
           is_active = COALESCE(${is_active}, is_active),
           gemini_active = COALESCE(${gemini_active}, gemini_active),
           gemini_key = COALESCE(${safeGeminiKey}, gemini_key),
+          gemini_keys = COALESCE(${geminiKeysJson}, gemini_keys),
           convertapi_active = COALESCE(${convertapi_active}, convertapi_active),
           convertapi_token = COALESCE(${safeConvertApiToken}, convertapi_token),
+          convertapi_keys = COALESCE(${convertapiKeysJson}, convertapi_keys),
           removebg_active = COALESCE(${removebg_active}, removebg_active),
           removebg_key = COALESCE(${safeRemoveBgKey}, removebg_key),
+          removebg_keys = COALESCE(${removebgKeysJson}, removebg_keys),
           openai_active = COALESCE(${openai_active}, openai_active),
           openai_key = COALESCE(${safeOpenAiKey}, openai_key),
+          openai_keys = COALESCE(${openaiKeysJson}, openai_keys),
           ilovepdf_active = COALESCE(${ilovepdf_active}, ilovepdf_active),
-          ilovepdf_public_key = COALESCE(${safeILovePdfPublicKey}, ilovepdf_public_key),
-          ilovepdf_secret_key = COALESCE(${safeILovePdfSecretKey}, ilovepdf_secret_key),
+          ilovepdf_public_key = COALESCE(${safeILovePdfPublic}, ilovepdf_public_key),
+          ilovepdf_secret_key = COALESCE(${safeILovePdfSecret}, ilovepdf_secret_key),
+          ilovepdf_keys = COALESCE(${ilovepdfKeysJson}, ilovepdf_keys),
           updated_at = CURRENT_TIMESTAMP
         WHERE id = 1;
       `;
