@@ -43,16 +43,9 @@ export default function LivePreviewPanel({
   const [containerWidth, setContainerWidth] = useState(0);
   const [stageWidth, setStageWidth] = useState(0);
   const [stageHeight, setStageHeight] = useState(0);
-  const [measuredHeights, setMeasuredHeights] = useState<{ desktop?: number; mobile?: number }>({});
   const rootRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  // Determine if this preview targets an anchored section on the homepage (/)
-  const isAnchoredSection = Boolean(
-    previewAnchor &&
-    (url === '/' || url === '' || url.startsWith('/?') || url.startsWith('/#'))
-  );
 
   // Lazy loading: only mount/load iframe when panel approaches viewport
   useEffect(() => {
@@ -82,7 +75,7 @@ export default function LivePreviewPanel({
     return () => observer.disconnect();
   }, [hasIntersected]);
 
-  // Track container width for scaling mobile phone frame gracefully
+  // Track container width
   useEffect(() => {
     const el = rootRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
@@ -95,7 +88,7 @@ export default function LivePreviewPanel({
     return () => ro.disconnect();
   }, []);
 
-  // Track stage dimensions for computing desktop scale to fit
+  // Track stage dimensions for computing desktop and mobile scale to fit
   useEffect(() => {
     const el = stageRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
@@ -109,24 +102,6 @@ export default function LivePreviewPanel({
     return () => ro.disconnect();
   }, [viewMode]);
 
-  // Reset measured height when switching target section / anchor
-  useEffect(() => {
-    setMeasuredHeights({});
-  }, [url, previewAnchor]);
-
-  // Mobile logical height: anchored sections fit the target block (+ ≈24px padding, clamped min 220, max 1350)
-  // Full-page targets keep tall frame: mobile 844
-  const mobileLogicalHeight = useMemo(() => {
-    if (isAnchoredSection) {
-      const currentMeasured = measuredHeights.mobile;
-      if (typeof currentMeasured === 'number' && currentMeasured > 0) {
-        return Math.min(1350, Math.max(220, Math.round(currentMeasured + 24)));
-      }
-      return 220; // Until measurement arrives, show min height (no tall flash)
-    }
-    return 844;
-  }, [isAnchoredSection, measuredHeights.mobile]);
-
   // Desktop scale to fit (matches Portfolio exactly):
   // Fixed 1440x900 logical viewport scaled to the stage:
   // scale = min(1, stageWidth / 1464, stageHeight / 924), clamped to min 0.2
@@ -136,6 +111,17 @@ export default function LivePreviewPanel({
     const scaleW = w / 1464;
     const scaleH = h / 924;
     return Math.min(1, Math.max(0.2, Math.min(scaleW, scaleH)));
+  }, [stageWidth, stageHeight, containerWidth]);
+
+  // Mobile scale to fit (matches Portfolio exactly):
+  // Fixed 390x844 device frame scaled to the stage:
+  // mobileScale = min(1, stageWidth / 414, stageHeight / 868) (frame + 24px margin), clamped to min 0.25
+  const mobileScale = useMemo(() => {
+    const w = stageWidth > 0 ? stageWidth : (containerWidth > 0 ? containerWidth : 414);
+    const h = stageHeight > 0 ? stageHeight : 600;
+    const scaleW = w / 414;
+    const scaleH = h / 868;
+    return Math.min(1, Math.max(0.25, Math.min(scaleW, scaleH)));
   }, [stageWidth, stageHeight, containerWidth]);
 
   // Display path pill showing the section's actual target path (e.g. /, /#main, /tools/merge-pdf)
@@ -211,7 +197,7 @@ export default function LivePreviewPanel({
     return () => clearTimeout(timer);
   }, [draftData, guideDraft, faqDraft, isIframeLoaded, previewAnchor]);
 
-  // Handle iframe ready message and section height reporting
+  // Handle iframe ready message
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return;
@@ -219,19 +205,10 @@ export default function LivePreviewPanel({
         setIsIframeLoaded(true);
         sendDraft();
       }
-      if (e.data?.type === 'cms-preview-height') {
-        const h = Number(e.data.height);
-        if (!Number.isNaN(h) && h > 0) {
-          setMeasuredHeights((prev) => ({
-            ...prev,
-            [viewMode]: h,
-          }));
-        }
-      }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [draftData, guideDraft, faqDraft, previewAnchor, viewMode]);
+  }, [draftData, guideDraft, faqDraft, previewAnchor]);
 
   const handleIframeLoad = () => {
     setIsIframeLoaded(true);
@@ -241,7 +218,6 @@ export default function LivePreviewPanel({
   const handleReload = () => {
     if (iframeRef.current && hasIntersected) {
       setIsIframeLoaded(false);
-      setMeasuredHeights({});
       iframeRef.current.src = iframeSrc;
     }
   };
@@ -251,9 +227,6 @@ export default function LivePreviewPanel({
     const fullLiveUrl = typeof window !== 'undefined' ? `${window.location.origin}${livePath}` : livePath;
     window.open(fullLiveUrl, '_blank');
   };
-
-  // Compute scale for mobile phone frame if pane is narrower than 430px
-  const phoneScale = containerWidth > 0 && containerWidth < 430 ? Math.max(0.68, (containerWidth - 28) / 410) : 1;
 
   return (
     <div
@@ -363,7 +336,7 @@ export default function LivePreviewPanel({
             <button
               type="button"
               onClick={() => setViewMode('desktop')}
-              title="Desktop viewport"
+              title="Desktop viewport (1440×900)"
               style={{
                 padding: '4px 10px',
                 fontSize: '11px',
@@ -463,19 +436,19 @@ export default function LivePreviewPanel({
         </div>
       </div>
 
-      {/* Frame Container / Stage: Defined 600px height on desktop, dark background, flex center */}
+      {/* Frame Container / Stage: Defined 600px height on both desktop and mobile, dark background, flex center */}
       <div
         ref={stageRef}
         style={{
           flex: 1,
           display: 'flex',
-          alignItems: viewMode === 'mobile' ? 'flex-start' : 'center',
+          alignItems: 'center',
           justifyContent: 'center',
-          padding: viewMode === 'mobile' ? '24px 12px' : '12px',
-          background: viewMode === 'mobile' ? '#070a12' : '#0b0f19',
-          overflow: viewMode === 'mobile' ? 'auto' : 'hidden',
-          height: viewMode === 'desktop' ? '600px' : 'auto',
-          minHeight: viewMode === 'desktop' ? '600px' : (isAnchoredSection ? undefined : '660px'),
+          padding: '12px',
+          background: '#0b0f19',
+          overflow: 'hidden',
+          height: '600px',
+          minHeight: '600px',
           position: 'relative',
         }}
       >
@@ -488,7 +461,7 @@ export default function LivePreviewPanel({
               alignItems: 'center',
               justifyContent: 'center',
               height: '100%',
-              minHeight: viewMode === 'desktop' ? '600px' : (isAnchoredSection ? `${mobileLogicalHeight}px` : '660px'),
+              minHeight: '600px',
               color: '#64748b',
               gap: '12px',
             }}
@@ -542,36 +515,86 @@ export default function LivePreviewPanel({
             />
           </div>
         ) : (
-          // Mobile: page shown inside a phone frame (thick rounded border, centred) at 390×mobileLogicalHeight, scaled to fit
+          // Mobile: Portfolio-style phone frame (390×844) with top notch bar and bottom home indicator, scaled to fit stage
           <div
             style={{
               width: '390px',
-              height: `${mobileLogicalHeight}px`,
-              borderRadius: '38px',
-              border: '10px solid #1e293b',
+              height: '844px',
+              borderRadius: '28px',
+              border: '3px solid #1E2638',
               boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05)',
               overflow: 'hidden',
               position: 'relative',
-              background: '#090d16',
-              transform: phoneScale < 1 ? `scale(${phoneScale})` : undefined,
-              transformOrigin: 'top center',
-              marginBottom: phoneScale < 1 ? `${(phoneScale - 1) * mobileLogicalHeight}px` : undefined,
+              background: '#000000',
+              display: 'flex',
+              flexDirection: 'column',
+              transform: `scale(${mobileScale})`,
+              transformOrigin: 'center center',
               flexShrink: 0,
             }}
           >
+            {/* Top Notch Bar */}
+            <div
+              style={{
+                width: '100%',
+                height: '20px',
+                background: '#0E131F',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <span
+                style={{
+                  width: '64px',
+                  height: '10px',
+                  background: '#000000',
+                  borderRadius: '999px',
+                  display: 'inline-block',
+                }}
+              />
+            </div>
+
+            {/* Iframe fills middle */}
             <iframe
               ref={iframeRef}
               src={iframeSrc}
               title={`Preview of ${url}`}
               onLoad={handleIframeLoad}
               style={{
-                width: '390px',
-                height: `${mobileLogicalHeight}px`,
+                width: '100%',
+                flex: 1,
                 border: 'none',
-                background: '#09130f',
+                background: '#080C14',
                 display: 'block',
               }}
             />
+
+            {/* Bottom Home Indicator Bar */}
+            <div
+              style={{
+                width: '100%',
+                height: '14px',
+                background: '#0E131F',
+                borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <span
+                style={{
+                  width: '96px',
+                  height: '4px',
+                  background: '#475569',
+                  borderRadius: '999px',
+                  display: 'inline-block',
+                }}
+              />
+            </div>
           </div>
         )}
       </div>

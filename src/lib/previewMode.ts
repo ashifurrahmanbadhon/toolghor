@@ -22,76 +22,8 @@ type PreviewListener = (msg: CmsPreviewMessage) => void;
 let isInitialized = false;
 let hasScrolledToAnchor = false;
 let activeTargetAnchor = '';
-let targetResizeObserver: ResizeObserver | null = null;
-let measureDebounceTimer: any = null;
-let lastReportedHeight = 0;
 const listeners: Set<PreviewListener> = new Set();
 let latestPreviewData: CmsPreviewMessage | null = null;
-
-function getTargetElement(targetAnchor?: string): HTMLElement | null {
-  if (typeof document === 'undefined') return null;
-  const hash = targetAnchor || activeTargetAnchor || (typeof window !== 'undefined' ? window.location.hash : '');
-  if (!hash) return null;
-  const targetId = hash.replace(/^#/, '');
-  if (!targetId) return null;
-
-  if (targetId === 'creator-section' || targetId === 'about-modal') {
-    const box = document.querySelector('.about-modal-box') as HTMLElement;
-    if (box) return box;
-    return document.getElementById('about-modal') || document.getElementById('creator-section');
-  }
-
-  return document.getElementById(targetId);
-}
-
-function measureAndReportHeight(targetAnchor?: string): void {
-  // Strictly run inside preview iframe only
-  if (typeof window === 'undefined' || window === window.top || !isPreviewMode()) return;
-  const anchor = targetAnchor || activeTargetAnchor || window.location.hash || '';
-  const el = getTargetElement(anchor);
-  if (!el) return;
-
-  const rect = el.getBoundingClientRect();
-  const height = Math.ceil(
-    Math.max(el.offsetHeight || 0, el.scrollHeight || 0, rect.height || 0)
-  );
-
-  if (height > 0 && height !== lastReportedHeight) {
-    lastReportedHeight = height;
-    try {
-      window.parent.postMessage(
-        {
-          type: 'cms-preview-height',
-          height,
-          anchor,
-        },
-        window.location.origin
-      );
-    } catch {}
-  }
-}
-
-function scheduleMeasure(targetAnchor?: string, delay: number = 100): void {
-  if (measureDebounceTimer) clearTimeout(measureDebounceTimer);
-  measureDebounceTimer = setTimeout(() => {
-    measureAndReportHeight(targetAnchor);
-  }, delay);
-}
-
-function setupTargetObserver(targetAnchor?: string): void {
-  if (typeof window === 'undefined' || typeof ResizeObserver === 'undefined') return;
-  const el = getTargetElement(targetAnchor);
-  if (!el) return;
-
-  if (targetResizeObserver) {
-    targetResizeObserver.disconnect();
-  }
-
-  targetResizeObserver = new ResizeObserver(() => {
-    scheduleMeasure(targetAnchor, 80);
-  });
-  targetResizeObserver.observe(el);
-}
 
 function scrollToTargetAnchor(targetAnchor?: string): void {
   if (hasScrolledToAnchor) return;
@@ -111,8 +43,6 @@ function scrollToTargetAnchor(targetAnchor?: string): void {
           w.UI.openAboutModal();
         }
       }
-      setupTargetObserver(hash);
-      measureAndReportHeight(hash);
       const el = document.getElementById(targetId) || document.getElementById('about-modal');
       if (el) {
         // Scroll strictly inside iframe window; never call scrollIntoView which scrolls parent admin page
@@ -120,9 +50,6 @@ function scrollToTargetAnchor(targetAnchor?: string): void {
         window.scrollTo({ top, behavior: 'smooth' });
       }
     }, 200);
-    setTimeout(() => {
-      measureAndReportHeight(hash);
-    }, 350);
     return;
   }
 
@@ -133,12 +60,7 @@ function scrollToTargetAnchor(targetAnchor?: string): void {
       // Scroll strictly inside iframe window; never call scrollIntoView which scrolls parent admin page
       const top = Math.max(0, el.getBoundingClientRect().top + window.scrollY - 10);
       window.scrollTo({ top, behavior: 'smooth' });
-      setupTargetObserver(hash);
-      measureAndReportHeight(hash);
     }, 150);
-    setTimeout(() => {
-      measureAndReportHeight(hash);
-    }, 350);
   }
 }
 
@@ -178,41 +100,22 @@ export function initPreviewMode(): void {
       }
     });
 
-    // Auto-scroll to section anchor once after initial draft is applied and setup height observation
+    // Auto-scroll to section anchor once after initial draft is applied
     if (event.data.previewAnchor) {
       activeTargetAnchor = event.data.previewAnchor;
       scrollToTargetAnchor(event.data.previewAnchor);
-      setupTargetObserver(event.data.previewAnchor);
-      scheduleMeasure(event.data.previewAnchor, 100);
-      scheduleMeasure(event.data.previewAnchor, 300);
     } else if (typeof window !== 'undefined' && window.location.hash) {
       activeTargetAnchor = window.location.hash;
       scrollToTargetAnchor(window.location.hash);
-      setupTargetObserver(window.location.hash);
-      scheduleMeasure(window.location.hash, 100);
-      scheduleMeasure(window.location.hash, 300);
-    } else if (activeTargetAnchor) {
-      setupTargetObserver(activeTargetAnchor);
-      scheduleMeasure(activeTargetAnchor, 100);
-      scheduleMeasure(activeTargetAnchor, 300);
     }
   });
 
-  // Also attempt scroll and measurement if loaded directly with hash in preview iframe
+  // Also attempt scroll if loaded directly with hash in preview iframe
   if (typeof window !== 'undefined' && window.location.hash) {
     activeTargetAnchor = window.location.hash;
     setTimeout(() => {
       scrollToTargetAnchor(window.location.hash);
-      setupTargetObserver(window.location.hash);
-      scheduleMeasure(window.location.hash, 100);
     }, 200);
-  }
-
-  // Listen for iframe window resize (e.g. desktop <-> mobile toggles) to re-measure at new layout width
-  if (typeof window !== 'undefined') {
-    window.addEventListener('resize', () => {
-      scheduleMeasure(activeTargetAnchor, 80);
-    });
   }
 
   // 2. Suppress /api/analytics/track and block mutating writes
