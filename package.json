@@ -15,7 +15,7 @@
     "@vercel/analytics": "^2.0.1",
     "lucide-react": "^1.58.0",
     "next": "^16.4.2",
-    "nodemailer": "^10.0.16",
+    "nodemailer": "^10.1.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "snapsave-media-downloader": "^2.5.1"
