@@ -114,31 +114,29 @@ export default function LivePreviewPanel({
     setMeasuredHeights({});
   }, [url, previewAnchor]);
 
-  // Logical height: anchored sections fit the target block (+ ≈24px padding, clamped min 220, max 1350)
-  // Full-page targets keep tall frame: desktop logical 900, mobile 844
-  const currentMeasured = viewMode === 'mobile' ? measuredHeights.mobile : measuredHeights.desktop;
-  const logicalHeight = useMemo(() => {
+  // Mobile logical height: anchored sections fit the target block (+ ≈24px padding, clamped min 220, max 1350)
+  // Full-page targets keep tall frame: mobile 844
+  const mobileLogicalHeight = useMemo(() => {
     if (isAnchoredSection) {
+      const currentMeasured = measuredHeights.mobile;
       if (typeof currentMeasured === 'number' && currentMeasured > 0) {
         return Math.min(1350, Math.max(220, Math.round(currentMeasured + 24)));
       }
       return 220; // Until measurement arrives, show min height (no tall flash)
     }
-    return viewMode === 'mobile' ? 844 : 900;
-  }, [isAnchoredSection, currentMeasured, viewMode]);
+    return 844;
+  }, [isAnchoredSection, measuredHeights.mobile]);
 
-  // Desktop scale to fit: true 1440 logical viewport scaled to panel width/height
+  // Desktop scale to fit (matches Portfolio exactly):
+  // Fixed 1440x900 logical viewport scaled to the stage:
+  // scale = min(1, stageWidth / 1464, stageHeight / 924), clamped to min 0.2
   const desktopScale = useMemo(() => {
     const w = stageWidth > 0 ? stageWidth : (containerWidth > 0 ? containerWidth : 1440);
-    if (isAnchoredSection) {
-      // Anchored homepage section: width-driven scale to fit pane; height fits the section
-      return Math.min(1, Math.max(0.2, w / 1464));
-    }
-    // Full-page target: true 1440x900 viewport scaled to fit both width and height (24px margin included)
+    const h = stageHeight > 0 ? stageHeight : 600;
     const scaleW = w / 1464;
-    const scaleH = stageHeight > 0 ? stageHeight / 924 : 1;
+    const scaleH = h / 924;
     return Math.min(1, Math.max(0.2, Math.min(scaleW, scaleH)));
-  }, [stageWidth, stageHeight, containerWidth, isAnchoredSection]);
+  }, [stageWidth, stageHeight, containerWidth]);
 
   // Display path pill showing the section's actual target path (e.g. /, /#main, /tools/merge-pdf)
   const displayPath = useMemo(() => {
@@ -267,8 +265,7 @@ export default function LivePreviewPanel({
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        height: isAnchoredSection ? 'auto' : '100%',
-        minHeight: isAnchoredSection ? undefined : '740px',
+        height: 'auto',
       }}
     >
       {/* Simulation Header: Reference Design Match */}
@@ -466,18 +463,19 @@ export default function LivePreviewPanel({
         </div>
       </div>
 
-      {/* Frame Container */}
+      {/* Frame Container / Stage: Defined 600px height on desktop, dark background, flex center */}
       <div
         ref={stageRef}
         style={{
           flex: 1,
           display: 'flex',
-          alignItems: 'center',
+          alignItems: viewMode === 'mobile' ? 'flex-start' : 'center',
           justifyContent: 'center',
           padding: viewMode === 'mobile' ? '24px 12px' : '12px',
           background: viewMode === 'mobile' ? '#070a12' : '#0b0f19',
           overflow: viewMode === 'mobile' ? 'auto' : 'hidden',
-          minHeight: isAnchoredSection ? undefined : '660px',
+          height: viewMode === 'desktop' ? '600px' : 'auto',
+          minHeight: viewMode === 'desktop' ? '600px' : (isAnchoredSection ? undefined : '660px'),
           position: 'relative',
         }}
       >
@@ -490,7 +488,7 @@ export default function LivePreviewPanel({
               alignItems: 'center',
               justifyContent: 'center',
               height: '100%',
-              minHeight: isAnchoredSection ? `${logicalHeight}px` : '660px',
+              minHeight: viewMode === 'desktop' ? '600px' : (isAnchoredSection ? `${mobileLogicalHeight}px` : '660px'),
               color: '#64748b',
               gap: '12px',
             }}
@@ -510,15 +508,16 @@ export default function LivePreviewPanel({
             </span>
           </div>
         ) : viewMode === 'desktop' ? (
-          // Desktop: fixed logical viewport of 1440 × logicalHeight, scaled to fit panel
+          // Desktop: fixed logical viewport 1440×900 for EVERY section, scaled to fit the 600px stage
           <div
             style={{
               width: `${Math.round(1440 * desktopScale)}px`,
-              height: `${Math.round(logicalHeight * desktopScale)}px`,
+              height: `${Math.round(900 * desktopScale)}px`,
               position: 'relative',
               overflow: 'hidden',
               borderRadius: '8px',
-              boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.5)',
+              border: '1px solid #1e293b',
+              boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05)',
               background: '#090d16',
               flexShrink: 0,
             }}
@@ -533,7 +532,7 @@ export default function LivePreviewPanel({
                 top: 0,
                 left: 0,
                 width: '1440px',
-                height: `${logicalHeight}px`,
+                height: '900px',
                 border: 'none',
                 background: '#09130f',
                 display: 'block',
@@ -543,11 +542,11 @@ export default function LivePreviewPanel({
             />
           </div>
         ) : (
-          // Mobile: page shown inside a phone frame (thick rounded border, centred) at 390×logicalHeight, scaled to fit
+          // Mobile: page shown inside a phone frame (thick rounded border, centred) at 390×mobileLogicalHeight, scaled to fit
           <div
             style={{
               width: '390px',
-              height: `${logicalHeight}px`,
+              height: `${mobileLogicalHeight}px`,
               borderRadius: '38px',
               border: '10px solid #1e293b',
               boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05)',
@@ -556,7 +555,7 @@ export default function LivePreviewPanel({
               background: '#090d16',
               transform: phoneScale < 1 ? `scale(${phoneScale})` : undefined,
               transformOrigin: 'top center',
-              marginBottom: phoneScale < 1 ? `${(phoneScale - 1) * logicalHeight}px` : undefined,
+              marginBottom: phoneScale < 1 ? `${(phoneScale - 1) * mobileLogicalHeight}px` : undefined,
               flexShrink: 0,
             }}
           >
@@ -567,7 +566,7 @@ export default function LivePreviewPanel({
               onLoad={handleIframeLoad}
               style={{
                 width: '390px',
-                height: `${logicalHeight}px`,
+                height: `${mobileLogicalHeight}px`,
                 border: 'none',
                 background: '#09130f',
                 display: 'block',
