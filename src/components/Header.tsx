@@ -339,8 +339,40 @@ export default function Header() {
           </button>
         </div>
 
-        {/* Mobile Three-Dot (⋮) Menu Button on Right Side of Header (Mobile Only) */}
-        <div ref={menuRef} className="header-menu-wrap flex md:hidden">
+        {/* Mobile Header Actions on Right Side (Mobile Only) */}
+        <div ref={menuRef} className="header-menu-wrap flex md:hidden items-center gap-2">
+          {/* Mobile Install App Button — Outside Three-Dot Menu, immediately on its left */}
+          {canInstall && (
+            <button
+              type="button"
+              className="btn-mobile-install"
+              id="btn-mobile-install"
+              aria-label={lang === 'bn' ? 'অ্যাপ ইনস্টল করুন' : 'Install App'}
+              title={lang === 'bn' ? 'অ্যাপ ইনস্টল করুন' : 'Install App'}
+              onClick={handleInstallClick}
+            >
+              <span className="btn-install-ic" aria-hidden="true">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </span>
+              <span className="btn-install-text">{lang === 'bn' ? 'অ্যাপ ইনস্টল' : 'Install App'}</span>
+            </button>
+          )}
+
+          {/* Three-Dot (⋮) Menu Button */}
           <button
             type="button"
             className={`btn-header-menu ${isMenuOpen ? 'open' : ''}`}
@@ -364,38 +396,6 @@ export default function Header() {
 
           {isMenuOpen && (
             <div className="header-menu-dropdown" role="menu">
-              {/* Install App (Mobile Dropdown) */}
-              {canInstall && (
-                <button
-                  type="button"
-                  className="header-menu-item"
-                  role="menuitem"
-                  onClick={() => {
-                    handleInstallClick();
-                    setIsMenuOpen(false);
-                  }}
-                >
-                  <span className="header-menu-ic" aria-hidden="true">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="7 10 12 15 17 10" />
-                      <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
-                  </span>
-                  <span>{lang === 'bn' ? 'অ্যাপ ইনস্টল করুন' : 'Install App'}</span>
-                </button>
-              )}
-
               {/* 1. About */}
               <button
                 type="button"

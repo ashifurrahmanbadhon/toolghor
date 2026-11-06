@@ -105,6 +105,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   position: relative;
   align-items: center;
   margin-inline-start: auto;
+  gap: 8px;
 }
 .btn-header-menu {
   width: 42px;
@@ -126,6 +127,41 @@ button, input, select, textarea { font: inherit; color: inherit; }
   background: color-mix(in srgb, var(--paddy) 10%, var(--paper));
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
   transform: translateY(-1px);
+}
+
+/* Mobile Install Button (Outside Three-Dot Menu) */
+.btn-mobile-install {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: all .2s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+}
+.btn-mobile-install:hover,
+.btn-mobile-install:active {
+  border-color: var(--paddy);
+  color: var(--paddy-d);
+  background: color-mix(in srgb, var(--paddy) 10%, var(--paper));
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+.btn-mobile-install .btn-install-ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 .header-menu-dropdown {
   position: absolute;
@@ -3847,6 +3883,8 @@ body.dark .lang button.on {
     display: inline-flex !important;
     position: relative;
     margin-inline-start: auto;
+    align-items: center;
+    gap: 8px;
   }
   .btn-header-menu {
     width: 40px;
@@ -3867,6 +3905,12 @@ body.dark .lang button.on {
     color: var(--paddy-d);
     background: color-mix(in srgb, var(--paddy) 10%, var(--paper));
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  .btn-mobile-install {
+    height: 40px;
+    padding: 0 11px;
+    font-size: 12.5px;
+    gap: 5px;
   }
   .header-menu-dropdown {
     position: absolute;
