@@ -19,6 +19,55 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
+  // PWA Install Prompt state & listeners
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isStandalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true ||
+        document.referrer.includes('android-app://');
+      if (isStandalone) {
+        setIsInstalled(true);
+        return;
+      }
+    }
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    try {
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setIsInstalled(true);
+      }
+    } catch {}
+    setDeferredPrompt(null);
+  };
+
+  const canInstall = !isInstalled && !!deferredPrompt;
+
   useEffect(() => {
     if (!isMenuOpen) return;
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
@@ -170,6 +219,37 @@ export default function Header() {
             <span>{lang === 'bn' ? 'আমাদের সম্পর্কে' : 'About'}</span>
           </button>
 
+          {/* Install App Button */}
+          {canInstall && (
+            <button
+              type="button"
+              className="btn-top-about btn-top-install"
+              id="btn-top-install"
+              aria-label={lang === 'bn' ? 'অ্যাপ ইনস্টল করুন' : 'Install App'}
+              title={lang === 'bn' ? 'অ্যাপ ইনস্টল করুন' : 'Install App'}
+              onClick={handleInstallClick}
+            >
+              <span className="btn-install-ic" aria-hidden="true">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </span>
+              <span>{lang === 'bn' ? 'অ্যাপ ইনস্টল করুন' : 'Install App'}</span>
+            </button>
+          )}
+
           {/* Language Switcher */}
           <div ref={containerRef} className="lang" role="group" aria-label="Language">
             <span className="lang-ic" aria-hidden="true">
@@ -297,6 +377,38 @@ export default function Header() {
                 <span className="header-menu-ic" aria-hidden="true">ℹ️</span>
                 <span>{lang === 'bn' ? 'আমাদের সম্পর্কে' : 'About'}</span>
               </button>
+
+              {/* Install App (Mobile Dropdown) */}
+              {canInstall && (
+                <button
+                  type="button"
+                  className="header-menu-item"
+                  role="menuitem"
+                  onClick={() => {
+                    handleInstallClick();
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  <span className="header-menu-ic" aria-hidden="true">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                  </span>
+                  <span>{lang === 'bn' ? 'অ্যাপ ইনস্টল করুন' : 'Install App'}</span>
+                </button>
+              )}
 
               {/* 2. Language Switcher (EN / বাংলা) */}
               <div className="header-menu-lang-row">

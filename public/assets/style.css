@@ -2944,6 +2944,16 @@ body.dark .lang button.on {
 .btn-top-about:hover .btn-about-ic {
   transform: scale(1.12);
 }
+.btn-install-ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: transform .2s ease;
+}
+.btn-top-about:hover .btn-install-ic {
+  transform: scale(1.12);
+}
 
 /* ============ About Modal ============ */
 .about-modal-backdrop {
