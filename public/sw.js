@@ -1,7 +1,7 @@
 // ToolGhor Service Worker — PWA Caching & Offline Support
-// Version: 20261106_v54
+// Version: 20261106_v55
 
-const CACHE_NAME = 'toolghor-20261106_v54';
+const CACHE_NAME = 'toolghor-20261106_v55';
 
 const PRECACHE_URLS = [
   '/offline',
