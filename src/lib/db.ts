@@ -309,11 +309,27 @@ export async function initDatabase() {
       passcode TEXT NOT NULL,
       email VARCHAR(255) NOT NULL DEFAULT 'ashifur.badhon@gmail.com',
       phone VARCHAR(50) NOT NULL DEFAULT '+8801521417284',
-      reset_otp VARCHAR(10),
-      reset_otp_expires_at TIMESTAMP WITH TIME ZONE,
+      totp_secret TEXT DEFAULT '',
+      totp_enabled BOOLEAN NOT NULL DEFAULT false,
+      totp_recovery_hashes TEXT DEFAULT '[]',
+      last_totp_step BIGINT DEFAULT 0,
+      password_failed_attempts INT NOT NULL DEFAULT 0,
+      password_locked_until TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+      totp_failed_attempts INT NOT NULL DEFAULT 0,
+      totp_locked_until TIMESTAMP WITH TIME ZONE DEFAULT NULL,
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `;
+
+  // Idempotent column migrations for 2FA / TOTP and Two-Door Lockouts
+  await sql`ALTER TABLE admin_account ADD COLUMN IF NOT EXISTS totp_secret TEXT DEFAULT '';`;
+  await sql`ALTER TABLE admin_account ADD COLUMN IF NOT EXISTS totp_enabled BOOLEAN NOT NULL DEFAULT false;`;
+  await sql`ALTER TABLE admin_account ADD COLUMN IF NOT EXISTS totp_recovery_hashes TEXT DEFAULT '[]';`;
+  await sql`ALTER TABLE admin_account ADD COLUMN IF NOT EXISTS last_totp_step BIGINT DEFAULT 0;`;
+  await sql`ALTER TABLE admin_account ADD COLUMN IF NOT EXISTS password_failed_attempts INT NOT NULL DEFAULT 0;`;
+  await sql`ALTER TABLE admin_account ADD COLUMN IF NOT EXISTS password_locked_until TIMESTAMP WITH TIME ZONE DEFAULT NULL;`;
+  await sql`ALTER TABLE admin_account ADD COLUMN IF NOT EXISTS totp_failed_attempts INT NOT NULL DEFAULT 0;`;
+  await sql`ALTER TABLE admin_account ADD COLUMN IF NOT EXISTS totp_locked_until TIMESTAMP WITH TIME ZONE DEFAULT NULL;`;
 
   const setupPasscode = (process.env.ADMIN_SETUP_PASSCODE || process.env.ADMIN_INITIAL_PASSWORD || '').trim();
   if (setupPasscode) {

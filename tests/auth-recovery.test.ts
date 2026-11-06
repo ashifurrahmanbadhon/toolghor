@@ -1,19 +1,20 @@
-// Enable mock email store and test mode before any imports
 (process.env as Record<string, string | undefined>).NODE_ENV = 'test';
-process.env.ENABLE_TEST_EMAIL_MOCK = 'true';
 
 import assert from 'node:assert/strict';
 import { describe, it, before, beforeEach } from 'node:test';
 import { hashPassword, verifyPassword } from '../src/lib/password';
 import { getDb, initDatabase } from '../src/lib/db';
-import { __testEmailStore } from '../src/lib/notifier';
 import {
-  requestPasswordReset,
-  resendPasswordResetOtp,
-  verifyPasswordResetOtp,
-  completePasswordReset,
-  resetRateLimits,
-} from '../src/lib/passwordReset';
+  generateBase32Secret,
+  generateTOTP,
+  verifyTOTP,
+  verifyTOTPWithStep,
+  generateRecoveryCodes,
+  hashRecoveryCode,
+  verifyRecoveryCode,
+  checkPasswordDoorLockout,
+  checkAuthenticatorDoorLockout,
+} from '../src/lib/totp';
 
 describe('Password Hashing & Upgrades (src/lib/password.ts)', () => {
   it('hashes password with scrypt format (s2$...$...) and verifies correctly', async () => {
@@ -37,173 +38,292 @@ describe('Password Hashing & Upgrades (src/lib/password.ts)', () => {
   });
 });
 
-describe('Email OTP Password Recovery Flow (End-to-End)', () => {
-  const TEST_EMAIL = 'admin.recovery.test@toolghor.test';
+describe('TOTP RFC 6238 & Recovery Code Engine (src/lib/totp.ts)', () => {
+  it('1. Generates valid Base32 secret string with 20 bytes entropy', () => {
+    const secret = generateBase32Secret(20);
+    assert.equal(typeof secret, 'string');
+    assert.equal(secret.length, 20);
+    assert.match(secret, /^[A-Z2-7]+$/, 'Secret must only contain RFC 3548 Base32 characters');
+  });
+
+  it('2. Generates 6-digit TOTP code and verifies within ±1 time window', () => {
+    const secret = generateBase32Secret(20);
+    const now = Date.now();
+    const token = generateTOTP(secret, now);
+
+    assert.equal(token.length, 6, 'TOTP must be 6 digits');
+    assert.match(token, /^\d{6}$/, 'TOTP must be purely numeric');
+
+    // Verify at current time
+    assert.equal(verifyTOTP(token, secret, 1), true, 'Current token should verify');
+
+    // Verify with past time (-25s, still in ±1 step window)
+    const tokenPast = generateTOTP(secret, now - 25000);
+    assert.equal(verifyTOTP(tokenPast, secret, 1), true, 'Token from -25s should verify');
+
+    // Reject wrong token
+    assert.equal(verifyTOTP('000000', secret, 1) === (token === '000000'), true);
+  });
+
+  it('3. Enforces anti-replay protection with verifyTOTPWithStep', () => {
+    const secret = generateBase32Secret(20);
+    const now = Date.now();
+    const token = generateTOTP(secret, now);
+    const currentStep = Math.floor(Math.floor(now / 1000) / 30);
+
+    // First use: valid
+    const res1 = verifyTOTPWithStep(token, secret, 1, 0);
+    assert.equal(res1.valid, true);
+    assert.equal(res1.step, currentStep);
+
+    // Second use with lastAcceptedStep recorded: rejected as replay
+    const res2 = verifyTOTPWithStep(token, secret, 1, currentStep);
+    assert.equal(res2.valid, false);
+    assert.equal(res2.reason, 'replay');
+  });
+
+  it('4. Generates 10 high-entropy recovery codes and verifies with PBKDF2 salted hash', () => {
+    const codes = generateRecoveryCodes(10);
+    assert.equal(codes.length, 10);
+
+    for (const code of codes) {
+      assert.match(code, /^[A-F0-9]{5}-[A-F0-9]{5}$/, 'Code should follow XXXXX-XXXXX hex format');
+      const hash = hashRecoveryCode(code);
+      assert.ok(hash.includes(':'), 'Stored hash should contain salt:hash format');
+
+      assert.equal(verifyRecoveryCode(code, hash), true, 'Valid code verifies against hash');
+      assert.equal(verifyRecoveryCode(code.toLowerCase(), hash), true, 'Case-insensitive verification');
+      assert.equal(verifyRecoveryCode('WRONG-CODE1', hash), false, 'Wrong code fails verification');
+    }
+  });
+
+  it('5. Lockout checks correctly identify locked doors based on timestamp', () => {
+    const unlockedAdmin = { password_locked_until: null, totp_locked_until: null };
+    assert.equal(checkPasswordDoorLockout(unlockedAdmin).isLocked, false);
+    assert.equal(checkAuthenticatorDoorLockout(unlockedAdmin).isLocked, false);
+
+    // Locked for 10 minutes in the future
+    const futureLock = new Date(Date.now() + 10 * 60000).toISOString();
+    const lockedAdmin = {
+      password_locked_until: futureLock,
+      totp_locked_until: futureLock,
+    };
+
+    const pwdLock = checkPasswordDoorLockout(lockedAdmin);
+    assert.equal(pwdLock.isLocked, true);
+    assert.ok(pwdLock.remainingMinutes >= 9 && pwdLock.remainingMinutes <= 10);
+    assert.ok(pwdLock.message.includes('Password login is locked'));
+
+    const totpLock = checkAuthenticatorDoorLockout(lockedAdmin);
+    assert.equal(totpLock.isLocked, true);
+    assert.ok(totpLock.remainingMinutes >= 9 && totpLock.remainingMinutes <= 10);
+    assert.ok(totpLock.message.includes('Authenticator login is locked'));
+
+    // Past lock timestamp is automatically expired
+    const pastLock = new Date(Date.now() - 60000).toISOString();
+    const expiredLockAdmin = {
+      password_locked_until: pastLock,
+      totp_locked_until: pastLock,
+    };
+    assert.equal(checkPasswordDoorLockout(expiredLockAdmin).isLocked, false);
+    assert.equal(checkAuthenticatorDoorLockout(expiredLockAdmin).isLocked, false);
+  });
+});
+
+describe('Two-Door Admin Authentication & 2FA Lifecycle Database Flow', () => {
+  const TEST_ID = 8888;
+  const TEST_USER = 'test_totp_admin';
+  const TEST_PASS = 'SuperStrongAdminPass!2026';
 
   before(async () => {
     await initDatabase();
     const sql = getDb();
-    const initialHash = await hashPassword('InitialPass123!');
+    const passHash = await hashPassword(TEST_PASS);
+
     await sql`
-      INSERT INTO admin_account (id, username, email, phone, passcode)
-      VALUES (9999, 'test_recovery_admin', ${TEST_EMAIL}, '+8801999999999', ${initialHash})
-      ON CONFLICT (id) DO UPDATE SET email = ${TEST_EMAIL}, passcode = ${initialHash};
+      INSERT INTO admin_account (
+        id, username, email, phone, passcode,
+        totp_secret, totp_enabled, totp_recovery_hashes,
+        password_failed_attempts, password_locked_until,
+        totp_failed_attempts, totp_locked_until
+      )
+      VALUES (
+        ${TEST_ID}, ${TEST_USER}, 'test.totp@toolghor.test', '+8801700000000', ${passHash},
+        '', false, '[]',
+        0, NULL,
+        0, NULL
+      )
+      ON CONFLICT (id) DO UPDATE
+      SET
+        passcode = ${passHash},
+        totp_secret = '',
+        totp_enabled = false,
+        totp_recovery_hashes = '[]',
+        password_failed_attempts = 0,
+        password_locked_until = NULL,
+        totp_failed_attempts = 0,
+        totp_locked_until = NULL;
     `;
   });
 
-  beforeEach(() => {
-    // Clear in-memory mock email store and sliding window rate limits
-    __testEmailStore.length = 0;
-    resetRateLimits();
-  });
-
-  it('1. Mitigates account enumeration with generic response on unknown email', async () => {
-    const res = await requestPasswordReset('nonexistent.user@randomdomain.test');
-    assert.equal(res.success, true);
-    assert.ok(res.message.includes('If an account is associated with this email'));
-    // No email should be sent for nonexistent account
-    assert.equal(__testEmailStore.length, 0);
-  });
-
-  it('2. Requests OTP successfully and delivers via email provider mock', async () => {
-    const res = await requestPasswordReset(TEST_EMAIL);
-    assert.equal(res.success, true);
-    assert.ok(res.challengeId, 'Should return a challengeId');
-    assert.ok(res.resendCooldownSeconds > 0, 'Should return cooldown');
-
-    // Email was dispatched to mock store
-    assert.equal(__testEmailStore.length, 1);
-    const sent = __testEmailStore[0];
-    assert.equal(sent.toEmail, TEST_EMAIL);
-    assert.match(sent.otpCode, /^\d{6}$/, 'Dispatched OTP must be a 6-digit number');
-
-    // Verify OTP is NOT stored in plaintext in the database
+  it('1. Door 1 (Password): tracks failed attempts and locks for 15 min after 3 attempts', async () => {
     const sql = getDb();
-    const rows = await sql`
-      SELECT otp_hash FROM password_reset_challenges WHERE id = ${res.challengeId}
+    const admin = (await sql`SELECT * FROM admin_account WHERE id = ${TEST_ID}`)[0];
+
+    // Attempt 1: wrong password
+    let attempts = (admin.password_failed_attempts || 0) + 1;
+    assert.equal(attempts, 1);
+    await sql`UPDATE admin_account SET password_failed_attempts = ${attempts} WHERE id = ${TEST_ID}`;
+
+    // Attempt 2: wrong password
+    attempts += 1;
+    assert.equal(attempts, 2);
+    await sql`UPDATE admin_account SET password_failed_attempts = ${attempts} WHERE id = ${TEST_ID}`;
+
+    // Attempt 3: wrong password -> lock door
+    attempts += 1;
+    assert.equal(attempts, 3);
+    const lockedUntil = new Date(Date.now() + 15 * 60000);
+    await sql`
+      UPDATE admin_account
+      SET password_failed_attempts = ${attempts}, password_locked_until = ${lockedUntil.toISOString()}
+      WHERE id = ${TEST_ID}
     `;
-    assert.equal(rows.length, 1);
-    assert.notEqual(rows[0].otp_hash, sent.otpCode, 'OTP must not be stored in plaintext');
+
+    const lockedRow = (await sql`SELECT * FROM admin_account WHERE id = ${TEST_ID}`)[0];
+    const lockout = checkPasswordDoorLockout(lockedRow);
+    assert.equal(lockout.isLocked, true);
+    assert.ok(lockout.remainingMinutes >= 14 && lockout.remainingMinutes <= 15);
+
+    // Password door is locked, but Authenticator door remains UNLOCKED!
+    const totpLockout = checkAuthenticatorDoorLockout(lockedRow);
+    assert.equal(totpLockout.isLocked, false, 'Authenticator door must stay open when password door is locked');
+
+    // Successful login resets lock and failed attempts
+    await sql`
+      UPDATE admin_account
+      SET password_failed_attempts = 0, password_locked_until = NULL
+      WHERE id = ${TEST_ID}
+    `;
+    const resetRow = (await sql`SELECT * FROM admin_account WHERE id = ${TEST_ID}`)[0];
+    assert.equal(resetRow.password_failed_attempts, 0);
+    assert.equal(resetRow.password_locked_until, null);
   });
 
-  it('3. Enforces 60-second resend cooldown', async () => {
-    const firstReq = await requestPasswordReset(TEST_EMAIL);
-    assert.equal(firstReq.success, true);
+  it('2. Door 2 (Authenticator): enables 2FA, stores secret, generates recovery codes', async () => {
+    const sql = getDb();
+    const secret = generateBase32Secret(20);
+    const now = Date.now();
+    const validOtp = generateTOTP(secret, now);
 
-    // Immediate resend should be rejected by cooldown
-    const cooldownRes = await resendPasswordResetOtp(firstReq.challengeId!);
-    assert.equal(cooldownRes.success, false);
-    assert.ok(cooldownRes.message.includes('wait'), 'Should report cooldown active');
+    // Verify OTP succeeds
+    assert.equal(verifyTOTP(validOtp, secret), true);
+
+    // Generate 10 recovery codes
+    const recoveryCodes = generateRecoveryCodes(10);
+    assert.equal(recoveryCodes.length, 10);
+    const hashes = recoveryCodes.map((code) => ({
+      hash: hashRecoveryCode(code),
+      used: false,
+    }));
+
+    // Store in DB
+    await sql`
+      UPDATE admin_account
+      SET
+        totp_secret = ${secret},
+        totp_enabled = true,
+        totp_recovery_hashes = ${JSON.stringify(hashes)},
+        totp_failed_attempts = 0,
+        totp_locked_until = NULL
+      WHERE id = ${TEST_ID}
+    `;
+
+    const updated = (await sql`SELECT * FROM admin_account WHERE id = ${TEST_ID}`)[0];
+    assert.equal(updated.totp_enabled, true);
+    assert.equal(updated.totp_secret, secret);
+
+    const storedHashes = JSON.parse(updated.totp_recovery_hashes);
+    assert.equal(storedHashes.length, 10);
+    assert.equal(storedHashes.filter((h: any) => !h.used).length, 10);
   });
 
-  it('4. Rejects invalid or wrong OTP and decrements remaining attempts', async () => {
-    const req = await requestPasswordReset(TEST_EMAIL);
-    const challengeId = req.challengeId!;
+  it('3. Door 2 (Authenticator): logs in with emergency recovery code and permanently consumes it', async () => {
+    const sql = getDb();
+    const admin = (await sql`SELECT * FROM admin_account WHERE id = ${TEST_ID}`)[0];
+    const hashes = JSON.parse(admin.totp_recovery_hashes);
 
-    // Attempt 1: wrong OTP
-    const attempt1 = await verifyPasswordResetOtp(challengeId, '000000');
-    assert.equal(attempt1.success, false);
-    assert.equal(attempt1.attemptsRemaining, 4);
+    // Generate test code and verify match with first code
+    const testCode = 'TEST1-CODE1';
+    hashes[0] = { hash: hashRecoveryCode(testCode), used: false };
+    await sql`UPDATE admin_account SET totp_recovery_hashes = ${JSON.stringify(hashes)} WHERE id = ${TEST_ID}`;
 
-    // Attempt 2: wrong OTP
-    const attempt2 = await verifyPasswordResetOtp(challengeId, '111111');
-    assert.equal(attempt2.success, false);
-    assert.equal(attempt2.attemptsRemaining, 3);
-  });
-
-  it('5. Locks out challenge after 5 failed verification attempts (brute force protection)', async () => {
-    const req = await requestPasswordReset(TEST_EMAIL);
-    const challengeId = req.challengeId!;
-
-    // Exhaust remaining attempts (5 attempts total)
-    for (let i = 0; i < 5; i++) {
-      await verifyPasswordResetOtp(challengeId, `99999${i}`);
+    // Verify and consume
+    let matched = false;
+    for (const item of hashes) {
+      if (!item.used && verifyRecoveryCode(testCode, item.hash)) {
+        item.used = true;
+        item.used_at = new Date().toISOString();
+        matched = true;
+        break;
+      }
     }
+    assert.equal(matched, true, 'Recovery code should match');
 
-    // Subsequent attempt should be locked out
-    const lockedRes = await verifyPasswordResetOtp(challengeId, '123456');
-    assert.equal(lockedRes.success, false);
-    assert.ok(
-      lockedRes.message.toLowerCase().includes('too many') ||
-      lockedRes.message.toLowerCase().includes('exceeded') ||
-      lockedRes.message.toLowerCase().includes('invalid')
-    );
+    await sql`UPDATE admin_account SET totp_recovery_hashes = ${JSON.stringify(hashes)} WHERE id = ${TEST_ID}`;
+
+    // Verify it is permanently consumed and cannot be reused
+    const fresh = (await sql`SELECT * FROM admin_account WHERE id = ${TEST_ID}`)[0];
+    const freshHashes = JSON.parse(fresh.totp_recovery_hashes);
+    const remainingUnused = freshHashes.filter((h: any) => !h.used).length;
+    assert.equal(remainingUnused, 9, 'Exactly 9 recovery codes must remain');
+
+    // Attempting to reuse same code must fail
+    let reused = false;
+    for (const item of freshHashes) {
+      if (!item.used && verifyRecoveryCode(testCode, item.hash)) {
+        reused = true;
+        break;
+      }
+    }
+    assert.equal(reused, false, 'Consumed recovery code must NOT be usable again');
   });
 
-  it('6. Verifies valid OTP and issues single-use reset authorization token', async () => {
-    const req = await requestPasswordReset(TEST_EMAIL);
-    const challengeId = req.challengeId!;
-
-    const lastEmail = __testEmailStore[__testEmailStore.length - 1];
-    const validOtp = lastEmail.otpCode;
-
-    const verifyRes = await verifyPasswordResetOtp(challengeId, validOtp);
-    assert.equal(verifyRes.success, true);
-    assert.ok(verifyRes.resetToken, 'Must return single-use reset authorization token');
-    assert.equal(verifyRes.resetToken!.length, 64, 'Reset token must be 32-byte hex string (64 characters)');
-
-    // Attempting to verify the same OTP again must fail (no replay)
-    const replayRes = await verifyPasswordResetOtp(challengeId, validOtp);
-    assert.equal(replayRes.success, false, 'Replaying verified OTP must be rejected');
-  });
-
-  it('7. Rejects password reset without valid reset authorization token', async () => {
-    const fakeToken = 'a'.repeat(64);
-    const fakeChallengeId = '00000000-0000-0000-0000-000000000000';
-
-    const res = await completePasswordReset(
-      fakeChallengeId,
-      fakeToken,
-      'BrandNewPassword123!',
-      'BrandNewPassword123!'
-    );
-    assert.equal(res.success, false);
-    assert.ok(
-      res.message.toLowerCase().includes('invalid') ||
-      res.message.toLowerCase().includes('expired') ||
-      res.message.toLowerCase().includes('required')
-    );
-  });
-
-  it('8. Completes password reset atomically, invalidates token, and verifies DB update', async () => {
-    // Step A: Request OTP
-    const req = await requestPasswordReset(TEST_EMAIL);
-    const challengeId = req.challengeId!;
-    const otp = __testEmailStore[__testEmailStore.length - 1].otpCode;
-
-    // Step B: Verify OTP to obtain reset token
-    const verifyRes = await verifyPasswordResetOtp(challengeId, otp);
-    assert.equal(verifyRes.success, true);
-    const resetToken = verifyRes.resetToken!;
-
-    // Step C: Complete reset
-    const newPassword = 'BrandNewSuperSecurePass456!';
-    const resetRes = await completePasswordReset(
-      challengeId,
-      resetToken,
-      newPassword,
-      newPassword
-    );
-    assert.equal(resetRes.success, true);
-
-    // Step D: Verify that resetToken cannot be reused (Single-Use Token check)
-    const reuseRes = await completePasswordReset(
-      challengeId,
-      resetToken,
-      'YetAnotherPassword789!',
-      'YetAnotherPassword789!'
-    );
-    assert.equal(reuseRes.success, false, 'Reset token must be single-use only');
-
-    // Step E: Verify new password matches in DB
+  it('4. Door 2 (Authenticator): locks after 3 failed attempts while password door stays open', async () => {
     const sql = getDb();
-    const rows = await sql`
-      SELECT passcode FROM admin_account WHERE id = 9999
+    const lockedUntil = new Date(Date.now() + 15 * 60000);
+    await sql`
+      UPDATE admin_account
+      SET totp_failed_attempts = 3, totp_locked_until = ${lockedUntil.toISOString()}
+      WHERE id = ${TEST_ID}
     `;
-    assert.ok(rows.length > 0);
-    const isNewPassValid = await verifyPassword(newPassword, rows[0].passcode);
-    assert.equal(isNewPassValid, true, 'Admin account passcode must verify against new password');
-    // Cleanup test account
-    await sql`DELETE FROM admin_account WHERE id = 9999;`;
+
+    const admin = (await sql`SELECT * FROM admin_account WHERE id = ${TEST_ID}`)[0];
+    const totpLock = checkAuthenticatorDoorLockout(admin);
+    assert.equal(totpLock.isLocked, true);
+    assert.ok(totpLock.message.includes('Authenticator login is locked'));
+
+    const pwdLock = checkPasswordDoorLockout(admin);
+    assert.equal(pwdLock.isLocked, false, 'Password door must remain open during Authenticator lockout');
+  });
+
+  it('5. Disabling 2FA clears secret and recovery codes', async () => {
+    const sql = getDb();
+    await sql`
+      UPDATE admin_account
+      SET
+        totp_secret = '',
+        totp_enabled = false,
+        totp_recovery_hashes = '[]',
+        totp_failed_attempts = 0,
+        totp_locked_until = NULL,
+        last_totp_step = 0
+      WHERE id = ${TEST_ID}
+    `;
+
+    const admin = (await sql`SELECT * FROM admin_account WHERE id = ${TEST_ID}`)[0];
+    assert.equal(admin.totp_enabled, false);
+    assert.equal(admin.totp_secret, '');
+    assert.equal(admin.totp_recovery_hashes, '[]');
   });
 });
