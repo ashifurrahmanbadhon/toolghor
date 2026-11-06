@@ -204,22 +204,7 @@ export default function Header() {
 
         {/* Desktop Header Actions (Pill Row - Desktop Only) */}
         <div className="top-actions hidden md:flex" style={{ marginInlineStart: 'auto' }}>
-          {/* About Button */}
-          <button
-            type="button"
-            className="btn-top-about"
-            id="btn-top-about"
-            aria-label="About ToolGhor"
-            title="About ToolGhor"
-            onClick={handleOpenAbout}
-          >
-            <span className="btn-about-ic" aria-hidden="true">
-              ℹ️
-            </span>
-            <span>{lang === 'bn' ? 'আমাদের সম্পর্কে' : 'About'}</span>
-          </button>
-
-          {/* Install App Button */}
+          {/* Install App Button (Left of About) */}
           {canInstall && (
             <button
               type="button"
@@ -249,6 +234,21 @@ export default function Header() {
               <span>{lang === 'bn' ? 'অ্যাপ ইনস্টল করুন' : 'Install App'}</span>
             </button>
           )}
+
+          {/* About Button */}
+          <button
+            type="button"
+            className="btn-top-about"
+            id="btn-top-about"
+            aria-label="About ToolGhor"
+            title="About ToolGhor"
+            onClick={handleOpenAbout}
+          >
+            <span className="btn-about-ic" aria-hidden="true">
+              ℹ️
+            </span>
+            <span>{lang === 'bn' ? 'আমাদের সম্পর্কে' : 'About'}</span>
+          </button>
 
           {/* Language Switcher */}
           <div ref={containerRef} className="lang" role="group" aria-label="Language">
@@ -364,20 +364,6 @@ export default function Header() {
 
           {isMenuOpen && (
             <div className="header-menu-dropdown" role="menu">
-              {/* 1. About */}
-              <button
-                type="button"
-                className="header-menu-item"
-                role="menuitem"
-                onClick={() => {
-                  handleOpenAbout();
-                  setIsMenuOpen(false);
-                }}
-              >
-                <span className="header-menu-ic" aria-hidden="true">ℹ️</span>
-                <span>{lang === 'bn' ? 'আমাদের সম্পর্কে' : 'About'}</span>
-              </button>
-
               {/* Install App (Mobile Dropdown) */}
               {canInstall && (
                 <button
@@ -409,6 +395,20 @@ export default function Header() {
                   <span>{lang === 'bn' ? 'অ্যাপ ইনস্টল করুন' : 'Install App'}</span>
                 </button>
               )}
+
+              {/* 1. About */}
+              <button
+                type="button"
+                className="header-menu-item"
+                role="menuitem"
+                onClick={() => {
+                  handleOpenAbout();
+                  setIsMenuOpen(false);
+                }}
+              >
+                <span className="header-menu-ic" aria-hidden="true">ℹ️</span>
+                <span>{lang === 'bn' ? 'আমাদের সম্পর্কে' : 'About'}</span>
+              </button>
 
               {/* 2. Language Switcher (EN / বাংলা) */}
               <div className="header-menu-lang-row">
