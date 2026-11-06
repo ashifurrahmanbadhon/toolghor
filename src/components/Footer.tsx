@@ -86,6 +86,54 @@ export default function Footer({ customSettings, contentTexts: initialContentTex
       : liveFooter?.copyright_text_en || 'Your files and data are processed in your browser.';
 
   const [showToTop, setShowToTop] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+
+  useEffect(() => {
+    // Check if already in standalone mode
+    if (typeof window !== 'undefined') {
+      const isStandalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true ||
+        document.referrer.includes('android-app://');
+      if (isStandalone) {
+        setIsInstalled(true);
+        return;
+      }
+    }
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    try {
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setIsInstalled(true);
+      }
+    } catch {}
+    setDeferredPrompt(null);
+  };
+
+  const canInstall = !isInstalled && !!deferredPrompt;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -143,6 +191,59 @@ export default function Footer({ customSettings, contentTexts: initialContentTex
             </Link>
           </div>
         </div>
+
+        {/* PWA Install Button — quiet, standalone element, shown only when beforeinstallprompt is active */}
+        {canInstall && (
+          <div className="wrap foot-install-bar" style={{ marginTop: '14px', display: 'flex', justifyContent: 'center' }}>
+            <button
+              type="button"
+              onClick={handleInstallClick}
+              className="foot-install-btn"
+              aria-label={lang === 'bn' ? 'অ্যাপ ইনস্টল করুন' : 'Install App'}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '7px',
+                padding: '6px 14px',
+                fontSize: '12.5px',
+                fontWeight: 500,
+                color: 'var(--ink-2, #a1a1aa)',
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid var(--line, rgba(255, 255, 255, 0.1))',
+                borderRadius: '999px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.color = 'var(--ink, #ffffff)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.color = 'var(--ink-2, #a1a1aa)';
+                e.currentTarget.style.borderColor = 'var(--line, rgba(255, 255, 255, 0.1))';
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+              }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              <span>{lang === 'bn' ? 'অ্যাপ ইনস্টল করুন' : 'Install App'}</span>
+            </button>
+          </div>
+        )}
       </footer>
 
       {/* Floating Back-to-Top Button */}

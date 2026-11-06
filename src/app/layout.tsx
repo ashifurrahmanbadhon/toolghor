@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Hind_Siliguri } from 'next/font/google';
 import './globals.css';
 import { AppProvider } from '@/context/AppContext';
@@ -6,6 +6,7 @@ import { siteConfig, ASSET_VERSION } from '@/data/config';
 import FloatingAdminPanel from '@/components/FloatingAdminPanel';
 import BackgroundAnimation from '@/components/BackgroundAnimation';
 import SmoothCursor from '@/components/SmoothCursor';
+import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 import { Analytics } from '@vercel/analytics/next';
 
 const inter = Inter({
@@ -21,7 +22,12 @@ const hindSiliguri = Hind_Siliguri({
   variable: '--font-hind-siliguri',
 });
 
+export const viewport: Viewport = {
+  themeColor: '#09130f',
+};
+
 export const metadata: Metadata = {
+  manifest: '/manifest.webmanifest',
   title: 'Free Online Tools — PDF, Image, QR, Video | ToolGhor',
   description: `${siteConfig.taglineEn}. Everyday productivity and file tools in your browser.`,
   metadataBase: new URL(siteConfig.url),
@@ -79,6 +85,8 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <meta name="theme-color" content="#09130f" />
+        <link rel="manifest" href="/manifest.webmanifest" />
         <meta property="fb:app_id" content="966242223397117" />
         <meta name="fb:app_id" content="966242223397117" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
@@ -110,6 +118,7 @@ export default function RootLayout({
         <SmoothCursor />
         <BackgroundAnimation />
         <AppProvider>
+          <ServiceWorkerRegister />
           <VersionUpdateChecker />
           <FloatingAdminPanel />
           {children}

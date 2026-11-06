@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ASSET_VERSION as BUILT_VERSION } from '@/data/config';
-// Version marker: 20261029_v53
+// Version marker: 20261106_v54
 import { useApp } from '@/context/AppContext';
 import { isPreviewMode } from '@/lib/previewMode';
 
@@ -40,17 +40,6 @@ export default function VersionUpdateChecker() {
   };
 
   useEffect(() => {
-    // Unregister any service workers on load (future-proof)
-    try {
-      if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then((registrations) => {
-          for (const registration of registrations) {
-            registration.unregister().catch(() => {});
-          }
-        }).catch(() => {});
-      }
-    } catch {}
-
     // Check version on mount
     checkVersion();
 
