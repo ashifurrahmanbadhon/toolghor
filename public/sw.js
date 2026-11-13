@@ -1,7 +1,7 @@
 // ToolGhor Service Worker — PWA Caching & Offline Support
-// Version: 20261106_v59
+// Version: 20261106_v60
 
-const CACHE_NAME = 'toolghor-20261106_v59';
+const CACHE_NAME = 'toolghor-20261106_v60';
 
 const PRECACHE_URLS = [
   '/offline',
@@ -53,8 +53,13 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
 
-  // Cross-origin requests: bypass SW completely
-  if (url.origin !== self.location.origin) {
+  // Cross-origin requests & Analytics: bypass SW completely (network-only)
+  // GA requests (google-analytics.com, googletagmanager.com) must stay network-only like /api/* — never cached
+  if (
+    url.origin !== self.location.origin ||
+    url.hostname.includes('google-analytics.com') ||
+    url.hostname.includes('googletagmanager.com')
+  ) {
     return;
   }
 

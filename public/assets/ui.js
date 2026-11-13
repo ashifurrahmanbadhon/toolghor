@@ -280,10 +280,29 @@
       }
     }
 
+    function trackToolDownload() {
+      try {
+        if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+          var toolSlug = '';
+          var m = (window.location.pathname || '').match(/\/tools\/([^\/\?#]+)/);
+          if (m && m[1]) toolSlug = m[1];
+          else if (typeof UI.getToolSlug === 'function') toolSlug = UI.getToolSlug() || '';
+          var fileExt = '';
+          var dotIdx = (name || '').lastIndexOf('.');
+          if (dotIdx >= 0) fileExt = (name.slice(dotIdx + 1) || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          window.gtag('event', 'tool_download', {
+            tool: toolSlug || 'unknown',
+            file_ext: fileExt || 'unknown'
+          });
+        }
+      } catch (gaErr) {}
+    }
+
     if (isInAppBrowser()) {
       try { window.open(url, '_blank', 'noopener'); } catch (e) {}
       UI.toast(tr('নতুন ট্যাবে ফাইল খুলেছে, চেপে ধরে সেভ করুন', 'File opened in a new tab — long-press it to save'));
       if (shouldRevoke && url) setTimeout(function(){ try { URL.revokeObjectURL(url); } catch (e) {} }, 60000);
+      trackToolDownload();
       return;
     }
 
@@ -295,6 +314,8 @@
     } catch (err) {
       a.click();
     }
+
+    trackToolDownload();
 
     setTimeout(function () {
       if (shouldRevoke && url) {

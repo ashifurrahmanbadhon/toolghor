@@ -1,6 +1,6 @@
 {
   "name": "toolghor",
-  "version": "20261106_v59",
+  "version": "20261106_v60",
   "private": true,
   "scripts": {
     "dev": "next dev",

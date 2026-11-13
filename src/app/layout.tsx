@@ -7,6 +7,8 @@ import FloatingAdminPanel from '@/components/FloatingAdminPanel';
 import BackgroundAnimation from '@/components/BackgroundAnimation';
 import SmoothCursor from '@/components/SmoothCursor';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
+import Script from 'next/script';
+import GoogleAnalyticsTracker from '@/components/GoogleAnalyticsTracker';
 import { Analytics } from '@vercel/analytics/next';
 
 const inter = Inter({
@@ -131,6 +133,30 @@ export default function RootLayout({
         <script src={`/assets/ui.js?v=${ASSET_VERSION}`} defer></script>
       </head>
       <body className={`${inter.className} dark`} suppressHydrationWarning>
+        {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
+          <>
+            <Script
+              strategy="afterInteractive"
+              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}`}
+            />
+            <Script
+              id="google-analytics"
+              strategy="afterInteractive"
+              dangerouslySetInnerHTML={{
+                __html: `
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  window.gtag = gtag;
+                  gtag('js', new Date());
+                  gtag('config', '${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}', {
+                    send_page_view: false
+                  });
+                `,
+              }}
+            />
+            <GoogleAnalyticsTracker />
+          </>
+        )}
         <SmoothCursor />
         <BackgroundAnimation />
         <AppProvider>
