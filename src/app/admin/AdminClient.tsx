@@ -209,7 +209,9 @@ export default function AdminConsole() {
 
   // Two-Door Admin Login State (Password | Authenticator)
   const [loginDoor, setLoginDoor] = useState<'password' | 'authenticator'>('password');
-  const [totpInput, setTotpInput] = useState('');
+  const [otpBoxes, setOtpBoxes] = useState<string[]>(['', '', '', '', '', '']);
+  const [focusedOtpIndex, setFocusedOtpIndex] = useState<number | null>(null);
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [totpError, setTotpError] = useState(false);
   const [totpErrorMsg, setTotpErrorMsg] = useState('');
   const [totpLoading, setTotpLoading] = useState(false);
@@ -221,13 +223,11 @@ export default function AdminConsole() {
     email: string;
     phone: string;
     totp_enabled?: boolean;
-    remaining_recovery_codes?: number;
   }>({
     username: 'admin',
     email: 'ashifur.badhon@gmail.com',
     phone: '+8801521417284',
     totp_enabled: false,
-    remaining_recovery_codes: 0,
   });
   const [profilePassCurrent, setProfilePassCurrent] = useState('');
   const [profilePassNew, setProfilePassNew] = useState('');
@@ -237,12 +237,11 @@ export default function AdminConsole() {
 
   // Two-Factor Authentication (2FA) Modal & Flow States
   const [show2faSetupModal, setShow2faSetupModal] = useState(false);
-  const [setupStep, setSetupStep] = useState<'password_verify' | 'qr_scan' | 'show_recovery'>('password_verify');
+  const [setupStep, setSetupStep] = useState<'password_verify' | 'qr_scan'>('password_verify');
   const [setupPassword, setSetupPassword] = useState('');
   const [setupSecret, setSetupSecret] = useState('');
   const [setupQrCode, setSetupQrCode] = useState('');
   const [setupCode, setSetupCode] = useState('');
-  const [setupRecoveryCodes, setSetupRecoveryCodes] = useState<string[]>([]);
   const [setupLoading, setSetupLoading] = useState(false);
   const [setupMsg, setSetupMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -252,14 +251,6 @@ export default function AdminConsole() {
   const [disableLoading, setDisableLoading] = useState(false);
   const [disableMsg, setDisableMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const [show2faRegenModal, setShow2faRegenModal] = useState(false);
-  const [regenPassword, setRegenPassword] = useState('');
-  const [regenCode, setRegenCode] = useState('');
-  const [regenLoading, setRegenLoading] = useState(false);
-  const [regenCodes, setRegenCodes] = useState<string[]>([]);
-  const [regenMsg, setRegenMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  const [copiedCodes, setCopiedCodes] = useState(false);
   const [copiedSecret, setCopiedSecret] = useState(false);
 
   // Auth Secret Fallback Warning State
@@ -885,14 +876,84 @@ export default function AdminConsole() {
     }
   };
 
-  // DOOR 2: Authenticator Login Submission (TOTP or Recovery Code alone)
+  // 6-Box OTP handlers for Door 2 (Authenticator)
+  const handleOtpChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawVal = e.target.value;
+    const digitsOnly = rawVal.replace(/\D/g, '');
+    if (!digitsOnly) {
+      const newBoxes = [...otpBoxes];
+      newBoxes[index] = '';
+      setOtpBoxes(newBoxes);
+      return;
+    }
+
+    if (digitsOnly.length > 1) {
+      const newBoxes = [...otpBoxes];
+      const slice = digitsOnly.slice(0, 6);
+      for (let j = 0; j < slice.length; j++) {
+        if (index + j < 6) {
+          newBoxes[index + j] = slice[j];
+        }
+      }
+      setOtpBoxes(newBoxes);
+      const nextFocus = Math.min(index + slice.length - 1, 5);
+      otpInputRefs.current[nextFocus]?.focus();
+      return;
+    }
+
+    const char = digitsOnly.slice(-1);
+    const newBoxes = [...otpBoxes];
+    newBoxes[index] = char;
+    setOtpBoxes(newBoxes);
+    if (index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace') {
+      if (!otpBoxes[index] && index > 0) {
+        e.preventDefault();
+        const newBoxes = [...otpBoxes];
+        newBoxes[index - 1] = '';
+        setOtpBoxes(newBoxes);
+        otpInputRefs.current[index - 1]?.focus();
+      }
+    } else if (e.key === 'ArrowLeft') {
+      if (index > 0) {
+        e.preventDefault();
+        otpInputRefs.current[index - 1]?.focus();
+      }
+    } else if (e.key === 'ArrowRight') {
+      if (index < 5) {
+        e.preventDefault();
+        otpInputRefs.current[index + 1]?.focus();
+      }
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text');
+    const digits = pasted.replace(/\D/g, '').slice(0, 6);
+    if (!digits) return;
+    const newBoxes = ['', '', '', '', '', ''];
+    for (let j = 0; j < digits.length; j++) {
+      newBoxes[j] = digits[j];
+    }
+    setOtpBoxes(newBoxes);
+    const targetIdx = Math.min(digits.length - 1, 5);
+    otpInputRefs.current[targetIdx]?.focus();
+  };
+
+  // DOOR 2: Authenticator Login Submission (6-Digit Code)
   const handleTotpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const cleanCode = totpInput.trim();
-    if (!cleanCode) {
+    const cleanCode = otpBoxes.join('');
+    if (cleanCode.length !== 6) {
       setTotpError(true);
-      setTotpErrorMsg('Please enter your 6-digit authenticator or recovery code.');
+      setTotpErrorMsg('Please enter the full 6-digit code.');
       return;
     }
     setTotpLoading(true);
@@ -918,7 +979,7 @@ export default function AdminConsole() {
         setIsAuthenticated(true);
         setTotpError(false);
         setTotpErrorMsg('');
-        setTotpInput('');
+        setOtpBoxes(['', '', '', '', '', '']);
         if (data.admin) {
           setAdminProfile((prev) => ({ ...prev, ...data.admin }));
         }
@@ -928,7 +989,7 @@ export default function AdminConsole() {
         if (data?.notSetup) {
           setTotpEnrolledOnServer(false);
         }
-        setTotpErrorMsg(data?.message || data?.error || 'Invalid authenticator or recovery code.');
+        setTotpErrorMsg(data?.message || data?.error || 'Invalid verification code.');
       }
     } catch {
       setTotpError(true);
@@ -984,7 +1045,7 @@ export default function AdminConsole() {
   };
 
   // ---------------------------------------------------------------------------
-  // 2FA Management Handlers (Enrolment, Verification, Disable & Recovery Codes)
+  // 2FA Management Handlers (Enrolment, Verification & Disable)
   // ---------------------------------------------------------------------------
   const handleOpen2faSetup = () => {
     setSetupStep('password_verify');
@@ -992,7 +1053,6 @@ export default function AdminConsole() {
     setSetupSecret('');
     setSetupQrCode('');
     setSetupCode('');
-    setSetupRecoveryCodes([]);
     setSetupMsg(null);
     setShow2faSetupModal(true);
   };
@@ -1048,16 +1108,14 @@ export default function AdminConsole() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        const codes = data.recovery_codes || [];
-        setSetupRecoveryCodes(codes);
-        setSetupStep('show_recovery');
+        setShow2faSetupModal(false);
+        setSetupStep('password_verify');
         setAdminProfile((prev) => ({
           ...prev,
           totp_enabled: true,
-          remaining_recovery_codes: codes.length,
         }));
         setTotpEnrolledOnServer(true);
-        showNotification('Two-Factor Authentication activated!');
+        showNotification('Two-Factor Authentication activated successfully!');
       } else {
         setSetupMsg({ type: 'error', text: data.message || 'Invalid verification code.' });
       }
@@ -1094,7 +1152,6 @@ export default function AdminConsole() {
         setAdminProfile((prev) => ({
           ...prev,
           totp_enabled: false,
-          remaining_recovery_codes: 0,
         }));
         setTotpEnrolledOnServer(false);
         showNotification('Two-Factor Authentication disabled.');
@@ -1106,67 +1163,6 @@ export default function AdminConsole() {
     } finally {
       setDisableLoading(false);
     }
-  };
-
-  const handleRegenerateCodes = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!regenPassword && !regenCode) {
-      setRegenMsg({ type: 'error', text: 'Please enter your password or current authenticator code.' });
-      return;
-    }
-    setRegenLoading(true);
-    setRegenMsg(null);
-    try {
-      const res = await fetch('/api/admin/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: '2fa_regenerate_recovery',
-          current_password: regenPassword,
-          code: regenCode.trim(),
-        }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        const codes = data.recovery_codes || [];
-        setRegenCodes(codes);
-        setAdminProfile((prev) => ({
-          ...prev,
-          remaining_recovery_codes: codes.length,
-        }));
-        showNotification('10 new recovery codes generated!');
-      } else {
-        setRegenMsg({ type: 'error', text: data.message || 'Failed to regenerate codes.' });
-      }
-    } catch {
-      setRegenMsg({ type: 'error', text: 'Network error regenerating codes.' });
-    } finally {
-      setRegenLoading(false);
-    }
-  };
-
-  const handleCopyRecoveryCodes = (codes: string[]) => {
-    const text = codes.join('\n');
-    navigator.clipboard.writeText(text);
-    setCopiedCodes(true);
-    setTimeout(() => setCopiedCodes(false), 2500);
-  };
-
-  const handleDownloadRecoveryCodes = (codes: string[]) => {
-    const text =
-      `ToolGhor Admin 2FA Emergency Backup Recovery Codes\n` +
-      `Generated: ${new Date().toISOString()}\n\n` +
-      `Important: Store these 10 backup codes securely.\n` +
-      `Each code can only be used once.\n\n` +
-      codes.map((c, i) => `${(i + 1).toString().padStart(2, '0')}. ${c}`).join('\n') +
-      `\n\nToolGhor Platform Security`;
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `toolghor-recovery-codes-${new Date().toISOString().slice(0, 10)}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
   };
 
   const handleLogout = () => {
@@ -1675,34 +1671,64 @@ export default function AdminConsole() {
                 <form action="#" onSubmit={handleTotpSubmit}>
                   <div style={{ textAlign: 'left', marginBottom: '8px' }}>
                     <label style={{ fontSize: '12.5px', fontWeight: 600, color: '#94a3b8' }}>
-                      6-Digit Authenticator Token or Recovery Code
+                      6-Digit Authenticator Code
                     </label>
                   </div>
-                  <input
-                    type="text"
-                    autoComplete="one-time-code"
-                    placeholder="e.g. 123456 or XXXXX-XXXXX"
-                    value={totpInput}
-                    onChange={(e) => setTotpInput(e.target.value)}
+                  <div
                     style={{
-                      width: '100%',
-                      boxSizing: 'border-box',
-                      padding: '12px 16px',
-                      borderRadius: '12px',
-                      border: totpError ? '1.5px solid #ef4444' : '1.5px solid #334155',
-                      background: '#0b0f19',
-                      color: '#f8fafc',
-                      fontSize: '16px',
-                      textAlign: 'center',
-                      letterSpacing: '2px',
-                      fontFamily: 'monospace',
+                      display: 'flex',
+                      gap: '8px',
+                      justifyContent: 'center',
                       marginBottom: '14px',
-                      outline: 'none',
+                      width: '100%',
                     }}
-                  />
+                  >
+                    {otpBoxes.map((digit, idx) => (
+                      <input
+                        key={idx}
+                        ref={(el) => { otpInputRefs.current[idx] = el; }}
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={idx === 0 ? 6 : 1}
+                        autoComplete={idx === 0 ? 'one-time-code' : 'off'}
+                        value={digit}
+                        onChange={(e) => handleOtpChange(idx, e)}
+                        onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                        onPaste={handleOtpPaste}
+                        onClick={(e) => (e.target as HTMLInputElement).select()}
+                        onFocus={(e) => {
+                          setFocusedOtpIndex(idx);
+                          (e.target as HTMLInputElement).select();
+                        }}
+                        onBlur={() => setFocusedOtpIndex(null)}
+                        style={{
+                          flex: '1 1 0',
+                          maxWidth: '48px',
+                          height: '48px',
+                          borderRadius: '12px',
+                          background: '#0b0f19',
+                          border: totpError
+                            ? '1.5px solid #ef4444'
+                            : focusedOtpIndex === idx
+                            ? '1.5px solid #10b981'
+                            : '1.5px solid #334155',
+                          color: '#f8fafc',
+                          fontSize: '20px',
+                          fontWeight: 700,
+                          fontFamily: 'monospace',
+                          textAlign: 'center',
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                          padding: 0,
+                          transition: 'border-color 0.15s ease',
+                        }}
+                      />
+                    ))}
+                  </div>
                   {totpError && (
                     <p style={{ color: '#ef4444', fontSize: '12.5px', margin: '-6px 0 12px', textAlign: 'left', wordBreak: 'break-word' }}>
-                      {totpErrorMsg || 'Invalid verification or recovery code.'}
+                      {totpErrorMsg || 'Invalid verification code.'}
                     </p>
                   )}
 
@@ -6795,7 +6821,7 @@ export default function AdminConsole() {
                     Admin Profile & Security
                   </h1>
                   <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0, wordBreak: 'break-word' }}>
-                    Manage your administrator credentials, recovery email/phone, and securely change your login passcode.
+                    Manage your administrator credentials, email/phone, and securely change your login passcode.
                   </p>
                 </div>
               </div>
@@ -6866,7 +6892,7 @@ export default function AdminConsole() {
 
                     <div>
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px', color: '#cbd5e1' }}>
-                        Admin Email (Gmail for Recovery OTP)
+                        Admin Email (for Notifications & Alerts)
                       </label>
                       <input
                         type="email"
@@ -7061,64 +7087,37 @@ export default function AdminConsole() {
                         </div>
                         <p style={{ fontSize: '13px', color: '#94a3b8', margin: '6px 0 0', lineHeight: 1.5, wordBreak: 'break-word' }}>
                           {adminProfile.totp_enabled
-                            ? 'Two-factor authentication is active. You can log in via Authenticator (or recovery code) without entering your password.'
+                            ? 'Two-factor authentication is active. You can log in via Authenticator without entering your password.'
                             : 'Secure your admin account using Google Authenticator, Microsoft Authenticator, or 1Password. Once enabled, you can sign in directly with a 6-digit TOTP code.'}
                         </p>
                       </div>
 
                       <div>
                         {adminProfile.totp_enabled ? (
-                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setRegenPassword('');
-                                setRegenCode('');
-                                setRegenCodes([]);
-                                setRegenMsg(null);
-                                setShow2faRegenModal(true);
-                              }}
-                              style={{
-                                padding: '9px 16px',
-                                borderRadius: '10px',
-                                background: '#1e293b',
-                                color: '#e2e8f0',
-                                fontWeight: 600,
-                                fontSize: '13px',
-                                border: '1px solid #334155',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                              }}
-                            >
-                              <RefreshCw size={14} /> Regenerate Codes
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setDisablePassword('');
-                                setDisableCode('');
-                                setDisableMsg(null);
-                                setShow2faDisableModal(true);
-                              }}
-                              style={{
-                                padding: '9px 16px',
-                                borderRadius: '10px',
-                                background: 'rgba(239, 68, 68, 0.1)',
-                                color: '#f87171',
-                                fontWeight: 600,
-                                fontSize: '13px',
-                                border: '1px solid rgba(239, 68, 68, 0.3)',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                              }}
-                            >
-                              <X size={14} /> Disable 2FA
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDisablePassword('');
+                              setDisableCode('');
+                              setDisableMsg(null);
+                              setShow2faDisableModal(true);
+                            }}
+                            style={{
+                              padding: '9px 16px',
+                              borderRadius: '10px',
+                              background: 'rgba(239, 68, 68, 0.1)',
+                              color: '#f87171',
+                              fontWeight: 600,
+                              fontSize: '13px',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                            }}
+                          >
+                            <X size={14} /> Disable 2FA
+                          </button>
                         ) : (
                           <button
                             type="button"
@@ -7143,33 +7142,6 @@ export default function AdminConsole() {
                         )}
                       </div>
                     </div>
-
-                    {/* Active 2FA Details / Recovery Codes Info */}
-                    {adminProfile.totp_enabled && (
-                      <div
-                        style={{
-                          background: '#0b0f19',
-                          border: '1px solid #1e293b',
-                          borderRadius: '12px',
-                          padding: '14px 18px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '12px',
-                          flexWrap: 'wrap',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <Key size={16} color="#10b981" />
-                          <span style={{ fontSize: '13px', color: '#cbd5e1' }}>
-                            Emergency Recovery Codes: <strong style={{ color: '#10b981' }}>{adminProfile.remaining_recovery_codes || 0} of 10 remaining</strong>
-                          </span>
-                        </div>
-                        <span style={{ fontSize: '12px', color: '#64748b' }}>
-                          Each emergency backup code can only be used once.
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </AccordionSectionCard>
               </div>
@@ -7237,12 +7209,10 @@ export default function AdminConsole() {
                       <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc' }}>
                         {setupStep === 'password_verify' && 'Confirm Password'}
                         {setupStep === 'qr_scan' && 'Scan QR Code'}
-                        {setupStep === 'show_recovery' && 'Save Emergency Recovery Codes'}
                       </h3>
                       <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
                         {setupStep === 'password_verify' && 'Enter your administrative password to initiate two-factor setup.'}
                         {setupStep === 'qr_scan' && 'Scan with Google Authenticator, 1Password, or Microsoft Authenticator.'}
-                        {setupStep === 'show_recovery' && 'Store these 10 one-time recovery codes securely. Each can be used once if you lose access to your authenticator.'}
                       </p>
                     </div>
 
@@ -7449,120 +7419,6 @@ export default function AdminConsole() {
                         </div>
                       </form>
                     )}
-
-                    {/* Step 3: Emergency Recovery Codes */}
-                    {setupStep === 'show_recovery' && (
-                      <div>
-                        <div
-                          style={{
-                            background: 'rgba(234, 179, 8, 0.1)',
-                            border: '1px solid rgba(234, 179, 8, 0.3)',
-                            borderRadius: '12px',
-                            padding: '12px 14px',
-                            marginBottom: '16px',
-                            fontSize: '12.5px',
-                            color: '#facc15',
-                          }}
-                        >
-                          ⚠️ <strong>Copy or download these 10 recovery codes now.</strong> If you ever lose your authenticator phone, these codes are your only backup access method.
-                        </div>
-
-                        <div
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr 1fr',
-                            gap: '8px',
-                            background: '#0b0f19',
-                            border: '1px solid #1e293b',
-                            borderRadius: '12px',
-                            padding: '14px',
-                            marginBottom: '16px',
-                          }}
-                        >
-                          {setupRecoveryCodes.map((rc, idx) => (
-                            <div
-                              key={idx}
-                              style={{
-                                fontFamily: 'monospace',
-                                fontSize: '13px',
-                                color: '#38bdf8',
-                                padding: '6px 10px',
-                                background: '#131b2e',
-                                borderRadius: '6px',
-                                textAlign: 'center',
-                                border: '1px solid #1e293b',
-                              }}
-                            >
-                              {rc}
-                            </div>
-                          ))}
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyRecoveryCodes(setupRecoveryCodes)}
-                            style={{
-                              flex: 1,
-                              padding: '10px',
-                              borderRadius: '8px',
-                              background: '#1e293b',
-                              border: '1px solid #334155',
-                              color: '#cbd5e1',
-                              fontWeight: 600,
-                              fontSize: '13px',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '6px',
-                            }}
-                          >
-                            {copiedCodes ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
-                            {copiedCodes ? 'Copied All' : 'Copy All'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDownloadRecoveryCodes(setupRecoveryCodes)}
-                            style={{
-                              flex: 1,
-                              padding: '10px',
-                              borderRadius: '8px',
-                              background: '#1e293b',
-                              border: '1px solid #334155',
-                              color: '#cbd5e1',
-                              fontWeight: 600,
-                              fontSize: '13px',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '6px',
-                            }}
-                          >
-                            <Download size={14} /> Download (.txt)
-                          </button>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => setShow2faSetupModal(false)}
-                          style={{
-                            width: '100%',
-                            padding: '12px',
-                            borderRadius: '10px',
-                            background: '#10b981',
-                            color: '#ffffff',
-                            fontWeight: 700,
-                            fontSize: '14px',
-                            border: 'none',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          I Have Safely Saved My Codes
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
@@ -7678,13 +7534,14 @@ export default function AdminConsole() {
 
                       <div style={{ marginBottom: '18px' }}>
                         <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#e2e8f0', marginBottom: '6px' }}>
-                          6-Digit Code or Recovery Code
+                          6-Digit Authenticator Code
                         </label>
                         <input
                           type="text"
-                          placeholder="e.g. 123456 or XXXXX-XXXXX"
+                          maxLength={6}
+                          placeholder="e.g. 123456"
                           value={disableCode}
-                          onChange={(e) => setDisableCode(e.target.value)}
+                          onChange={(e) => setDisableCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                           style={{
                             width: '100%',
                             padding: '12px 14px',
@@ -7735,275 +7592,6 @@ export default function AdminConsole() {
                         </button>
                       </div>
                     </form>
-                  </div>
-                </div>
-              )}
-
-              {/* MODAL: REGENERATE RECOVERY CODES */}
-              {show2faRegenModal && (
-                <div
-                  style={{
-                    position: 'fixed',
-                    inset: 0,
-                    background: 'rgba(0,0,0,0.75)',
-                    backdropFilter: 'blur(6px)',
-                    zIndex: 1000,
-                    display: 'grid',
-                    placeItems: 'center',
-                    padding: '16px',
-                  }}
-                >
-                  <div
-                    style={{
-                      background: 'rgba(19, 24, 36, 0.95)',
-                      backdropFilter: 'blur(24px)',
-                      border: '1px solid rgba(255, 255, 255, 0.12)',
-                      borderRadius: '20px',
-                      padding: '28px 24px',
-                      maxWidth: '480px',
-                      width: '100%',
-                      boxSizing: 'border-box',
-                      boxShadow: '0 24px 60px rgba(0, 0, 0, 0.7)',
-                      position: 'relative',
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setShow2faRegenModal(false)}
-                      style={{
-                        position: 'absolute',
-                        top: '18px',
-                        right: '18px',
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#94a3b8',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <X size={20} />
-                    </button>
-
-                    <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                      <div
-                        style={{
-                          width: '48px',
-                          height: '48px',
-                          borderRadius: '14px',
-                          background: 'rgba(16, 185, 129, 0.15)',
-                          color: '#10b981',
-                          display: 'grid',
-                          placeItems: 'center',
-                          margin: '0 auto 12px',
-                          border: '1px solid rgba(16, 185, 129, 0.3)',
-                        }}
-                      >
-                        <RefreshCw size={24} />
-                      </div>
-                      <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc' }}>
-                        {regenCodes.length > 0 ? 'New Recovery Codes Generated' : 'Regenerate Recovery Codes'}
-                      </h3>
-                      <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
-                        {regenCodes.length > 0
-                          ? 'Your previous recovery codes have been revoked. Store these 10 new codes safely.'
-                          : 'Enter your password or current authenticator code to generate 10 new emergency backup codes.'}
-                      </p>
-                    </div>
-
-                    {regenMsg && (
-                      <div
-                        style={{
-                          padding: '10px 14px',
-                          borderRadius: '10px',
-                          marginBottom: '16px',
-                          fontSize: '13px',
-                          fontWeight: 600,
-                          background: regenMsg.type === 'success' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
-                          color: regenMsg.type === 'success' ? '#34d399' : '#f87171',
-                          border: `1px solid ${regenMsg.type === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
-                        }}
-                      >
-                        {regenMsg.text}
-                      </div>
-                    )}
-
-                    {regenCodes.length === 0 ? (
-                      <form onSubmit={handleRegenerateCodes}>
-                        <div style={{ marginBottom: '14px' }}>
-                          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#e2e8f0', marginBottom: '6px' }}>
-                            Admin Password (or 6-Digit Authenticator Code)
-                          </label>
-                          <input
-                            type="password"
-                            autoFocus
-                            placeholder="Enter password..."
-                            value={regenPassword}
-                            onChange={(e) => setRegenPassword(e.target.value)}
-                            style={{
-                              width: '100%',
-                              padding: '12px 14px',
-                              borderRadius: '10px',
-                              background: '#0b0f19',
-                              border: '1px solid #334155',
-                              color: '#f8fafc',
-                              fontSize: '14px',
-                              boxSizing: 'border-box',
-                              marginBottom: '10px',
-                            }}
-                          />
-                          <input
-                            type="text"
-                            maxLength={6}
-                            placeholder="...or 6-digit authenticator code"
-                            value={regenCode}
-                            onChange={(e) => setRegenCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                            style={{
-                              width: '100%',
-                              padding: '12px 14px',
-                              borderRadius: '10px',
-                              background: '#0b0f19',
-                              border: '1px solid #334155',
-                              color: '#f8fafc',
-                              fontSize: '14px',
-                              boxSizing: 'border-box',
-                            }}
-                          />
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                          <button
-                            type="button"
-                            onClick={() => setShow2faRegenModal(false)}
-                            style={{
-                              flex: 1,
-                              padding: '12px',
-                              borderRadius: '10px',
-                              background: '#1f2937',
-                              color: '#e2e8f0',
-                              fontWeight: 600,
-                              fontSize: '13.5px',
-                              border: 'none',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="submit"
-                            disabled={regenLoading || (!regenPassword && !regenCode)}
-                            style={{
-                              flex: 2,
-                              padding: '12px',
-                              borderRadius: '10px',
-                              background: '#10b981',
-                              color: '#ffffff',
-                              fontWeight: 700,
-                              fontSize: '13.5px',
-                              border: 'none',
-                              cursor: regenLoading || (!regenPassword && !regenCode) ? 'not-allowed' : 'pointer',
-                            }}
-                          >
-                            {regenLoading ? 'Generating...' : 'Generate 10 New Codes'}
-                          </button>
-                        </div>
-                      </form>
-                    ) : (
-                      <div>
-                        <div
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr 1fr',
-                            gap: '8px',
-                            background: '#0b0f19',
-                            border: '1px solid #1e293b',
-                            borderRadius: '12px',
-                            padding: '14px',
-                            marginBottom: '16px',
-                          }}
-                        >
-                          {regenCodes.map((rc, idx) => (
-                            <div
-                              key={idx}
-                              style={{
-                                fontFamily: 'monospace',
-                                fontSize: '13px',
-                                color: '#38bdf8',
-                                padding: '6px 10px',
-                                background: '#131b2e',
-                                borderRadius: '6px',
-                                textAlign: 'center',
-                                border: '1px solid #1e293b',
-                              }}
-                            >
-                              {rc}
-                            </div>
-                          ))}
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyRecoveryCodes(regenCodes)}
-                            style={{
-                              flex: 1,
-                              padding: '10px',
-                              borderRadius: '8px',
-                              background: '#1e293b',
-                              border: '1px solid #334155',
-                              color: '#cbd5e1',
-                              fontWeight: 600,
-                              fontSize: '13px',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '6px',
-                            }}
-                          >
-                            {copiedCodes ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
-                            {copiedCodes ? 'Copied All' : 'Copy All'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDownloadRecoveryCodes(regenCodes)}
-                            style={{
-                              flex: 1,
-                              padding: '10px',
-                              borderRadius: '8px',
-                              background: '#1e293b',
-                              border: '1px solid #334155',
-                              color: '#cbd5e1',
-                              fontWeight: 600,
-                              fontSize: '13px',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '6px',
-                            }}
-                          >
-                            <Download size={14} /> Download (.txt)
-                          </button>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => setShow2faRegenModal(false)}
-                          style={{
-                            width: '100%',
-                            padding: '12px',
-                            borderRadius: '10px',
-                            background: '#10b981',
-                            color: '#ffffff',
-                            fontWeight: 700,
-                            fontSize: '14px',
-                            border: 'none',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          I Have Safely Saved My Codes
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}

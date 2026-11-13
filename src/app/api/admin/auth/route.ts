@@ -12,9 +12,6 @@ import {
   verifyTOTP,
   verifyTOTPWithStep,
   generateBase32Secret,
-  generateRecoveryCodes,
-  hashRecoveryCode,
-  verifyRecoveryCode,
   checkPasswordDoorLockout,
   checkAuthenticatorDoorLockout,
 } from '@/lib/totp';
@@ -94,6 +91,18 @@ export async function POST(req: NextRequest) {
           { status: 503 }
         );
       }
+    }
+
+    // Invalidate previously issued backup hashes if present (fully removed from platform)
+    if (account?.totp_recovery_hashes && account.totp_recovery_hashes !== '[]') {
+      try {
+        await sql`
+          UPDATE admin_account
+          SET totp_recovery_hashes = '[]', updated_at = CURRENT_TIMESTAMP
+          WHERE id = ${account.id} AND totp_recovery_hashes != '[]';
+        `;
+        account.totp_recovery_hashes = '[]';
+      } catch {}
     }
 
     // =========================================================================
@@ -207,7 +216,7 @@ export async function POST(req: NextRequest) {
     }
 
     // =========================================================================
-    // DOOR 2: AUTHENTICATOR LOGIN (TOTP / Recovery Code, Password Door Stays Open)
+    // DOOR 2: AUTHENTICATOR LOGIN (RFC 6238 TOTP, Password Door Stays Open)
     // =========================================================================
     if (action === 'login_totp') {
       // 1. Check if 2FA is enrolled
@@ -251,9 +260,7 @@ export async function POST(req: NextRequest) {
       }
 
       let isValid = false;
-      let loginMethod = 'authenticator';
       let matchedStep: number | null = null;
-      let updatedRecoveryHashesJson: string | null = null;
 
       // 1) Try TOTP with Anti-Replay check
       const totpResult = verifyTOTPWithStep(
@@ -265,7 +272,6 @@ export async function POST(req: NextRequest) {
 
       if (totpResult.valid) {
         isValid = true;
-        loginMethod = 'authenticator';
         matchedStep = totpResult.step ?? null;
       } else if (totpResult.reason === 'replay') {
         // Replayed token
@@ -301,33 +307,6 @@ export async function POST(req: NextRequest) {
           },
           { status: isNewlyLocked ? 403 : 401 }
         );
-      } else {
-        // 2) Try emergency recovery codes
-        let recoveryList: Array<{ hash: string; used?: boolean; used_at?: string }> = [];
-        try {
-          if (typeof account.totp_recovery_hashes === 'string' && account.totp_recovery_hashes.trim()) {
-            recoveryList = JSON.parse(account.totp_recovery_hashes);
-          } else if (Array.isArray(account.totp_recovery_hashes)) {
-            recoveryList = account.totp_recovery_hashes;
-          }
-        } catch {}
-
-        let matchedIdx = -1;
-        for (let i = 0; i < recoveryList.length; i++) {
-          const item = recoveryList[i];
-          if (!item.used && verifyRecoveryCode(rawCode, item.hash)) {
-            matchedIdx = i;
-            break;
-          }
-        }
-
-        if (matchedIdx >= 0) {
-          isValid = true;
-          loginMethod = 'recovery_code';
-          recoveryList[matchedIdx].used = true;
-          recoveryList[matchedIdx].used_at = new Date().toISOString();
-          updatedRecoveryHashesJson = JSON.stringify(recoveryList);
-        }
       }
 
       if (!isValid) {
@@ -351,10 +330,10 @@ export async function POST(req: NextRequest) {
         const remaining = Math.max(0, maxAttempts - currentAttempts);
         const errorMsg = isNewlyLocked
           ? 'Authenticator login is locked for ~15 min — use Password.'
-          : `Invalid verification or recovery code. (${remaining} attempt${remaining === 1 ? '' : 's'} remaining before authenticator lockout)`;
+          : `Invalid verification code. (${remaining} attempt${remaining === 1 ? '' : 's'} remaining before authenticator lockout)`;
         const errorMsgBn = isNewlyLocked
           ? 'অথেন্টিকেটর লগইন সাময়িকভাবে লক করা হয়েছে (~১৫ মিনিট) — দয়া করে পাসওয়ার্ড দিয়ে লগইন করুন।'
-          : `ভুল কোড বা রিকভারি কোড। (আর ${remaining} বার চেষ্টার সুযোগ আছে)`;
+          : `ভুল অথেন্টিকেটর কোড। (আর ${remaining} বার চেষ্টার সুযোগ আছে)`;
 
         return NextResponse.json(
           {
@@ -369,36 +348,15 @@ export async function POST(req: NextRequest) {
       }
 
       // Successful Authenticator Login
-      if (updatedRecoveryHashesJson !== null) {
-        await sql`
-          UPDATE admin_account
-          SET
-            totp_failed_attempts = 0,
-            totp_locked_until = NULL,
-            totp_recovery_hashes = ${updatedRecoveryHashesJson},
-            updated_at = CURRENT_TIMESTAMP
-          WHERE id = ${account.id};
-        `;
-      } else if (matchedStep !== null) {
-        await sql`
-          UPDATE admin_account
-          SET
-            totp_failed_attempts = 0,
-            totp_locked_until = NULL,
-            last_totp_step = ${matchedStep},
-            updated_at = CURRENT_TIMESTAMP
-          WHERE id = ${account.id};
-        `;
-      } else {
-        await sql`
-          UPDATE admin_account
-          SET
-            totp_failed_attempts = 0,
-            totp_locked_until = NULL,
-            updated_at = CURRENT_TIMESTAMP
-          WHERE id = ${account.id};
-        `;
-      }
+      await sql`
+        UPDATE admin_account
+        SET
+          totp_failed_attempts = 0,
+          totp_locked_until = NULL,
+          last_totp_step = ${matchedStep},
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${account.id};
+      `;
 
       const remember = body.remember !== false;
       const sessionToken = createAdminSessionToken(
@@ -409,7 +367,7 @@ export async function POST(req: NextRequest) {
       const res = NextResponse.json({
         success: true,
         message: 'Authenticated successfully via Authenticator',
-        login_method: loginMethod,
+        login_method: 'authenticator',
         admin: {
           username: account.username,
           email: account.email,
@@ -444,15 +402,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      let countRemaining = 0;
-      try {
-        const hashes =
-          typeof account.totp_recovery_hashes === 'string'
-            ? JSON.parse(account.totp_recovery_hashes || '[]')
-            : account.totp_recovery_hashes || [];
-        countRemaining = Array.isArray(hashes) ? hashes.filter((h: any) => !h.used).length : 0;
-      } catch {}
-
       return NextResponse.json({
         success: true,
         profile: {
@@ -461,7 +410,6 @@ export async function POST(req: NextRequest) {
           phone: account.phone,
           updated_at: account.updated_at,
           totp_enabled: Boolean(account.totp_enabled),
-          remaining_recovery_codes: countRemaining,
         },
       });
     }
@@ -546,19 +494,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
       }
 
-      let countRemaining = 0;
-      try {
-        const hashes =
-          typeof account.totp_recovery_hashes === 'string'
-            ? JSON.parse(account.totp_recovery_hashes || '[]')
-            : account.totp_recovery_hashes || [];
-        countRemaining = Array.isArray(hashes) ? hashes.filter((h: any) => !h.used).length : 0;
-      } catch {}
-
       return NextResponse.json({
         success: true,
         enabled: Boolean(account.totp_enabled),
-        remaining_recovery_codes: countRemaining,
       });
     }
 
@@ -613,7 +551,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Enable: verifies live code against setup_token, stores secret, generates 10 recovery codes
+    // Enable: verifies live code against setup_token, stores secret
     if (action === '2fa_enable') {
       const session = verifyAdminRequest(req);
       if (!session) {
@@ -669,19 +607,12 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Generate 10 high-entropy recovery codes
-      const recoveryCodes = generateRecoveryCodes(10);
-      const recoveryObjects = recoveryCodes.map((rc) => ({
-        hash: hashRecoveryCode(rc),
-        used: false,
-      }));
-
       await sql`
         UPDATE admin_account
         SET
           totp_secret = ${setup_token},
           totp_enabled = true,
-          totp_recovery_hashes = ${JSON.stringify(recoveryObjects)},
+          totp_recovery_hashes = '[]',
           totp_failed_attempts = 0,
           totp_locked_until = NULL,
           updated_at = CURRENT_TIMESTAMP
@@ -692,11 +623,10 @@ export async function POST(req: NextRequest) {
         success: true,
         message: 'Two-Factor Authentication enabled successfully!',
         message_bn: 'টু-ফ্যাক্টর অথেন্টিকেশন সফলভাবে সক্রিয় হয়েছে!',
-        recovery_codes: recoveryCodes,
       });
     }
 
-    // Disable: requires password AND valid TOTP/recovery code
+    // Disable: requires password AND valid TOTP
     if (action === '2fa_disable') {
       const session = verifyAdminRequest(req);
       if (!session) {
@@ -729,32 +659,14 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      let isCodeValid = false;
-      if (account.totp_secret && verifyTOTP(code, account.totp_secret)) {
-        isCodeValid = true;
-      } else {
-        try {
-          const list =
-            typeof account.totp_recovery_hashes === 'string'
-              ? JSON.parse(account.totp_recovery_hashes || '[]')
-              : account.totp_recovery_hashes || [];
-          if (Array.isArray(list)) {
-            for (const item of list) {
-              if (!item.used && verifyRecoveryCode(code, item.hash)) {
-                isCodeValid = true;
-                break;
-              }
-            }
-          }
-        } catch {}
-      }
+      const isCodeValid = Boolean(account.totp_secret && verifyTOTP(code, account.totp_secret));
 
       if (!isCodeValid) {
         return NextResponse.json(
           {
             success: false,
-            message: 'Invalid verification or recovery code.',
-            message_bn: 'ভুল অথেন্টিকেটর বা রিকভারি কোড।',
+            message: 'Invalid verification code.',
+            message_bn: 'ভুল ভেরিফিকেশন কোড।',
           },
           { status: 400 }
         );
@@ -777,67 +689,6 @@ export async function POST(req: NextRequest) {
         success: true,
         message: 'Two-Factor Authentication disabled successfully',
         message_bn: 'টু-ফ্যাক্টর অথেন্টিকেশন সফলভাবে নিষ্ক্রিয় করা হয়েছে।',
-      });
-    }
-
-    // Regenerate Recovery Codes: requires password OR valid TOTP
-    if (action === '2fa_regenerate_recovery') {
-      const session = verifyAdminRequest(req);
-      if (!session) {
-        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-      }
-
-      const currentPass = (body.current_password || body.password || body.passcode || '').trim();
-      const code = (body.code || body.totp_code || '').trim();
-
-      if (!currentPass && !code) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: 'Password or verification code required to regenerate recovery codes.',
-            message_bn: 'রিকভারি কোড পুনরায় তৈরি করতে পাসওয়ার্ড বা কোড প্রদান করুন।',
-          },
-          { status: 400 }
-        );
-      }
-
-      let isAuthed = false;
-      if (currentPass && (await verifyPassword(currentPass, account.passcode))) {
-        isAuthed = true;
-      } else if (code && account.totp_secret && verifyTOTP(code, account.totp_secret)) {
-        isAuthed = true;
-      }
-
-      if (!isAuthed) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: 'Authentication failed.',
-            message_bn: 'পাসওয়ার্ড বা কোড সঠিক নয়।',
-          },
-          { status: 401 }
-        );
-      }
-
-      const newCodes = generateRecoveryCodes(10);
-      const newObjects = newCodes.map((rc) => ({
-        hash: hashRecoveryCode(rc),
-        used: false,
-      }));
-
-      await sql`
-        UPDATE admin_account
-        SET
-          totp_recovery_hashes = ${JSON.stringify(newObjects)},
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = ${account.id};
-      `;
-
-      return NextResponse.json({
-        success: true,
-        message: 'New recovery codes generated successfully',
-        message_bn: 'নতুন রিকভারি কোড সফলভাবে তৈরি হয়েছে। পুরোনো কোডগুলো বাতিল করা হয়েছে।',
-        recovery_codes: newCodes,
       });
     }
 
