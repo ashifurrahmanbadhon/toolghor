@@ -215,7 +215,14 @@ export default function AdminConsole() {
   const [totpError, setTotpError] = useState(false);
   const [totpErrorMsg, setTotpErrorMsg] = useState('');
   const [totpLoading, setTotpLoading] = useState(false);
-  const [totpEnrolledOnServer, setTotpEnrolledOnServer] = useState<boolean | null>(null);
+  const [totpEnrolledOnServer, setTotpEnrolledOnServer] = useState<boolean | null>(() => {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('toolghor_admin_totp_enrolled');
+      if (cached === 'true') return true;
+      if (cached === 'false') return false;
+    }
+    return null;
+  });
 
   // Admin Profile & Security State
   const [adminProfile, setAdminProfile] = useState<{
@@ -223,11 +230,19 @@ export default function AdminConsole() {
     email: string;
     phone: string;
     totp_enabled?: boolean;
-  }>({
-    username: 'admin',
-    email: 'ashifur.badhon@gmail.com',
-    phone: '+8801521417284',
-    totp_enabled: false,
+  }>(() => {
+    let initialTotp: boolean | undefined = undefined;
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('toolghor_admin_totp_enrolled');
+      if (cached === 'true') initialTotp = true;
+      if (cached === 'false') initialTotp = false;
+    }
+    return {
+      username: 'admin',
+      email: 'ashifur.badhon@gmail.com',
+      phone: '+8801521417284',
+      totp_enabled: initialTotp,
+    };
   });
   const [profilePassCurrent, setProfilePassCurrent] = useState('');
   const [profilePassNew, setProfilePassNew] = useState('');
@@ -663,8 +678,32 @@ export default function AdminConsole() {
     setTimeout(() => setSaveToast(null), 3500);
   };
 
+  // Dedicated helper to fetch admin profile & 2FA status
+  const fetchProfile = async () => {
+    try {
+      const pRes = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get_profile' }),
+      });
+      if (pRes.ok) {
+        const pData = await pRes.json();
+        if (pData.success && pData.profile) {
+          setAdminProfile((prev) => ({ ...prev, ...pData.profile }));
+          if (typeof pData.profile.totp_enabled === 'boolean') {
+            setTotpEnrolledOnServer(pData.profile.totp_enabled);
+            try {
+              localStorage.setItem('toolghor_admin_totp_enrolled', String(pData.profile.totp_enabled));
+            } catch {}
+          }
+        }
+      }
+    } catch {}
+  };
+
   // Fetch all database tables
   const fetchAllSections = async () => {
+    fetchProfile();
     try {
       setLoadingData(true);
       const res = await fetch('/api/admin/data');
@@ -772,20 +811,7 @@ export default function AdminConsole() {
       } else {
         setDbConnected(false);
       }
-      // Also fetch admin profile
-      try {
-        const pRes = await fetch('/api/admin/auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'get_profile' }),
-        });
-        if (pRes.ok) {
-          const pData = await pRes.json();
-          if (pData.success && pData.profile) {
-            setAdminProfile(pData.profile);
-          }
-        }
-      } catch {}
+      await fetchProfile();
     } catch {
       setDbConnected(false);
     } finally {
@@ -817,15 +843,32 @@ export default function AdminConsole() {
       .then((res) => res.json())
       .then((data) => {
         if (data && data.success) {
-          setTotpEnrolledOnServer(Boolean(data.totp_enabled));
+          const isTotp = Boolean(data.totp_enabled);
+          setTotpEnrolledOnServer(isTotp);
+          setAdminProfile((prev) => ({
+            ...prev,
+            totp_enabled: isTotp,
+            ...(data.user?.username ? { username: data.user.username } : {}),
+            ...(data.user?.email ? { email: data.user.email } : {}),
+          }));
+          try {
+            localStorage.setItem('toolghor_admin_totp_enrolled', String(isTotp));
+          } catch {}
           // If password door is locked and 2FA is active, switch to Authenticator door
-          if (data.totp_enabled && data.password_locked && !data.totp_locked) {
+          if (isTotp && data.password_locked && !data.totp_locked) {
             setLoginDoor('authenticator');
           }
         }
       })
       .catch(() => {});
   }, []);
+
+  // Fetch fresh profile whenever entering Profile & Security tab
+  useEffect(() => {
+    if (activeTab === 'profile' && isAuthenticated) {
+      fetchProfile();
+    }
+  }, [activeTab, isAuthenticated]);
 
   // DOOR 1: Password Login Submission
   const handleLogin = async (e: React.FormEvent) => {
@@ -862,6 +905,12 @@ export default function AdminConsole() {
         setPinErrorMsg('');
         if (data.admin) {
           setAdminProfile((prev) => ({ ...prev, ...data.admin }));
+          if (typeof data.admin.totp_enabled === 'boolean') {
+            setTotpEnrolledOnServer(data.admin.totp_enabled);
+            try {
+              localStorage.setItem('toolghor_admin_totp_enrolled', String(data.admin.totp_enabled));
+            } catch {}
+          }
         }
         fetchAllSections();
       } else {
@@ -982,6 +1031,12 @@ export default function AdminConsole() {
         setOtpBoxes(['', '', '', '', '', '']);
         if (data.admin) {
           setAdminProfile((prev) => ({ ...prev, ...data.admin }));
+          if (typeof data.admin.totp_enabled === 'boolean') {
+            setTotpEnrolledOnServer(data.admin.totp_enabled);
+            try {
+              localStorage.setItem('toolghor_admin_totp_enrolled', String(data.admin.totp_enabled));
+            } catch {}
+          }
         }
         fetchAllSections();
       } else {
@@ -1029,6 +1084,15 @@ export default function AdminConsole() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
+        if (data.profile) {
+          setAdminProfile((prev) => ({ ...prev, ...data.profile }));
+          if (typeof data.profile.totp_enabled === 'boolean') {
+            setTotpEnrolledOnServer(data.profile.totp_enabled);
+            try {
+              localStorage.setItem('toolghor_admin_totp_enrolled', String(data.profile.totp_enabled));
+            } catch {}
+          }
+        }
         setProfileMsg({ type: 'success', text: 'Profile & credentials updated successfully in database!' });
         showNotification('Profile updated in database!');
         setProfilePassCurrent('');
@@ -1115,6 +1179,9 @@ export default function AdminConsole() {
           totp_enabled: true,
         }));
         setTotpEnrolledOnServer(true);
+        try {
+          localStorage.setItem('toolghor_admin_totp_enrolled', 'true');
+        } catch {}
         showNotification('Two-Factor Authentication activated successfully!');
       } else {
         setSetupMsg({ type: 'error', text: data.message || 'Invalid verification code.' });
@@ -1154,6 +1221,9 @@ export default function AdminConsole() {
           totp_enabled: false,
         }));
         setTotpEnrolledOnServer(false);
+        try {
+          localStorage.setItem('toolghor_admin_totp_enrolled', 'false');
+        } catch {}
         showNotification('Two-Factor Authentication disabled.');
       } else {
         setDisableMsg({ type: 'error', text: data.message || 'Failed to disable 2FA.' });
@@ -7060,90 +7130,139 @@ export default function AdminConsole() {
 
               {/* Section 3: Two-Factor Authentication (2FA) */}
               <div style={{ marginTop: '24px' }}>
-                <AccordionSectionCard
-                  id="profile-2fa-card"
-                  title="Two-Factor Authentication (2FA)"
-                  badge={adminProfile.totp_enabled ? 'Active' : 'Disabled'}
-                  collapsible={false}
-                >
-                  <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', borderBottom: '1px solid #1f2937', paddingBottom: '16px', marginBottom: '18px' }}>
-                      <div style={{ flex: 1, minWidth: '240px' }}>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', wordBreak: 'break-word' }}>
-                          <Smartphone size={18} color="#10b981" /> Authenticator App (RFC 6238 TOTP)
-                          <span
-                            style={{
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              padding: '2px 8px',
-                              borderRadius: '999px',
-                              background: adminProfile.totp_enabled ? 'rgba(16, 185, 129, 0.2)' : 'rgba(148, 163, 184, 0.2)',
-                              color: adminProfile.totp_enabled ? '#34d399' : '#94a3b8',
-                              border: `1px solid ${adminProfile.totp_enabled ? 'rgba(16, 185, 129, 0.4)' : 'rgba(148, 163, 184, 0.3)'}`,
-                            }}
-                          >
-                            {adminProfile.totp_enabled ? 'ACTIVE' : 'DISABLED'}
-                          </span>
-                        </div>
-                        <p style={{ fontSize: '13px', color: '#94a3b8', margin: '6px 0 0', lineHeight: 1.5, wordBreak: 'break-word' }}>
-                          {adminProfile.totp_enabled
-                            ? 'Two-factor authentication is active. You can log in via Authenticator without entering your password.'
-                            : 'Secure your admin account using Google Authenticator, Microsoft Authenticator, or 1Password. Once enabled, you can sign in directly with a 6-digit TOTP code.'}
-                        </p>
-                      </div>
+                {(() => {
+                  const is2faActive = adminProfile.totp_enabled === true || totpEnrolledOnServer === true;
+                  const is2faKnown = adminProfile.totp_enabled !== undefined || totpEnrolledOnServer !== null;
 
-                      <div>
-                        {adminProfile.totp_enabled ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDisablePassword('');
-                              setDisableCode('');
-                              setDisableMsg(null);
-                              setShow2faDisableModal(true);
-                            }}
-                            style={{
-                              padding: '9px 16px',
-                              borderRadius: '10px',
-                              background: 'rgba(239, 68, 68, 0.1)',
-                              color: '#f87171',
-                              fontWeight: 600,
-                              fontSize: '13px',
-                              border: '1px solid rgba(239, 68, 68, 0.3)',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                            }}
-                          >
-                            <X size={14} /> Disable 2FA
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={handleOpen2faSetup}
-                            style={{
-                              padding: '10px 20px',
-                              borderRadius: '10px',
-                              background: '#10b981',
-                              color: '#ffffff',
-                              fontWeight: 700,
-                              fontSize: '13.5px',
-                              border: 'none',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-                            }}
-                          >
-                            <Shield size={15} /> Enable 2FA Authenticator
-                          </button>
-                        )}
+                  return (
+                    <AccordionSectionCard
+                      id="profile-2fa-card"
+                      title="Two-Factor Authentication (2FA)"
+                      badge={
+                        !is2faKnown
+                          ? 'Loading...'
+                          : is2faActive
+                          ? 'Active'
+                          : 'Disabled'
+                      }
+                      collapsible={false}
+                    >
+                      <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', borderBottom: '1px solid #1f2937', paddingBottom: '16px', marginBottom: '18px' }}>
+                          <div style={{ flex: 1, minWidth: '240px' }}>
+                            <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', wordBreak: 'break-word' }}>
+                              <Smartphone size={18} color="#10b981" /> Authenticator App (RFC 6238 TOTP)
+                              <span
+                                style={{
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  padding: '2px 8px',
+                                  borderRadius: '999px',
+                                  background: !is2faKnown
+                                    ? 'rgba(148, 163, 184, 0.1)'
+                                    : is2faActive
+                                    ? 'rgba(16, 185, 129, 0.2)'
+                                    : 'rgba(148, 163, 184, 0.2)',
+                                  color: !is2faKnown
+                                    ? '#94a3b8'
+                                    : is2faActive
+                                    ? '#34d399'
+                                    : '#94a3b8',
+                                  border: `1px solid ${
+                                    !is2faKnown
+                                      ? 'rgba(148, 163, 184, 0.2)'
+                                      : is2faActive
+                                      ? 'rgba(16, 185, 129, 0.4)'
+                                      : 'rgba(148, 163, 184, 0.3)'
+                                  }`,
+                                }}
+                              >
+                                {!is2faKnown ? 'LOADING...' : is2faActive ? 'ACTIVE' : 'DISABLED'}
+                              </span>
+                            </div>
+                            <p style={{ fontSize: '13px', color: '#94a3b8', margin: '6px 0 0', lineHeight: 1.5, wordBreak: 'break-word' }}>
+                              {!is2faKnown
+                                ? 'Checking two-factor authentication status...'
+                                : is2faActive
+                                ? 'Two-factor authentication is active. You can log in via Authenticator without entering your password.'
+                                : 'Secure your admin account using Google Authenticator, Microsoft Authenticator, or 1Password. Once enabled, you can sign in directly with a 6-digit TOTP code.'}
+                            </p>
+                          </div>
+
+                          <div>
+                            {!is2faKnown ? (
+                              <button
+                                type="button"
+                                disabled
+                                style={{
+                                  padding: '10px 18px',
+                                  borderRadius: '10px',
+                                  background: '#1f2937',
+                                  color: '#94a3b8',
+                                  fontWeight: 600,
+                                  fontSize: '13px',
+                                  border: '1px solid #374151',
+                                  cursor: 'not-allowed',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                }}
+                              >
+                                <RefreshCw size={14} className="animate-spin" /> Checking Status...
+                              </button>
+                            ) : is2faActive ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDisablePassword('');
+                                  setDisableCode('');
+                                  setDisableMsg(null);
+                                  setShow2faDisableModal(true);
+                                }}
+                                style={{
+                                  padding: '9px 16px',
+                                  borderRadius: '10px',
+                                  background: 'rgba(239, 68, 68, 0.1)',
+                                  color: '#f87171',
+                                  fontWeight: 600,
+                                  fontSize: '13px',
+                                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                }}
+                              >
+                                <X size={14} /> Disable 2FA
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={handleOpen2faSetup}
+                                style={{
+                                  padding: '10px 20px',
+                                  borderRadius: '10px',
+                                  background: '#10b981',
+                                  color: '#ffffff',
+                                  fontWeight: 700,
+                                  fontSize: '13.5px',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                                }}
+                              >
+                                <Shield size={15} /> Enable 2FA Authenticator
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </AccordionSectionCard>
+                    </AccordionSectionCard>
+                  );
+                })()}
               </div>
 
               {/* MODAL: 2FA SETUP (3-STEP ENROLMENT) */}

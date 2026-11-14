@@ -170,6 +170,7 @@ export async function POST(req: NextRequest) {
             username: account.username,
             email: account.email,
             phone: account.phone,
+            totp_enabled: Boolean(account.totp_enabled),
           },
         });
 
@@ -372,6 +373,7 @@ export async function POST(req: NextRequest) {
           username: account.username,
           email: account.email,
           phone: account.phone,
+          totp_enabled: Boolean(account.totp_enabled),
         },
       });
 
@@ -479,6 +481,7 @@ export async function POST(req: NextRequest) {
           username: account.username,
           email: updatedEmail,
           phone: updatedPhone,
+          totp_enabled: Boolean(account.totp_enabled),
         },
       });
     }

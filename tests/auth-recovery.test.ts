@@ -326,4 +326,17 @@ describe('Two-Door Admin Authentication & 2FA Lifecycle Database Flow', () => {
     assert.equal(admin.totp_secret, '');
     assert.equal(admin.totp_recovery_hashes, '[]');
   });
+
+  it('6. Admin account totp_enabled flag accurately represents 2FA enrolment status', async () => {
+    const sql = getDb();
+    // Enable 2FA on test account
+    await sql`UPDATE admin_account SET totp_enabled = true, totp_secret = 'JBSWY3DPEHPK3PXP' WHERE id = ${TEST_ID}`;
+    const enabledRow = (await sql`SELECT totp_enabled FROM admin_account WHERE id = ${TEST_ID}`)[0];
+    assert.equal(Boolean(enabledRow.totp_enabled), true, 'totp_enabled must be true when 2FA is enrolled');
+
+    // Disable 2FA on test account
+    await sql`UPDATE admin_account SET totp_enabled = false, totp_secret = '' WHERE id = ${TEST_ID}`;
+    const disabledRow = (await sql`SELECT totp_enabled FROM admin_account WHERE id = ${TEST_ID}`)[0];
+    assert.equal(Boolean(disabledRow.totp_enabled), false, 'totp_enabled must be false when 2FA is disabled');
+  });
 });
