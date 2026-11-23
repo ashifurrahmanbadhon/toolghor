@@ -24,10 +24,9 @@ export async function GET(req: NextRequest) {
   try {
     const sql = getDb();
 
-    // Query each section from its own separate table in parallel
-    let rows: any;
-    try {
-      rows = await Promise.all([
+    // Query all sections and supplementary data in a single batched Promise.all round
+    const fetchPrimaryRows = () =>
+      Promise.all([
         sql`SELECT * FROM section_hero WHERE id = 1 LIMIT 1`,
         sql`SELECT * FROM section_announcement WHERE id = 1 LIMIT 1`,
         sql`SELECT * FROM section_categories ORDER BY display_order ASC`,
@@ -38,31 +37,9 @@ export async function GET(req: NextRequest) {
         sql`SELECT slug, count, last_used FROM tool_analytics`,
         sql`SELECT * FROM section_tool_remove_ai_label WHERE id = 1 LIMIT 1`,
       ]);
-    } catch {
-      await initDatabase();
-      rows = await Promise.all([
-        sql`SELECT * FROM section_hero WHERE id = 1 LIMIT 1`,
-        sql`SELECT * FROM section_announcement WHERE id = 1 LIMIT 1`,
-        sql`SELECT * FROM section_categories ORDER BY display_order ASC`,
-        sql`SELECT * FROM section_tools ORDER BY display_order ASC`,
-        sql`SELECT * FROM section_footer_social WHERE id = 1 LIMIT 1`,
-        sql`SELECT * FROM section_creator_about WHERE id = 1 LIMIT 1`,
-        sql`SELECT * FROM section_api_keys WHERE id = 1 LIMIT 1`,
-        sql`SELECT slug, count, last_used FROM tool_analytics`,
-        sql`SELECT * FROM section_tool_remove_ai_label WHERE id = 1 LIMIT 1`,
-      ]);
-    }
 
-    const [heroRows, announcementRows, categoryRows, toolRows, footerRows, creatorRows, apiKeysRows, analyticsRows, removeAiLabelRows] = rows;
-
-    const analyticsMap: Record<string, number> = {};
-    analyticsRows.forEach((r: any) => {
-      analyticsMap[r.slug] = Number(r.count || 0);
-    });
-
-    let periodicAnalytics: Record<string, { this_week: number; last_week: number; this_month: number; last_month: number }> = {};
-    try {
-      const periodicRows = await sql`
+    const fetchPeriodicRows = () =>
+      sql`
         SELECT slug,
           COALESCE(SUM(CASE WHEN used_date >= CURRENT_DATE - INTERVAL '6 days' THEN count ELSE 0 END), 0)::int AS this_week,
           COALESCE(SUM(CASE WHEN used_date >= CURRENT_DATE - INTERVAL '13 days' AND used_date < CURRENT_DATE - INTERVAL '6 days' THEN count ELSE 0 END), 0)::int AS last_week,
@@ -70,7 +47,45 @@ export async function GET(req: NextRequest) {
           COALESCE(SUM(CASE WHEN used_date >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month') AND used_date < DATE_TRUNC('month', CURRENT_DATE) THEN count ELSE 0 END), 0)::int AS last_month
         FROM tool_usage_daily
         GROUP BY slug;
-      `;
+      `.catch(() => []);
+
+    const fetchGuideRows = () =>
+      sql`SELECT * FROM content_guides ORDER BY sort_order ASC, slug ASC;`.catch(() => []);
+
+    const fetchFaqRows = () =>
+      sql`SELECT * FROM content_faq_items ORDER BY scope ASC, sort_order ASC, id ASC;`.catch(() => []);
+
+    const fetchSiteSettingsRows = () =>
+      sql`SELECT key, value FROM site_settings WHERE key = 'content_texts' LIMIT 1;`.catch(() => []);
+
+    const [
+      primaryRows,
+      periodicRows,
+      policySections,
+      guideRows,
+      faqRows,
+      siteSettingsRows,
+    ] = await Promise.all([
+      fetchPrimaryRows().catch(async () => {
+        await initDatabase();
+        return fetchPrimaryRows();
+      }),
+      fetchPeriodicRows(),
+      getAllPolicySections().catch(() => ({})),
+      fetchGuideRows(),
+      fetchFaqRows(),
+      fetchSiteSettingsRows(),
+    ]);
+
+    const [heroRows, announcementRows, categoryRows, toolRows, footerRows, creatorRows, apiKeysRows, analyticsRows, removeAiLabelRows] = primaryRows;
+
+    const analyticsMap: Record<string, number> = {};
+    analyticsRows.forEach((r: any) => {
+      analyticsMap[r.slug] = Number(r.count || 0);
+    });
+
+    const periodicAnalytics: Record<string, { this_week: number; last_week: number; this_month: number; last_month: number }> = {};
+    if (Array.isArray(periodicRows)) {
       periodicRows.forEach((r: any) => {
         periodicAnalytics[r.slug] = {
           this_week: Number(r.this_week || 0),
@@ -79,21 +94,12 @@ export async function GET(req: NextRequest) {
           last_month: Number(r.last_month || 0),
         };
       });
-    } catch {}
+    }
 
-    const policySections = await getAllPolicySections();
-
-    let guideRows: any[] = [];
-    let faqRows: any[] = [];
     let contentTexts = DEFAULT_CONTENT_TEXTS;
-    try {
-      guideRows = await sql`SELECT * FROM content_guides ORDER BY sort_order ASC, slug ASC;`;
-      faqRows = await sql`SELECT * FROM content_faq_items ORDER BY scope ASC, sort_order ASC, id ASC;`;
-      const siteSettingsRows = await sql`SELECT key, value FROM site_settings WHERE key = 'content_texts' LIMIT 1;`.catch(() => []);
-      if (siteSettingsRows && siteSettingsRows[0]?.value) {
-        contentTexts = mergeContentTexts(siteSettingsRows[0].value);
-      }
-    } catch {}
+    if (siteSettingsRows && siteSettingsRows[0]?.value) {
+      contentTexts = mergeContentTexts(siteSettingsRows[0].value);
+    }
 
     return NextResponse.json({
       success: true,

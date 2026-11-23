@@ -40,6 +40,7 @@ import {
   Upload,
   Move,
   RotateCcw,
+  Crop,
   Smartphone,
   Download,
   Copy,
@@ -274,7 +275,17 @@ export default function AdminConsole() {
 
   // Active Menu Tab (Sidebar Navigation)
   const [activeTab, setActiveTab] = useState<MenuTab>('overview');
+  const [visitedTabs, setVisitedTabs] = useState<Set<MenuTab>>(() => new Set<MenuTab>(['overview']));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setVisitedTabs((prev) => {
+      if (prev.has(activeTab)) return prev;
+      const next = new Set(prev);
+      next.add(activeTab);
+      return next;
+    });
+  }, [activeTab]);
 
   // Loading & Database Status
   const [dbConnected, setDbConnected] = useState<boolean | null>(null);
@@ -420,22 +431,42 @@ export default function AdminConsole() {
 
   const isSectionExpanded = (id: string) => activeAccordionCard[activeTab] === id;
 
-  // Creator Photo Reposition & Device Upload State (v44)
-  const [isRepositionOpen, setIsRepositionOpen] = useState(false);
-  const [repositionPan, setRepositionPan] = useState({ x: 50, y: 50 });
-  const [repositionZoom, setRepositionZoom] = useState(1);
-  const isDraggingPhoto = useRef(false);
-  const dragStartPos = useRef({ x: 0, y: 0, startPanX: 50, startPanY: 50 });
+  // Creator Photo Drag+Zoom Editor State (Phase 1)
+  const [isPhotoEditorOpen, setIsPhotoEditorOpen] = useState(false);
+  const [photoEditorSrc, setPhotoEditorSrc] = useState<string>('');
+  const [photoEditorZoom, setPhotoEditorZoom] = useState(1);
+  const [photoEditorPan, setPhotoEditorPan] = useState({ x: 0, y: 0 });
+  const [photoEditorImgMeta, setPhotoEditorImgMeta] = useState<{ width: number; height: number; naturalAspect: number }>({ width: 512, height: 512, naturalAspect: 1 });
+  const isDraggingPhotoEditor = useRef(false);
+  const photoEditorDragStart = useRef({ mouseX: 0, mouseY: 0, panX: 0, panY: 0 });
 
-  const openRepositionEditor = () => {
-    const pos = creatorAbout.photo_position || '50% 50%';
-    const parts = pos.split(/\s+/).map((p) => parseFloat(p.replace('%', '')));
-    setRepositionPan({
-      x: !isNaN(parts[0]) ? parts[0] : 50,
-      y: !isNaN(parts[1]) ? parts[1] : 50,
-    });
-    setRepositionZoom(1);
-    setIsRepositionOpen(true);
+  const FRAME_SIZE = 280;
+
+  const openPhotoEditor = (src: string) => {
+    if (!src) return;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const nw = img.naturalWidth || 512;
+      const nh = img.naturalHeight || 512;
+      setPhotoEditorImgMeta({
+        width: nw,
+        height: nh,
+        naturalAspect: nw / nh,
+      });
+      setPhotoEditorSrc(src);
+      setPhotoEditorZoom(1);
+      setPhotoEditorPan({ x: 0, y: 0 });
+      setIsPhotoEditorOpen(true);
+    };
+    img.onerror = () => {
+      setPhotoEditorImgMeta({ width: 512, height: 512, naturalAspect: 1 });
+      setPhotoEditorSrc('/assets/creator.jpg');
+      setPhotoEditorZoom(1);
+      setPhotoEditorPan({ x: 0, y: 0 });
+      setIsPhotoEditorOpen(true);
+    };
+    img.src = src;
   };
 
   const handleDevicePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -450,50 +481,11 @@ export default function AdminConsole() {
 
     const reader = new FileReader();
     reader.onload = (readEvent) => {
-      const img = new Image();
-      img.onload = () => {
-        const maxDim = 512;
-        let width = img.width;
-        let height = img.height;
-        if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          } else {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        ctx.drawImage(img, 0, 0, width, height);
-
-        let dataUrl = canvas.toDataURL('image/webp', 0.85);
-        if (!dataUrl.startsWith('data:image/webp')) {
-          dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        }
-
-        const sizeKb = Math.round((dataUrl.length * 3) / 4 / 1024);
-        if (sizeKb > 200) {
-          dataUrl = canvas.toDataURL('image/jpeg', 0.65);
-          const retryKb = Math.round((dataUrl.length * 3) / 4 / 1024);
-          if (retryKb > 200) {
-            alert(`Optimized image size (${retryKb} KB) exceeds the 200 KB limit. Please choose a smaller photo.`);
-            e.target.value = '';
-            return;
-          }
-        }
-
-        setCreatorAbout((prev) => ({
-          ...prev,
-          photo_url: dataUrl,
-        }));
-        e.target.value = '';
-      };
-      img.src = readEvent.target?.result as string;
+      const result = readEvent.target?.result as string;
+      if (result) {
+        openPhotoEditor(result);
+      }
+      e.target.value = '';
     };
     reader.readAsDataURL(file);
   };
@@ -504,6 +496,94 @@ export default function AdminConsole() {
       photo_url: null,
       photo_position: '50% 50%',
     }));
+  };
+
+  const handleEditorReset = () => {
+    handleResetPhoto();
+    setIsPhotoEditorOpen(false);
+  };
+
+  const handleEditorZoomChange = (newZoom: number) => {
+    const aspect = photoEditorImgMeta.naturalAspect;
+    let baseWidth = FRAME_SIZE;
+    let baseHeight = FRAME_SIZE;
+    if (aspect >= 1) {
+      baseWidth = FRAME_SIZE * aspect;
+    } else {
+      baseHeight = FRAME_SIZE / aspect;
+    }
+    const newRenderedWidth = baseWidth * newZoom;
+    const newRenderedHeight = baseHeight * newZoom;
+    const newMaxPanX = Math.max(0, (newRenderedWidth - FRAME_SIZE) / 2);
+    const newMaxPanY = Math.max(0, (newRenderedHeight - FRAME_SIZE) / 2);
+    const clampedPanX = Math.max(-newMaxPanX, Math.min(newMaxPanX, photoEditorPan.x));
+    const clampedPanY = Math.max(-newMaxPanY, Math.min(newMaxPanY, photoEditorPan.y));
+    setPhotoEditorZoom(newZoom);
+    setPhotoEditorPan({ x: clampedPanX, y: clampedPanY });
+  };
+
+  const handleSavePhotoEditor = () => {
+    if (!photoEditorSrc) return;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const nw = img.naturalWidth || 512;
+      const nh = img.naturalHeight || 512;
+      const aspect = nw / nh;
+      let baseWidth = FRAME_SIZE;
+      let baseHeight = FRAME_SIZE;
+      if (aspect >= 1) {
+        baseWidth = FRAME_SIZE * aspect;
+      } else {
+        baseHeight = FRAME_SIZE / aspect;
+      }
+      const renderedWidth = baseWidth * photoEditorZoom;
+      const renderedHeight = baseHeight * photoEditorZoom;
+      const imageLeftInFrame = (FRAME_SIZE - renderedWidth) / 2 + photoEditorPan.x;
+      const imageTopInFrame = (FRAME_SIZE - renderedHeight) / 2 + photoEditorPan.y;
+
+      const frameOriginInImageX = -imageLeftInFrame;
+      const frameOriginInImageY = -imageTopInFrame;
+
+      let cropX = frameOriginInImageX * (nw / renderedWidth);
+      let cropY = frameOriginInImageY * (nh / renderedHeight);
+      let cropWidth = FRAME_SIZE * (nw / renderedWidth);
+      let cropHeight = FRAME_SIZE * (nh / renderedHeight);
+
+      // Clamp to image boundaries
+      cropX = Math.max(0, Math.min(nw - cropWidth, cropX));
+      cropY = Math.max(0, Math.min(nh - cropHeight, cropY));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(img, cropX, cropY, cropWidth, cropHeight, 0, 0, 512, 512);
+
+      let dataUrl = canvas.toDataURL('image/webp', 0.85);
+      if (!dataUrl.startsWith('data:image/webp')) {
+        dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      }
+
+      const sizeKb = Math.round((dataUrl.length * 3) / 4 / 1024);
+      if (sizeKb > 200) {
+        dataUrl = canvas.toDataURL('image/jpeg', 0.65);
+        const retryKb = Math.round((dataUrl.length * 3) / 4 / 1024);
+        if (retryKb > 200) {
+          alert(`Optimized image size (${retryKb} KB) exceeds the 200 KB limit. Please choose a smaller photo.`);
+          return;
+        }
+      }
+
+      setCreatorAbout((prev) => ({
+        ...prev,
+        photo_url: dataUrl,
+        photo_position: '50% 50%',
+      }));
+      setIsPhotoEditorOpen(false);
+    };
+    img.src = photoEditorSrc;
   };
 
   // Draft Channel: Mirrored unsaved state assembled in exact public shape
@@ -701,11 +781,97 @@ export default function AdminConsole() {
     } catch {}
   };
 
-  // Fetch all database tables
-  const fetchAllSections = async () => {
+  // Helper to hydrate state from server data or sessionStorage cache
+  const applyAdminData = (data: any) => {
+    if (!data) return;
+    if (typeof data.dbConnected === 'boolean') {
+      setDbConnected(data.dbConnected);
+    }
+    if (typeof data.isAuthSecretDerived === 'boolean') {
+      setIsAuthSecretDerived(data.isAuthSecretDerived);
+    }
+    if (data.sections) {
+      if (data.sections.hero) setHero(data.sections.hero);
+      if (data.sections.announcement) setAnnouncement(data.sections.announcement);
+      if (data.sections.categories) setCategories(data.sections.categories);
+      if (data.sections.tools) setTools(data.sections.tools);
+      if (data.sections.footerSocial) setFooterSocial(data.sections.footerSocial);
+      if (data.sections.creatorAbout) setCreatorAbout(data.sections.creatorAbout);
+      if (data.sections.apiKeys) {
+        const rawApi = { ...data.sections.apiKeys };
+        if (rawApi.gemini_key === '277226@Asif') rawApi.gemini_key = '';
+
+        const parseArr = (v: any) => {
+          if (Array.isArray(v)) return v;
+          if (typeof v === 'string' && v.trim()) {
+            try {
+              const p = JSON.parse(v);
+              if (Array.isArray(p)) return p;
+            } catch {}
+          }
+          return [];
+        };
+
+        const geminiList = parseArr(rawApi.gemini_keys);
+        if (geminiList.length === 0 && rawApi.gemini_key) {
+          geminiList.push(rawApi.gemini_key);
+        }
+        rawApi.gemini_keys = geminiList;
+
+        const openaiList = parseArr(rawApi.openai_keys);
+        if (openaiList.length === 0 && rawApi.openai_key) {
+          openaiList.push(rawApi.openai_key);
+        }
+        rawApi.openai_keys = openaiList;
+
+        const convertApiList = parseArr(rawApi.convertapi_keys);
+        if (convertApiList.length === 0 && rawApi.convertapi_token) {
+          convertApiList.push(rawApi.convertapi_token);
+        }
+        rawApi.convertapi_keys = convertApiList;
+
+        const removeBgList = parseArr(rawApi.removebg_keys);
+        if (removeBgList.length === 0 && rawApi.removebg_key) {
+          removeBgList.push(rawApi.removebg_key);
+        }
+        rawApi.removebg_keys = removeBgList;
+
+        const ilovePdfList = parseArr(rawApi.ilovepdf_keys);
+        if (ilovePdfList.length === 0 && (rawApi.ilovepdf_public_key || rawApi.ilovepdf_secret_key)) {
+          ilovePdfList.push({
+            public: rawApi.ilovepdf_public_key || '',
+            secret: rawApi.ilovepdf_secret_key || '',
+          });
+        }
+        rawApi.ilovepdf_keys = ilovePdfList;
+
+        setApiKeys(rawApi);
+      }
+      if (data.sections.removeAiLabel) {
+        setRemoveAiLabel({
+          name_en: data.sections.removeAiLabel.name_en || 'Remove AI Label',
+          name_bn: data.sections.removeAiLabel.name_bn || 'AI লেবেল রিমুভার',
+          description_en: data.sections.removeAiLabel.description_en || 'Remove AI labels & metadata (C2PA, EXIF, XMP) from photos — free, in your browser, no upload.',
+          description_bn: data.sections.removeAiLabel.description_bn || 'ছবি থেকে AI লেবেল ও মেটাডেটা (C2PA, EXIF, XMP) মুছে ফেলুন — ফ্রি, ব্রাউজারেই, কোনো আপলোড ছাড়াই।',
+          icon: data.sections.removeAiLabel.icon || 'ShieldCheck',
+          enabled: data.sections.removeAiLabel.enabled !== false,
+        });
+      }
+    }
+    if (data.policies) setPolicies(data.policies);
+    if (data.guides) setGuides(data.guides);
+    if (data.faq) setFaqItems(data.faq);
+    if (data.contentTexts) setContentTexts(data.contentTexts);
+    if (data.analytics) setAnalytics(data.analytics);
+    if (data.periodicAnalytics) setPeriodicAnalytics(data.periodicAnalytics);
+  };
+
+  // Fetch all database tables (supports silent background SWR revalidation)
+  const fetchAllSections = async (isSilent?: boolean | unknown) => {
+    const silent = isSilent === true;
     fetchProfile();
     try {
-      setLoadingData(true);
+      if (!silent) setLoadingData(true);
       const res = await fetch('/api/admin/data');
       if (res.status === 401) {
         handleLogout();
@@ -713,84 +879,10 @@ export default function AdminConsole() {
       }
       if (res.ok) {
         const data = await res.json();
-        setDbConnected(data.dbConnected);
-        if (typeof data.isAuthSecretDerived === 'boolean') {
-          setIsAuthSecretDerived(data.isAuthSecretDerived);
-        }
-        if (data.sections) {
-          if (data.sections.hero) setHero(data.sections.hero);
-          if (data.sections.announcement) setAnnouncement(data.sections.announcement);
-          if (data.sections.categories) setCategories(data.sections.categories);
-          if (data.sections.tools) setTools(data.sections.tools);
-          if (data.sections.footerSocial) setFooterSocial(data.sections.footerSocial);
-          if (data.sections.creatorAbout) setCreatorAbout(data.sections.creatorAbout);
-          if (data.sections.apiKeys) {
-            const rawApi = { ...data.sections.apiKeys };
-            if (rawApi.gemini_key === '277226@Asif') rawApi.gemini_key = '';
-
-            const parseArr = (v: any) => {
-              if (Array.isArray(v)) return v;
-              if (typeof v === 'string' && v.trim()) {
-                try {
-                  const p = JSON.parse(v);
-                  if (Array.isArray(p)) return p;
-                } catch {}
-              }
-              return [];
-            };
-
-            const geminiList = parseArr(rawApi.gemini_keys);
-            if (geminiList.length === 0 && rawApi.gemini_key) {
-              geminiList.push(rawApi.gemini_key);
-            }
-            rawApi.gemini_keys = geminiList;
-
-            const openaiList = parseArr(rawApi.openai_keys);
-            if (openaiList.length === 0 && rawApi.openai_key) {
-              openaiList.push(rawApi.openai_key);
-            }
-            rawApi.openai_keys = openaiList;
-
-            const convertApiList = parseArr(rawApi.convertapi_keys);
-            if (convertApiList.length === 0 && rawApi.convertapi_token) {
-              convertApiList.push(rawApi.convertapi_token);
-            }
-            rawApi.convertapi_keys = convertApiList;
-
-            const removeBgList = parseArr(rawApi.removebg_keys);
-            if (removeBgList.length === 0 && rawApi.removebg_key) {
-              removeBgList.push(rawApi.removebg_key);
-            }
-            rawApi.removebg_keys = removeBgList;
-
-            const ilovePdfList = parseArr(rawApi.ilovepdf_keys);
-            if (ilovePdfList.length === 0 && (rawApi.ilovepdf_public_key || rawApi.ilovepdf_secret_key)) {
-              ilovePdfList.push({
-                public: rawApi.ilovepdf_public_key || '',
-                secret: rawApi.ilovepdf_secret_key || '',
-              });
-            }
-            rawApi.ilovepdf_keys = ilovePdfList;
-
-            setApiKeys(rawApi);
-          }
-          if (data.sections.removeAiLabel) {
-            setRemoveAiLabel({
-              name_en: data.sections.removeAiLabel.name_en || 'Remove AI Label',
-              name_bn: data.sections.removeAiLabel.name_bn || 'AI লেবেল রিমুভার',
-              description_en: data.sections.removeAiLabel.description_en || 'Remove AI labels & metadata (C2PA, EXIF, XMP) from photos — free, in your browser, no upload.',
-              description_bn: data.sections.removeAiLabel.description_bn || 'ছবি থেকে AI লেবেল ও মেটাডেটা (C2PA, EXIF, XMP) মুছে ফেলুন — ফ্রি, ব্রাউজারেই, কোনো আপলোড ছাড়াই।',
-              icon: data.sections.removeAiLabel.icon || 'ShieldCheck',
-              enabled: data.sections.removeAiLabel.enabled !== false,
-            });
-          }
-        }
-        if (data.policies) setPolicies(data.policies);
-        if (data.guides) setGuides(data.guides);
-        if (data.faq) setFaqItems(data.faq);
-        if (data.contentTexts) setContentTexts(data.contentTexts);
-        if (data.analytics) setAnalytics(data.analytics);
-        if (data.periodicAnalytics) setPeriodicAnalytics(data.periodicAnalytics);
+        applyAdminData(data);
+        try {
+          sessionStorage.setItem('toolghor_admin_data_cache', JSON.stringify(data));
+        } catch {}
 
         try {
           const now = new Date();
@@ -826,7 +918,16 @@ export default function AdminConsole() {
       const isAuthLocal = localStorage.getItem('toolghor_admin_auth');
       if (isAuthSession === 'true' || isAuthLocal === 'true') {
         setIsAuthenticated(true);
-        fetchAllSections();
+        let hasCache = false;
+        try {
+          const cachedStr = sessionStorage.getItem('toolghor_admin_data_cache');
+          if (cachedStr) {
+            const cachedData = JSON.parse(cachedStr);
+            applyAdminData(cachedData);
+            hasCache = true;
+          }
+        } catch {}
+        fetchAllSections(hasCache);
       }
       if (typeof window !== 'undefined') {
         const params = new URLSearchParams(window.location.search);
@@ -834,6 +935,7 @@ export default function AdminConsole() {
         const validTabs: MenuTab[] = ['overview', 'hero', 'announcement', 'categories', 'tools', 'guides', 'faq', 'footer', 'creator', 'apis', 'policies', 'analytics', 'profile'];
         if (tabParam && validTabs.includes(tabParam)) {
           setActiveTab(tabParam);
+          setVisitedTabs((prev) => new Set(prev).add(tabParam));
         }
       }
     } catch {}
@@ -862,13 +964,6 @@ export default function AdminConsole() {
       })
       .catch(() => {});
   }, []);
-
-  // Fetch fresh profile whenever entering Profile & Security tab
-  useEffect(() => {
-    if (activeTab === 'profile' && isAuthenticated) {
-      fetchProfile();
-    }
-  }, [activeTab, isAuthenticated]);
 
   // DOOR 1: Password Login Submission
   const handleLogin = async (e: React.FormEvent) => {
@@ -1244,6 +1339,7 @@ export default function AdminConsole() {
         body: JSON.stringify({ action: 'logout' }),
       }).catch(() => {});
       sessionStorage.removeItem('toolghor_admin_auth');
+      sessionStorage.removeItem('toolghor_admin_data_cache');
       localStorage.removeItem('toolghor_admin_auth');
       localStorage.removeItem('toolghor_admin_remember');
     } catch {}
@@ -1270,6 +1366,7 @@ export default function AdminConsole() {
             setTimeout(() => ch.close(), 200);
           } catch {}
         }
+        fetchAllSections(true); // silent background update of state and sessionStorage cache
         return true;
       }
       return false;
@@ -1940,7 +2037,7 @@ export default function AdminConsole() {
           {/* Refresh Button */}
           <button
             type="button"
-            onClick={fetchAllSections}
+            onClick={() => fetchAllSections(false)}
             disabled={loadingData}
             title="Sync live data from database"
             style={{
@@ -2248,7 +2345,9 @@ export default function AdminConsole() {
             ))}
           </div>
           {/* TAB 1: OVERVIEW (RESTYLED MODERN SAAS ANALYTICS DASHBOARD) */}
-          {activeTab === 'overview' && (() => {
+          {visitedTabs.has('overview') && (
+            <div style={{ display: activeTab === 'overview' ? 'block' : 'none' }}>
+              {(() => {
             const getToolCount = (slug: string) => {
               if (usagePeriod === 'all') return Number(analytics[slug] || 0);
               const p = periodicAnalytics[slug];
@@ -2325,7 +2424,7 @@ export default function AdminConsole() {
                     </div>
                     <button
                       type="button"
-                      onClick={fetchAllSections}
+                      onClick={() => fetchAllSections(false)}
                       disabled={loadingData}
                       style={{
                         display: 'inline-flex',
@@ -3031,10 +3130,12 @@ export default function AdminConsole() {
               </div>
             );
           })()}
+            </div>
+          )}
 
           {/* TAB 2: HERO SECTION */}
-          {activeTab === 'hero' && (
-            <div>
+          {visitedTabs.has('hero') && (
+            <div style={{ display: activeTab === 'hero' ? 'block' : 'none' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
                 <div style={{ minWidth: 0, flex: '1 1 auto' }}>
                   <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
@@ -3286,8 +3387,8 @@ export default function AdminConsole() {
           )}
 
           {/* TAB 3: ANNOUNCEMENT BANNER */}
-          {activeTab === 'announcement' && (
-            <div>
+          {visitedTabs.has('announcement') && (
+            <div style={{ display: activeTab === 'announcement' ? 'block' : 'none' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
                 <div style={{ minWidth: 0, flex: '1 1 auto' }}>
                   <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
@@ -3602,8 +3703,8 @@ export default function AdminConsole() {
           )}
 
           {/* TAB 4: CATEGORIES MANAGER */}
-          {activeTab === 'categories' && (
-            <div>
+          {visitedTabs.has('categories') && (
+            <div style={{ display: activeTab === 'categories' ? 'block' : 'none' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '24px', minWidth: 0 }}>
                 <div style={{ minWidth: 0, flex: '1 1 auto' }}>
                   <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
@@ -3780,8 +3881,8 @@ export default function AdminConsole() {
           )}
 
           {/* TAB 5: TOOLS MANAGER (FULL EDIT, DELETE, ACTIVE/INACTIVE) */}
-          {activeTab === 'tools' && (
-            <div>
+          {visitedTabs.has('tools') && (
+            <div style={{ display: activeTab === 'tools' ? 'block' : 'none' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '24px', minWidth: 0 }}>
                 <div style={{ minWidth: 0, flex: '1 1 auto' }}>
                   <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
@@ -4093,8 +4194,8 @@ export default function AdminConsole() {
           )}
 
           {/* TAB 6: FOOTER & SOCIAL & WHATSAPP FAB */}
-          {activeTab === 'footer' && (
-            <div>
+          {visitedTabs.has('footer') && (
+            <div style={{ display: activeTab === 'footer' ? 'block' : 'none' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px', minWidth: 0 }}>
                 <div style={{ minWidth: 0, flex: '1 1 auto' }}>
                   <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
@@ -4569,8 +4670,8 @@ export default function AdminConsole() {
           )}
 
           {/* TAB 7: CREATOR PROFILE */}
-          {activeTab === 'creator' && (
-            <div>
+          {visitedTabs.has('creator') && (
+            <div style={{ display: activeTab === 'creator' ? 'block' : 'none' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px', minWidth: 0 }}>
                 <div style={{ minWidth: 0, flex: '1 1 auto' }}>
                   <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
@@ -4630,8 +4731,23 @@ export default function AdminConsole() {
                 {/* Element 0: Creator Profile Photo Box (v44) */}
                 <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '16px', padding: '20px 16px', boxSizing: 'border-box' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '20px', alignItems: 'start' }}>
-                    {/* Left: Square preview tile with reposition icon overlay */}
-                    <div style={{ position: 'relative', width: '100%', maxWidth: '200px', aspectRatio: '1/1', borderRadius: '16px', overflow: 'hidden', border: '2px solid #334155', background: '#090d16' }}>
+                    {/* Left: Square preview tile - clicking opens photo editor */}
+                    <div
+                      onClick={() => openPhotoEditor(creatorAbout.photo_url || '/assets/creator.jpg')}
+                      title="Click photo to edit and frame"
+                      style={{
+                        position: 'relative',
+                        width: '100%',
+                        maxWidth: '200px',
+                        aspectRatio: '1/1',
+                        borderRadius: '16px',
+                        overflow: 'hidden',
+                        border: '2px solid #334155',
+                        background: '#090d16',
+                        cursor: 'pointer',
+                        transition: 'border-color 0.2s ease, transform 0.15s ease',
+                      }}
+                    >
                       <img
                         src={creatorAbout.photo_url || '/assets/creator.jpg'}
                         alt="Creator Photo Preview"
@@ -4646,38 +4762,37 @@ export default function AdminConsole() {
                           (e.currentTarget as HTMLImageElement).src = '/assets/creator.jpg';
                         }}
                       />
-                      {/* Top-right reposition icon button overlay */}
-                      <button
-                        type="button"
-                        onClick={openRepositionEditor}
-                        title="Reposition photo"
+                      {/* Hover overlay hint */}
+                      <div
                         style={{
                           position: 'absolute',
-                          top: '8px',
-                          right: '8px',
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '8px',
-                          background: 'rgba(15, 23, 42, 0.85)',
-                          border: '1px solid #475569',
-                          color: '#f8fafc',
+                          inset: 0,
+                          background: 'rgba(15, 23, 42, 0.65)',
+                          opacity: 0,
+                          transition: 'opacity 0.2s ease',
                           display: 'flex',
+                          flexDirection: 'column',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          cursor: 'pointer',
-                          backdropFilter: 'blur(4px)',
-                          transition: 'background 0.15s ease',
+                          gap: '6px',
+                          color: '#ffffff',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          backdropFilter: 'blur(2px)',
                         }}
+                        onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.opacity = '0'; }}
                       >
-                        <Move size={15} />
-                      </button>
+                        <Crop size={22} color="#10b981" />
+                        <span>Edit Photo</span>
+                      </div>
                     </div>
 
                     {/* Right: Controls */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', minWidth: 0 }}>
                       <div>
                         <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '15px', wordBreak: 'break-word' }}>Creator Profile Photo</div>
-                        <div style={{ fontSize: '12.5px', color: '#94a3b8', wordBreak: 'break-word' }}>Custom profile photo displayed in the About modal and public creator card.</div>
+                        <div style={{ fontSize: '12.5px', color: '#94a3b8', wordBreak: 'break-word' }}>Custom profile photo displayed in the About modal and public creator card. Click photo to drag & zoom framing.</div>
                       </div>
 
                       {/* Buttons: UPLOAD FROM DEVICE & RESET TO DEFAULT */}
@@ -4710,27 +4825,6 @@ export default function AdminConsole() {
 
                         <button
                           type="button"
-                          onClick={openRepositionEditor}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            padding: '9px 16px',
-                            borderRadius: '10px',
-                            background: '#1e293b',
-                            color: '#e2e8f0',
-                            fontSize: '12.5px',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            border: '1px solid #334155',
-                            flexShrink: 0,
-                          }}
-                        >
-                          <Move size={14} /> Reposition
-                        </button>
-
-                        <button
-                          type="button"
                           onClick={handleResetPhoto}
                           style={{
                             display: 'inline-flex',
@@ -4749,30 +4843,6 @@ export default function AdminConsole() {
                         >
                           <RotateCcw size={13} /> RESET TO DEFAULT
                         </button>
-                      </div>
-
-                      {/* URL Entry */}
-                      <div style={{ marginTop: '4px' }}>
-                        <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#94a3b8', marginBottom: '4px', letterSpacing: '0.4px' }}>
-                          OR ENTER IMAGE URL (CDN / LOCAL PATH)
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="https://... or /assets/..."
-                          value={creatorAbout.photo_url || ''}
-                          onChange={(e) => setCreatorAbout({ ...creatorAbout, photo_url: e.target.value })}
-                          style={{
-                            width: '100%',
-                            padding: '9px 12px',
-                            borderRadius: '8px',
-                            background: '#0b0f19',
-                            border: '1px solid #334155',
-                            color: '#f8fafc',
-                            fontSize: '13px',
-                            fontFamily: 'monospace',
-                            boxSizing: 'border-box',
-                          }}
-                        />
                       </div>
 
                       {/* Limits and Current lines */}
@@ -5166,216 +5236,231 @@ export default function AdminConsole() {
               />
               </AccordionSectionCard>
 
-              {/* Creator Photo Reposition Modal (v44) */}
-              {isRepositionOpen && (
-                <div
-                  style={{
-                    position: 'fixed',
-                    inset: 0,
-                    zIndex: 9999,
-                    background: 'rgba(0, 0, 0, 0.75)',
-                    backdropFilter: 'blur(6px)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '20px',
-                  }}
-                >
+              {/* Creator Photo Drag+Zoom Editor Modal (Phase 1) */}
+              {isPhotoEditorOpen && (() => {
+                const aspect = photoEditorImgMeta.naturalAspect || 1;
+                let baseWidth = FRAME_SIZE;
+                let baseHeight = FRAME_SIZE;
+                if (aspect >= 1) {
+                  baseWidth = FRAME_SIZE * aspect;
+                } else {
+                  baseHeight = FRAME_SIZE / aspect;
+                }
+                const renderedWidth = baseWidth * photoEditorZoom;
+                const renderedHeight = baseHeight * photoEditorZoom;
+                const maxPanX = Math.max(0, (renderedWidth - FRAME_SIZE) / 2);
+                const maxPanY = Math.max(0, (renderedHeight - FRAME_SIZE) / 2);
+
+                const handlePhotoDragStart = (clientX: number, clientY: number) => {
+                  isDraggingPhotoEditor.current = true;
+                  photoEditorDragStart.current = {
+                    mouseX: clientX,
+                    mouseY: clientY,
+                    panX: photoEditorPan.x,
+                    panY: photoEditorPan.y,
+                  };
+                };
+
+                const handlePhotoDragMove = (clientX: number, clientY: number) => {
+                  if (!isDraggingPhotoEditor.current) return;
+                  const dx = clientX - photoEditorDragStart.current.mouseX;
+                  const dy = clientY - photoEditorDragStart.current.mouseY;
+                  const nextX = Math.max(-maxPanX, Math.min(maxPanX, photoEditorDragStart.current.panX + dx));
+                  const nextY = Math.max(-maxPanY, Math.min(maxPanY, photoEditorDragStart.current.panY + dy));
+                  setPhotoEditorPan({ x: nextX, y: nextY });
+                };
+
+                const handlePhotoDragEnd = () => {
+                  isDraggingPhotoEditor.current = false;
+                };
+
+                return (
                   <div
                     style={{
-                      background: '#0f172a',
-                      border: '1px solid #334155',
-                      borderRadius: '20px',
-                      padding: '20px 16px',
-                      maxWidth: '420px',
-                      width: '100%',
-                      boxShadow: '0 25px 50px -12px rgba(0,0,0,0.8)',
-                      boxSizing: 'border-box',
+                      position: 'fixed',
+                      inset: 0,
+                      zIndex: 9999,
+                      background: 'rgba(0, 0, 0, 0.8)',
+                      backdropFilter: 'blur(8px)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '16px',
                     }}
+                    onClick={() => setIsPhotoEditorOpen(false)}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#f8fafc', wordBreak: 'break-word' }}>
-                        Reposition Profile Photo
-                      </h3>
-                      <button
-                        type="button"
-                        onClick={() => setIsRepositionOpen(false)}
-                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
-                      >
-                        <X size={18} />
-                      </button>
-                    </div>
-
-                    {/* Square Reposition Frame with Drag Pan */}
                     <div
-                      onMouseDown={(e) => {
-                        isDraggingPhoto.current = true;
-                        dragStartPos.current = {
-                          x: e.clientX,
-                          y: e.clientY,
-                          startPanX: repositionPan.x,
-                          startPanY: repositionPan.y,
-                        };
-                      }}
-                      onMouseMove={(e) => {
-                        if (!isDraggingPhoto.current) return;
-                        const dx = e.clientX - dragStartPos.current.x;
-                        const dy = e.clientY - dragStartPos.current.y;
-                        const nextX = Math.max(0, Math.min(100, dragStartPos.current.startPanX - (dx / 2.8)));
-                        const nextY = Math.max(0, Math.min(100, dragStartPos.current.startPanY - (dy / 2.8)));
-                        setRepositionPan({ x: Math.round(nextX), y: Math.round(nextY) });
-                      }}
-                      onMouseUp={() => { isDraggingPhoto.current = false; }}
-                      onMouseLeave={() => { isDraggingPhoto.current = false; }}
-                      onTouchStart={(e) => {
-                        if (e.touches.length === 1) {
-                          isDraggingPhoto.current = true;
-                          dragStartPos.current = {
-                            x: e.touches[0].clientX,
-                            y: e.touches[0].clientY,
-                            startPanX: repositionPan.x,
-                            startPanY: repositionPan.y,
-                          };
-                        }
-                      }}
-                      onTouchMove={(e) => {
-                        if (!isDraggingPhoto.current || e.touches.length !== 1) return;
-                        const dx = e.touches[0].clientX - dragStartPos.current.x;
-                        const dy = e.touches[0].clientY - dragStartPos.current.y;
-                        const nextX = Math.max(0, Math.min(100, dragStartPos.current.startPanX - (dx / 2.8)));
-                        const nextY = Math.max(0, Math.min(100, dragStartPos.current.startPanY - (dy / 2.8)));
-                        setRepositionPan({ x: Math.round(nextX), y: Math.round(nextY) });
-                      }}
-                      onTouchEnd={() => { isDraggingPhoto.current = false; }}
                       style={{
-                        position: 'relative',
-                        width: '100%',
-                        height: '280px',
+                        background: '#111827',
+                        border: '1px solid #1f2937',
                         borderRadius: '16px',
-                        border: '2px dashed #475569',
-                        overflow: 'hidden',
-                        cursor: 'grab',
-                        background: '#090d16',
-                        userSelect: 'none',
-                        touchAction: 'none',
+                        padding: '20px 16px',
+                        maxWidth: '380px',
+                        width: '100%',
+                        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.9)',
+                        boxSizing: 'border-box',
                       }}
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      <img
-                        src={creatorAbout.photo_url || '/assets/creator.jpg'}
-                        alt="Reposition Preview"
-                        draggable={false}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          objectPosition: `${repositionPan.x}% ${repositionPan.y}%`,
-                          transform: `scale(${repositionZoom})`,
-                          transformOrigin: `${repositionPan.x}% ${repositionPan.y}%`,
-                          pointerEvents: 'none',
-                          transition: isDraggingPhoto.current ? 'none' : 'object-position 0.1s ease',
-                        }}
-                      />
-                      {/* Rule of thirds grid overlay */}
-                      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', border: '1px solid rgba(255,255,255,0.08)', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gridTemplateRows: '1fr 1fr 1fr' }}>
-                        <div style={{ borderRight: '1px dashed rgba(255,255,255,0.15)', borderBottom: '1px dashed rgba(255,255,255,0.15)' }} />
-                        <div style={{ borderRight: '1px dashed rgba(255,255,255,0.15)', borderBottom: '1px dashed rgba(255,255,255,0.15)' }} />
-                        <div style={{ borderBottom: '1px dashed rgba(255,255,255,0.15)' }} />
-                        <div style={{ borderRight: '1px dashed rgba(255,255,255,0.15)', borderBottom: '1px dashed rgba(255,255,255,0.15)' }} />
-                        <div style={{ borderRight: '1px dashed rgba(255,255,255,0.15)', borderBottom: '1px dashed rgba(255,255,255,0.15)' }} />
-                        <div style={{ borderBottom: '1px dashed rgba(255,255,255,0.15)' }} />
-                      </div>
-                    </div>
-
-                    <div style={{ fontSize: '11.5px', color: '#94a3b8', textAlign: 'center', margin: '8px 0 16px', wordBreak: 'break-word' }}>
-                      Drag image to pan focus • Current Position: <span style={{ color: '#10b981', fontFamily: 'monospace' }}>{repositionPan.x}% {repositionPan.y}%</span>
-                    </div>
-
-                    {/* Zoom Slider */}
-                    <div style={{ marginBottom: '20px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#cbd5e1', marginBottom: '6px' }}>
-                        <span>Zoom Scale</span>
-                        <span style={{ fontFamily: 'monospace', color: '#38bdf8' }}>{repositionZoom.toFixed(2)}x</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="1"
-                        max="3"
-                        step="0.05"
-                        value={repositionZoom}
-                        onChange={(e) => setRepositionZoom(parseFloat(e.target.value))}
-                        style={{ width: '100%', accentColor: '#10b981', cursor: 'pointer' }}
-                      />
-                    </div>
-
-                    {/* Modal Buttons */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRepositionPan({ x: 50, y: 50 });
-                          setRepositionZoom(1);
-                        }}
-                        style={{
-                          padding: '8px 14px',
-                          borderRadius: '8px',
-                          background: '#1e293b',
-                          border: '1px solid #334155',
-                          color: '#94a3b8',
-                          fontSize: '12px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Reset Position
-                      </button>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {/* Header */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <div style={{ fontWeight: 800, fontSize: '16px', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Crop size={18} color="#10b981" /> Edit Profile Photo
+                        </div>
                         <button
                           type="button"
-                          onClick={() => setIsRepositionOpen(false)}
+                          onClick={() => setIsPhotoEditorOpen(false)}
+                          style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+
+                      {/* Square (1:1) Framing Canvas */}
+                      <div
+                        onMouseDown={(e) => handlePhotoDragStart(e.clientX, e.clientY)}
+                        onMouseMove={(e) => handlePhotoDragMove(e.clientX, e.clientY)}
+                        onMouseUp={handlePhotoDragEnd}
+                        onMouseLeave={handlePhotoDragEnd}
+                        onTouchStart={(e) => {
+                          if (e.touches.length === 1) {
+                            handlePhotoDragStart(e.touches[0].clientX, e.touches[0].clientY);
+                          }
+                        }}
+                        onTouchMove={(e) => {
+                          if (e.touches.length === 1) {
+                            handlePhotoDragMove(e.touches[0].clientX, e.touches[0].clientY);
+                          }
+                        }}
+                        onTouchEnd={handlePhotoDragEnd}
+                        style={{
+                          position: 'relative',
+                          width: `${FRAME_SIZE}px`,
+                          height: `${FRAME_SIZE}px`,
+                          maxWidth: '100%',
+                          margin: '0 auto',
+                          borderRadius: '14px',
+                          border: '2px solid #334155',
+                          overflow: 'hidden',
+                          cursor: 'grab',
+                          background: '#090d16',
+                          userSelect: 'none',
+                          touchAction: 'none',
+                        }}
+                      >
+                        <img
+                          src={photoEditorSrc}
+                          alt="Photo Editor Canvas"
+                          draggable={false}
                           style={{
-                            padding: '8px 14px',
-                            borderRadius: '8px',
-                            background: '#1f2937',
-                            border: 'none',
-                            color: '#cbd5e1',
-                            fontSize: '12px',
-                            cursor: 'pointer',
+                            position: 'absolute',
+                            width: `${renderedWidth}px`,
+                            height: `${renderedHeight}px`,
+                            left: `${(FRAME_SIZE - renderedWidth) / 2 + photoEditorPan.x}px`,
+                            top: `${(FRAME_SIZE - renderedHeight) / 2 + photoEditorPan.y}px`,
+                            maxWidth: 'none',
+                            maxHeight: 'none',
+                            userSelect: 'none',
+                            pointerEvents: 'none',
+                            display: 'block',
+                          }}
+                        />
+                        {/* Rule of thirds grid overlay */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            pointerEvents: 'none',
+                            border: '1px solid rgba(255,255,255,0.06)',
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 1fr 1fr',
+                            gridTemplateRows: '1fr 1fr 1fr',
                           }}
                         >
-                          Cancel
+                          <div style={{ borderRight: '1px dashed rgba(255,255,255,0.12)', borderBottom: '1px dashed rgba(255,255,255,0.12)' }} />
+                          <div style={{ borderRight: '1px dashed rgba(255,255,255,0.12)', borderBottom: '1px dashed rgba(255,255,255,0.12)' }} />
+                          <div style={{ borderBottom: '1px dashed rgba(255,255,255,0.12)' }} />
+                          <div style={{ borderRight: '1px dashed rgba(255,255,255,0.12)', borderBottom: '1px dashed rgba(255,255,255,0.12)' }} />
+                          <div style={{ borderRight: '1px dashed rgba(255,255,255,0.12)', borderBottom: '1px dashed rgba(255,255,255,0.12)' }} />
+                          <div style={{ borderBottom: '1px dashed rgba(255,255,255,0.12)' }} />
+                        </div>
+                      </div>
+
+                      <div style={{ fontSize: '11.5px', color: '#94a3b8', textAlign: 'center', marginTop: '8px', marginBottom: '14px' }}>
+                        Drag photo to position inside the 1:1 frame
+                      </div>
+
+                      {/* Zoom Slider */}
+                      <div style={{ marginBottom: '20px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#cbd5e1', marginBottom: '6px' }}>
+                          <span style={{ fontWeight: 600 }}>Zoom</span>
+                          <span style={{ fontFamily: 'monospace', color: '#10b981', fontWeight: 700 }}>{photoEditorZoom.toFixed(2)}x</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="1"
+                          max="3"
+                          step="0.01"
+                          value={photoEditorZoom}
+                          onChange={(e) => handleEditorZoomChange(parseFloat(e.target.value))}
+                          style={{ width: '100%', accentColor: '#10b981', cursor: 'pointer' }}
+                        />
+                      </div>
+
+                      {/* Buttons: Save and Reset ONLY — nothing else */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                        <button
+                          type="button"
+                          onClick={handleEditorReset}
+                          style={{
+                            padding: '10px 18px',
+                            borderRadius: '10px',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            color: '#f87171',
+                            fontSize: '13px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <RotateCcw size={14} /> Reset
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            setCreatorAbout((prev) => ({
-                              ...prev,
-                              photo_position: `${repositionPan.x}% ${repositionPan.y}%`,
-                            }));
-                            setIsRepositionOpen(false);
-                          }}
+                          onClick={handleSavePhotoEditor}
                           style={{
-                            padding: '8px 16px',
-                            borderRadius: '8px',
+                            padding: '10px 24px',
+                            borderRadius: '10px',
                             background: '#10b981',
                             border: 'none',
                             color: '#ffffff',
+                            fontSize: '13.5px',
                             fontWeight: 700,
-                            fontSize: '12px',
                             cursor: 'pointer',
+                            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.15s ease',
                           }}
                         >
-                          Apply
+                          <Check size={16} /> Save
                         </button>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
 
           {/* TAB 8: API INTEGRATIONS */}
-          {activeTab === 'apis' && (
-            <div>
+          {visitedTabs.has('apis') && (
+            <div style={{ display: activeTab === 'apis' ? 'block' : 'none' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px', minWidth: 0 }}>
                 <div style={{ minWidth: 0, flex: '1 1 auto' }}>
                   <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
@@ -5872,8 +5957,8 @@ export default function AdminConsole() {
           )}
 
           {/* TAB: TERMS & POLICIES (9 ISOLATED SECTIONS) */}
-          {activeTab === 'policies' && (
-            <div>
+          {visitedTabs.has('policies') && (
+            <div style={{ display: activeTab === 'policies' ? 'block' : 'none' }}>
               <div
                 style={{
                   display: 'flex',
@@ -6376,8 +6461,8 @@ export default function AdminConsole() {
           )}
 
           {/* TAB: GUIDES MANAGER */}
-          {activeTab === 'guides' && (
-            <div>
+          {visitedTabs.has('guides') && (
+            <div style={{ display: activeTab === 'guides' ? 'block' : 'none' }}>
               <div
                 style={{
                   display: 'flex',
@@ -6578,8 +6663,8 @@ export default function AdminConsole() {
           )}
 
           {/* TAB: FAQ MANAGER */}
-          {activeTab === 'faq' && (
-            <div>
+          {visitedTabs.has('faq') && (
+            <div style={{ display: activeTab === 'faq' ? 'block' : 'none' }}>
               <div
                 style={{
                   display: 'flex',
@@ -6707,8 +6792,8 @@ export default function AdminConsole() {
           )}
 
           {/* TAB 9: USAGE ANALYTICS */}
-          {activeTab === 'analytics' && (
-            <div>
+          {visitedTabs.has('analytics') && (
+            <div style={{ display: activeTab === 'analytics' ? 'block' : 'none' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px', minWidth: 0 }}>
                 <div style={{ minWidth: 0, flex: '1 1 auto' }}>
                   <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>
@@ -6721,7 +6806,7 @@ export default function AdminConsole() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', flexShrink: 0 }}>
                   <button
                     type="button"
-                    onClick={fetchAllSections}
+                    onClick={() => fetchAllSections(false)}
                     disabled={loadingData}
                     style={{
                       display: 'inline-flex',
@@ -6883,8 +6968,8 @@ export default function AdminConsole() {
           )}
 
           {/* TAB 10: ADMIN PROFILE & SECURITY */}
-          {activeTab === 'profile' && (
-            <div>
+          {visitedTabs.has('profile') && (
+            <div style={{ display: activeTab === 'profile' ? 'block' : 'none' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px', minWidth: 0 }}>
                 <div style={{ minWidth: 0, flex: '1 1 auto' }}>
                   <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px', color: '#f8fafc', wordBreak: 'break-word' }}>

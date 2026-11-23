@@ -21,7 +21,7 @@ export interface AccordionSectionCardProps {
   actionButton?: React.ReactNode;
 }
 
-export default function AccordionSectionCard({
+function AccordionSectionCard({
   id,
   title,
   badge,
@@ -179,3 +179,5 @@ export default function AccordionSectionCard({
     </div>
   );
 }
+
+export default React.memo(AccordionSectionCard);

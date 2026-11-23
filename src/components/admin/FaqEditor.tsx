@@ -38,7 +38,7 @@ const KNOWN_SCOPES: Array<{ id: string; label: string }> = [
   { id: 'video-downloader', label: 'Video Downloader' },
 ];
 
-export default function FaqEditor({
+function FaqEditor({
   faqItems,
   setFaqItems,
   selectedScope,
@@ -546,3 +546,5 @@ export default function FaqEditor({
     </div>
   );
 }
+
+export default React.memo(FaqEditor);

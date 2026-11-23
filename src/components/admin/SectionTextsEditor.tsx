@@ -23,7 +23,7 @@ interface SectionTextsEditorProps {
   onDraftChange?: (values: Record<string, { en: string; bn: string }>) => void;
 }
 
-export default function SectionTextsEditor({
+function SectionTextsEditor({
   title,
   description,
   badge = 'Section Content',
@@ -266,3 +266,5 @@ export default function SectionTextsEditor({
     </div>
   );
 }
+
+export default React.memo(SectionTextsEditor);

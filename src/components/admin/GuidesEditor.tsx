@@ -45,7 +45,7 @@ interface GuidesEditorProps {
   onActiveGuideChange?: (slug: string) => void;
 }
 
-export default function GuidesEditor({
+function GuidesEditor({
   guides,
   setGuides,
   onSaveGuide,
@@ -539,3 +539,5 @@ export default function GuidesEditor({
     </div>
   );
 }
+
+export default React.memo(GuidesEditor);

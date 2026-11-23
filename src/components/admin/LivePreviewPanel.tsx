@@ -29,7 +29,7 @@ export interface LivePreviewPanelProps {
   } | null;
 }
 
-export default function LivePreviewPanel({
+function LivePreviewPanel({
   url,
   previewAnchor,
   title = 'LIVE SIMULATION',
@@ -190,6 +190,9 @@ export default function LivePreviewPanel({
     }
   };
 
+  const sendDraftRef = useRef(sendDraft);
+  sendDraftRef.current = sendDraft;
+
   // Debounced send on draft data changes (~300ms)
   useEffect(() => {
     if (!isIframeLoaded) return;
@@ -203,12 +206,12 @@ export default function LivePreviewPanel({
       if (e.origin !== window.location.origin) return;
       if (e.data?.type === 'cms-preview-ready') {
         setIsIframeLoaded(true);
-        sendDraft();
+        sendDraftRef.current();
       }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [draftData, guideDraft, faqDraft, previewAnchor]);
+  }, []);
 
   const handleIframeLoad = () => {
     setIsIframeLoaded(true);
@@ -601,3 +604,5 @@ export default function LivePreviewPanel({
     </div>
   );
 }
+
+export default React.memo(LivePreviewPanel);
