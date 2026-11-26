@@ -16,6 +16,11 @@ import {
   checkAuthenticatorDoorLockout,
 } from '@/lib/totp';
 import { runConfigCheck } from '@/lib/configCheck';
+import {
+  isLoginRateLimited,
+  recordFailedLoginAttempt,
+  clearLoginRateLimit,
+} from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -105,13 +110,41 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
+    const ip =
+      req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      req.headers.get('x-real-ip')?.trim() ||
+      'unknown';
+
+    const tooManyAttemptsResponse = (retryAfterSeconds: number) =>
+      NextResponse.json(
+        {
+          success: false,
+          message: 'Too many failed login attempts. Please try again in 15 minutes.',
+          message_bn: 'অনেকবার ভুল লগইন চেষ্টা করা হয়েছে। অনুগ্রহ করে ১৫ মিনিট পর আবার চেষ্টা করুন।',
+        },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(Math.max(1, retryAfterSeconds)) },
+        }
+      );
+
     // =========================================================================
     // DOOR 1: PASSWORD LOGIN (Lockout: 3 consecutive failed attempts -> 15 min)
     // =========================================================================
     if (action === 'login') {
+      const pwdRateKey = `admin_login_pwd_${ip}`;
+      const ipLimitCheck = await isLoginRateLimited(pwdRateKey, 5);
+      if (ipLimitCheck.limited) {
+        return tooManyAttemptsResponse(ipLimitCheck.retryAfterSeconds);
+      }
+
       // 1. Check password lockout
       const lockout = checkPasswordDoorLockout(account);
       if (lockout.isLocked) {
+        const ipLimit = await recordFailedLoginAttempt(pwdRateKey, 5, 900);
+        if (ipLimit.limited) {
+          return tooManyAttemptsResponse(ipLimit.retryAfterSeconds);
+        }
         return NextResponse.json(
           {
             success: false,
@@ -135,15 +168,18 @@ export async function POST(req: NextRequest) {
       const isValid = await verifyPassword(cleanPass, account.passcode);
 
       if (isValid) {
-        // Reset password failed attempts & unlock
-        await sql`
-          UPDATE admin_account
-          SET
-            password_failed_attempts = 0,
-            password_locked_until = NULL,
-            updated_at = CURRENT_TIMESTAMP
-          WHERE id = ${account.id};
-        `;
+        // Reset password failed attempts, IP counter & unlock
+        await Promise.all([
+          sql`
+            UPDATE admin_account
+            SET
+              password_failed_attempts = 0,
+              password_locked_until = NULL,
+              updated_at = CURRENT_TIMESTAMP
+            WHERE id = ${account.id};
+          `,
+          clearLoginRateLimit(pwdRateKey),
+        ]);
 
         // Upgrade legacy plaintext passwords in background if necessary
         if (needsRehash(account.passcode)) {
@@ -195,6 +231,11 @@ export async function POST(req: NextRequest) {
           WHERE id = ${account.id};
         `;
 
+        const ipLimit = await recordFailedLoginAttempt(pwdRateKey, 5, 900);
+        if (ipLimit.limited) {
+          return tooManyAttemptsResponse(ipLimit.retryAfterSeconds);
+        }
+
         const remaining = Math.max(0, maxAttempts - currentAttempts);
         const errorMsg = isNewlyLocked
           ? 'Password login is locked for ~15 min — use Authenticator.'
@@ -220,6 +261,12 @@ export async function POST(req: NextRequest) {
     // DOOR 2: AUTHENTICATOR LOGIN (RFC 6238 TOTP, Password Door Stays Open)
     // =========================================================================
     if (action === 'login_totp') {
+      const totpRateKey = `admin_login_totp_${ip}`;
+      const ipLimitCheck = await isLoginRateLimited(totpRateKey, 5);
+      if (ipLimitCheck.limited) {
+        return tooManyAttemptsResponse(ipLimitCheck.retryAfterSeconds);
+      }
+
       // 1. Check if 2FA is enrolled
       if (!account.totp_enabled || !account.totp_secret) {
         return NextResponse.json(
@@ -236,6 +283,10 @@ export async function POST(req: NextRequest) {
       // 2. Check authenticator door lockout (Password door stays open)
       const lockout = checkAuthenticatorDoorLockout(account);
       if (lockout.isLocked) {
+        const ipLimit = await recordFailedLoginAttempt(totpRateKey, 5, 900);
+        if (ipLimit.limited) {
+          return tooManyAttemptsResponse(ipLimit.retryAfterSeconds);
+        }
         return NextResponse.json(
           {
             success: false,
@@ -293,6 +344,11 @@ export async function POST(req: NextRequest) {
           WHERE id = ${account.id};
         `;
 
+        const ipLimit = await recordFailedLoginAttempt(totpRateKey, 5, 900);
+        if (ipLimit.limited) {
+          return tooManyAttemptsResponse(ipLimit.retryAfterSeconds);
+        }
+
         const remaining = Math.max(0, maxAttempts - currentAttempts);
         return NextResponse.json(
           {
@@ -328,6 +384,11 @@ export async function POST(req: NextRequest) {
           WHERE id = ${account.id};
         `;
 
+        const ipLimit = await recordFailedLoginAttempt(totpRateKey, 5, 900);
+        if (ipLimit.limited) {
+          return tooManyAttemptsResponse(ipLimit.retryAfterSeconds);
+        }
+
         const remaining = Math.max(0, maxAttempts - currentAttempts);
         const errorMsg = isNewlyLocked
           ? 'Authenticator login is locked for ~15 min — use Password.'
@@ -349,15 +410,18 @@ export async function POST(req: NextRequest) {
       }
 
       // Successful Authenticator Login
-      await sql`
-        UPDATE admin_account
-        SET
-          totp_failed_attempts = 0,
-          totp_locked_until = NULL,
-          last_totp_step = ${matchedStep},
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = ${account.id};
-      `;
+      await Promise.all([
+        sql`
+          UPDATE admin_account
+          SET
+            totp_failed_attempts = 0,
+            totp_locked_until = NULL,
+            last_totp_step = ${matchedStep},
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = ${account.id};
+        `,
+        clearLoginRateLimit(totpRateKey),
+      ]);
 
       const remember = body.remember !== false;
       const sessionToken = createAdminSessionToken(

@@ -161,6 +161,106 @@ export async function checkPersistentRateLimit(
 }
 
 /**
+ * Checks whether an IP+door key has reached the failed-login limit without incrementing.
+ */
+export async function isLoginRateLimited(
+  key: string,
+  maxAttempts = 5
+): Promise<{ limited: boolean; retryAfterSeconds: number }> {
+  try {
+    await ensureRateLimitTable();
+    const sql = getDb();
+    const query = sql`
+      SELECT count, reset_at
+      FROM server_rate_limits
+      WHERE key = ${key} AND reset_at > CURRENT_TIMESTAMP
+      LIMIT 1;
+    `;
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Login rate limit check timeout')), 1000)
+    );
+    const rows = (await Promise.race([query, timeoutPromise])) as any[];
+    const entry = rows && rows[0];
+    if (!entry) return { limited: false, retryAfterSeconds: 0 };
+
+    const count = Number(entry.count || 0);
+    if (count >= maxAttempts) {
+      const retryAfterSeconds = Math.max(
+        1,
+        Math.ceil((new Date(entry.reset_at).getTime() - Date.now()) / 1000)
+      );
+      return { limited: true, retryAfterSeconds };
+    }
+    return { limited: false, retryAfterSeconds: 0 };
+  } catch (err: any) {
+    console.warn('[LoginRateLimit Check Warning]:', err?.message);
+    return { limited: false, retryAfterSeconds: 0 };
+  }
+}
+
+/**
+ * Records a failed login attempt for an IP+door key within a sliding/fixed window.
+ */
+export async function recordFailedLoginAttempt(
+  key: string,
+  maxAttempts = 5,
+  windowSeconds = 900
+): Promise<{ limited: boolean; count: number; retryAfterSeconds: number }> {
+  try {
+    await ensureRateLimitTable();
+    const sql = getDb();
+    const resetAt = new Date(Date.now() + windowSeconds * 1000);
+    const query = sql`
+      INSERT INTO server_rate_limits (key, count, reset_at)
+      VALUES (${key}, 1, ${resetAt.toISOString()})
+      ON CONFLICT (key) DO UPDATE
+      SET
+        count = CASE
+          WHEN server_rate_limits.reset_at < CURRENT_TIMESTAMP THEN 1
+          ELSE server_rate_limits.count + 1
+        END,
+        reset_at = CASE
+          WHEN server_rate_limits.reset_at < CURRENT_TIMESTAMP THEN ${resetAt.toISOString()}
+          ELSE server_rate_limits.reset_at
+        END
+      RETURNING count, reset_at;
+    `;
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Login rate limit record timeout')), 1000)
+    );
+    const rows = (await Promise.race([query, timeoutPromise])) as any[];
+    const entry = rows && rows[0];
+    if (!entry) return { limited: false, count: 0, retryAfterSeconds: 0 };
+
+    const count = Number(entry.count || 1);
+    const limited = count >= maxAttempts;
+    const retryAfterSeconds = limited
+      ? Math.max(1, Math.ceil((new Date(entry.reset_at).getTime() - Date.now()) / 1000))
+      : 0;
+    return { limited, count, retryAfterSeconds };
+  } catch (err: any) {
+    console.warn('[LoginRateLimit Record Warning]:', err?.message);
+    return { limited: false, count: 0, retryAfterSeconds: 0 };
+  }
+}
+
+/**
+ * Clears the failed-login counter for an IP+door key upon successful login.
+ */
+export async function clearLoginRateLimit(key: string): Promise<void> {
+  try {
+    await ensureRateLimitTable();
+    const sql = getDb();
+    await Promise.race([
+      sql`DELETE FROM server_rate_limits WHERE key = ${key};`,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Login rate limit clear timeout')), 1000)),
+    ]);
+  } catch (err: any) {
+    console.warn('[LoginRateLimit Clear Warning]:', err?.message);
+  }
+}
+
+/**
  * -------------------------------------------------------------
  * 4. Content-Disposition Filename Sanitizer
  * -------------------------------------------------------------
